@@ -1,0 +1,198 @@
+\documentclass[]{article}
+
+\usepackage[margin=1in]{geometry}
+
+%opening
+\title{}
+\author{}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+
+\end{abstract}
+
+\section{Introduction}
+
+Sequence clustering is a classic problem in biology.
+Clustering of complete biological sequences generates de-novo taxonomy and reduces the redundancy of biological database.
+Clustering of short reads produced by sequencers can detect and correct sequencing error.
+
+We developed a new sequence-clustering algorithm that can scale to hundred of millions protein sequences.
+Our algorithm is more sensitive, more specific, and faster than known published sequence clustering algorithms.
+Our algorithm can generate better de-novo taxonomy, 
+
+\section{Related works}
+
+Clustering of biological sequences has a long history.
+\cite{holm1998removing} observed that two sufficiently long protein sequences that share no common decapeptide must have at most 90\% sequence identity.
+Based on this observation, \cite{holm1998removing} developed a method called nrdb90 that clusters protein sequences at 90\% sequence identity.
+However, nrdb90 is slow and works only for sequence identity of at least 90\%.
+\cite{li2001clustering} observed that two protein sequences of lengths \(L_1\) and \(L_2\) must share at least \(x\) peptides of length \(y\) in order to share at least \(z\)\% sequence identity, 
+	where \(L_1\), \(L_2\), \(x\), \(y\), and \(z\) are mathematically interdependent variables.
+\cite{li2001clustering} therefore generalized the decapeptide filter into short-word filter.
+Based on this generalization, \cite{li2001clustering} developed a method called CD-HI that clusters protein sequences at 70\% or more sequence identity.
+\cite{li2001clustering} introduced the notion of greedy incremental update, where sequences are longest-first sorted and each sequence either belongs to an already formed cluster or forms a new cluster. 
+Since then, nearly all clustering methods used greedy incremental update, so we will assume such unless explicitly stated otherwise.
+CD-HI is both significantly faster and can cluster at lower sequence identity than nrdb90 without compromising neither sensitivity nor specificity.
+However, the exponential increase in the size of a typical protein database such as nr even made CD-HI too slow to be practical.
+\cite{li2002tolerating} extended the work of \cite{li2001clustering} by probabilistically filtering out sequence pairs that are likely to share less than a certain sequence-identity cutoff.
+\cite{li2002tolerating} observed that two protein sequences of lengths \(L_1\) and \(L_2\) are not necessarily , but likely, to share at least \(x\) peptides of length \(y\) in order to share at least \(z\)\% sequence identity.
+Based on this extension, \cite{li2002tolerating} developed a method called CD-HIT that clusters protein sequences at 50\% or more sequence identity. 
+At the same sequence-identity cutoff, CD-HIT produces 0.4\% more clusters than but is about 100 times faster than CD-HI.
+\cite{li2006cd} observed that the algorithm in CD-HIT can be used for clustering nucleotide sequences and for comparing two biological databases.
+\cite{fu2012cd} used OpenMP to parallelize CD-HIT.
+
+\cite{edgar2010search} developed a method called usearch which performs database search by sequence identity. 
+In addition of using the short-word filter used by CD-HIT, usearch only searches a fixed maximum number of top hit target sequences per query sequence.  
+\cite{edgar2010search} also developed uclust which clusters biological sequences using the distance computed by usearch.
+Usearch and uclust are both closed-source commercial programs, so \cite{rognes2016vsearch} developed vsearch which is open-source and similar to usearch and uclust in terms of functionality and performance.
+
+Clustering of short reads produced by Next-Generation Sequencing (NGS) is also an ongoing research topic.
+\cite{zorita2015starcode} developed starcode, an algorithm for clustering sequences at high global similarity cutoff based edit distance.
+Starcode is especially useful for detection and correction of sequencing errors. 
+
+\section{Novel key ideas}
+
+In greedy incremental update, a sequence that is iterated over must either form a new cluster or be assigned to an existing cluster.
+However, such clustering decision rule can result in suboptimal solution.
+Instead, we delay the clustering decision until sufficient sequences are processed.
+Then, we make clustering decisions using an algorithm that is less greedy than the greedy incremental approach.
+
+Computation of sequence identity for a sequence pair is another important component for clustering of biological sequences. 
+Two similar sequences are likely to have
+\begin{enumerate}
+	\item at least one long word in common.
+	\item at least a certain number of short words in common.
+	\item edit distance that is short relative to their sequence lengths.  
+\end{enumerate}
+
+\subsection{Reduction of greediness in greedy incremental update}
+
+Greedy incremental update may not be optimal. 
+For example, suppose we would like to cluster the following sequences at 65\% sequence identity:
+ABXXEFGHIJ, 
+ABXXEFXXI, and
+ BCDEFXXIJ.
+In this case, 65\% sequence identity corresponds to 6 inclusive matches, or equivalently, exclusive edit distance of 4.
+Then, greedy incremental update would pick ABXXEFGHIJ as the centroid of the first cluster, 
+assign ABXXEFXXI to the first cluster because ABXXEFXXI is 3 edit distance away from ABXXEFGHIJ, 
+and pick BCDEFXXIJ as the centroid of the second cluster because BCDEFXXIJ is 4 edit distance away from ABXXEFGHIJ.
+However, if ABXXEFXXI is picked as the centroid of the first cluster, then both ABXXEFGHIJ and BCDEFXXIJ would be assigned to the first cluster. 
+
+Instead of performing clustering while iterating through all sequences, we can perform clustering after computing the pairwise sequence identity of all sequences. 
+In this case, sequence clustering is formulated as the dominating set problem, which is a special type of the set-cover problem. 
+In this dominating set problem, an edge from a first vertex to a second vertex means that the first corresponding biological sequence can represent the second corresponding biological sequence. 
+
+However, we observed that, for biological databases such as uniprot, the number of edges is orders of magnitude more numerous than the number of vertices. Therefore, exhaustive generation of all edges requires substantial computational resources.
+At the same time, such biological databases induce graphs characterized by rare cliques of large sizes, presumably because some biomolecules are over-represented due to their biological importance and/or abundance.
+Therefore, if an unvisited sequence is already represented by many other visited sequences that approximately form a clique, then this unvisited sequence is unlikely to form a new cluster that can contain members outside of this clique. 
+Therefore, in this case, we do not determine the sequences that this new sequence can represent, and therefore do not generate any edge starting from the vertex corresponding to this new sequence. 
+Therefore, the resulting graph is incomplete but does not substantially affect the optimality of the resulting dominating set problem.
+
+Then, we the greedy set-cover algorithm to solve the dominating set problem on the incomplete graph.
+In addition of producing a solution that consists of a set of sequences, 
+	our greedy set-cover algorithm makes sure that each sequence is only represented by the best representative sequence.
+For example, if sequence A can be represented by either representative sequences B or C but A is more similar to C,
+	then A will be clustered with C.  
+Our greedy set-cover algorithm uses linear memory and runtime and is highly optimized for memory usage.
+
+
+%\cite{steinegger2017linclust} used greedy set cover
+
+\subsection{Throw-away of abundant and uninformative long words}
+
+Some biological sequences contain uninformative region.
+For example, a peptide sequence may consist of conserved regions and hypervariable regions.
+The higher the sequence identity threshold is, the less informative the conserved region is.
+Therefore, two sufficiently dissimilar sequences can still share the same long word in the uninformative region.
+If we use a naive long-word filter, then we will initiate a computationally more expensive comparison between these two sequences that share at least one uninformative long word.
+An uninformative long word slows down the clustering process only if many sequences share this long word.
+Therefore, we rank all long words by percentile in increasing order of abundance.
+For each long word that is longer than expected, we used hashed signatures, which are similar to short words in terms of function but are much less computationally intensive to work with, to estimate the sequence identity between some random pairs of sequences sharing this long word.
+If the frequency that the estimated sequence identity meets the user-defined threshold is below a certain threshold,
+	then we throw-away the long word.
+A throw-away long word does not initiate further computationally more expensive comparison between two sequences that share this long word.
+Therefore, computation time can be saved by removing uninformative long words without much sacrifice in sensitivity.
+To reduce memory usage, we use the hash values of long words instead of the long words themselves, which is similar to the technique used in \cite{steinegger2017linclust}.
+
+\subsection{Reduction of short words into hashed signature}
+
+A typical protein sequence consists of about 400 amino acids.
+Therefore, two protein sequences typically have two sets of 400 short words each.
+However, if we uniformly, randomly, and independently (URI) subsample a small number of short words in each set of short words, then the subsampled short words can still work reasonably well. 
+Nonetheless, we still need to maximize the collision rate between two sets of URI subsampled short words.
+We used a technique similar to minhash to achieve such URI subsampling while maximizing such collision rate.
+In brief, each short word is hashed into a 16-bit unsigned integer.
+The 31 smallest hash values form the signature of the sequence.
+When we need to compare two sequences, we first compare their signatures.
+If their signatures do not share a certain number of hash values in common, then we stop any further comparison between the two sequences. 
+Otherwise, we proceed to compare the two sequences using a computationally more expensive method.
+Instead of comparing 400 short words, we only have to compare 31 hash values.
+
+A typical nucleotide sequences is usually three times as long as a typical protein sequence.
+Therefore, the reduction of short words into signature is even more effective for nucleotide sequences.
+
+One-to-many query-to-target sequence comparison is needed in sequence clustering. 
+Similar to \cite{li2006cd}, we sort, in descending order, the targets according to their number of shared hash values with the query before iterating through the targets. 
+Similar to \cite{edgar2010search}, we keep track of the number of failed attempts, or equivalently number of false-positive hits, when iterating through targets.
+In addition, we keep track of the number of successful attempts, or equivalently number of true-positive hits, while iterating through targets.
+Before iterating through the sorted targets, we initialize the number of remaining attempts to a positive integer.
+If an attempt fails, we decrement the number of remaining attempts by one.
+If an attempt succeeds, we increment the number of remaining attempts by a positive integer.
+If the number of attempts becomes zero, then we stop iterating through the targets, because the not-yet-iterated remaining targets are not likely to be true positive hits.
+The idea is that the ratio of success to failure should be above a certain threshold given a Bayesian prior of such ratio.
+
+\subsection{Use of edit similarity instead of sequence identity}
+
+Pairwise sequence identity is defined as the number of identical residues in a pairwise sequence alignment, divided by either the length of the alignment or the length of the shortest sequence. 
+Unless explicitly stated otherwise, we assume that the sequence alignment used to generate sequence identity is the optimal alignment in terms of alignment score.
+
+We developed a new measure of similarity between two sequences called edit-similarity.
+The edit-similarity between a query and a target is defined as: the length of the target minus the number of edits required such that the target is a substring of the query, divided by the length of the target.
+In terms of definition, edit-similarity is almost identical to the similarity in table 1 of \cite{vsovsic2017edlib}, 
+	except that edit-similarity uses target length as divisor whereas the similarity in \cite{vsovsic2017edlib} uses min(query-length, target-length) as the divisor. 
+For example, the edit-similarity between \texttt{ACGGT} and \texttt{ATGG} is (4-1)/4, and the edit-similarity between \texttt{ATGG} and \texttt{ACGGT} is (5-2)/5.
+The query is said to cover the target if the edit-similarity between the query and the target is higher than a predefined threshold.
+
+Edit-distance requires much less computational time than pairwise alignment with substitution matrix, gap opening penalty, and gap extension penalty \cite{vsovsic2017edlib}. 
+At first glance, it seems that we would lose some information by not computing pairwise alignment. 
+However, it turns out that edit-similarity is biologically more relevant than sequence identity.
+In the next two paragraphs, we will heuristically explain why edit-similarity is biologically more relevant.
+In \ref{fig:specificity}, we will show that edit-similarity is more correlated with protein structural similarity than sequence identity.
+
+Let \(s_1\) and \(s_2\) be two sequences such that \(s_1\) is longer than \(s_2\).
+Let \(I(s_1, s_2)\) be the sequence identity between \(s_1\) and \(s_2\).
+Let \(E(s_1, s_2)\) be the edit-similarity between \(s_1\) and \(s_2\).
+If \(I(s_1, s_2) < E(s_1, s_2)\), then the alignment used to generate \(I(s_1, s_2)\) has fewer matches of identical residues, but more alignment score, than the alignment used to generate \(E(s_1, s_2)\).
+Therefore, the alignment used to generate \(I(s_1, s_2)\) must have in general more conserved amino-acid substitutions than the alignment used to generate \(E(s_1, s_2)\) in order to produce higher alignment score with less sequence identity.
+However, the more conserved amino-acid substitutions from \(I(s_1, s_2)\) imply that \(I(s_1, s_2)\) probably underestimates the true biological similarity between \(s_1\) and \(s_2\) anyway, because more conserved amino-acid substitutions have bigger impact on protein structures and functions.
+Therefore, \(E(s_1, s_2)\) measures better the true biological similarity between \(s_1\) and \(s_2\) than \(I(s_1, s_2)\) even though the alignment used to compute \(I(s_1, s_2)\) can provide a white-box explanation for the relationship between \(s_1\) and \(s_2\).
+For example, suppose \(s_1 = \texttt{AIAISSRRSSWWW}\) and \(s_2 = \texttt{AIAIWWW}\), 
+	and suppose we use blosum62 matrix for computing \(I(s_1, s_2)\).
+In blosum62, the match reward for \texttt{W} is 11, and the match reward for both \texttt{A} and \texttt{I} is 4.
+Therefore, \(I(s_1, s_2) = 4/7\) because the           chunk \texttt{AIAI} is shared between \(s_1\) and \(s_2\).
+       but \(E(s_1, s_2) = 3/7\) because the conserved chunk \texttt{WWW}  is shared between \(s_1\) and \(s_2\).
+However, since \texttt{W} is so conserved, \(3/7\) is an underestimates of the extend of biological relationship between \(s_1\) and \(s_2\).
+Therefore, \(4/7\) is closer to such extend of biological relationship.
+
+Edit similarity is supposed to be uncorrelated with conservation of amino-acid residues, but sequence identity can be negatively correlated with conservation of amino-acid residues.
+In addition, edit similarity considers deletion of \(s_1\) in \(s_2\), whereas sequence identity ignores deletion of \(s_1\) in \(s_2\).
+For example, the edit similarity between \texttt{AAACGGG} and \texttt{AAAGGG} is (6-1)/6, but the corresponding sequence identity is 1. Therefore, edit similarity is supposed to be more informative than sequence identity if part of the longer sequence is deleted in the shorter sequence.
+
+\section{Methods}
+
+
+
+\section{Results and discussion}
+
+
+
+\section{Conclusion}
+
+\bibliographystyle{unsrt}
+\bibliography{clust}
+
+\end{document}
