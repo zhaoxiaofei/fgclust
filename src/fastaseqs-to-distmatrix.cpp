@@ -69,7 +69,7 @@ void showparams() {
     std::cerr << " ATTEMPT_INC = " << ATTEMPT_INC   << std::endl;
 }
 
-void show_usage(int argc, char **argv) {
+void show_usage(const int argc, const char *const *const argv) {
     std::cerr << "Program : " << argv[0] << std::endl;
     std::cerr << "Command-line arguments:" << std::endl;
     std::cerr << "--edsim\tA covers B if and only if (len(B) - edit-distance(A, B)) / len(B) >= edsim, where gaps at ends of B are not penalized." << PERC_SIM << std::endl;
@@ -84,7 +84,7 @@ void alphareduce(const char *const strarg) {
     }
 }
 
-void PARAMS_init(int argc, char **argv) {
+void PARAMS_init(const int argc, const char *const *const argv) {
     for (int i = 1; i < argc; i += 2) {
         if (!strcmp("--edsim", argv[i])) {
             PERC_SIM = atoi(argv[i+1]);
@@ -330,6 +330,7 @@ void seed_cov(const seed_t *seed, const uint32_t coveringidx, std::unordered_set
 }
 
 int main(const int argc, const char *const *const argv) {
+    PARAMS_init(argc, argv);
     hash_sign_INIT(); 
     std::unordered_set<int> printthresholds;
     for (int i = 0; i < 400; i++) {
@@ -413,7 +414,7 @@ int main(const int argc, const char *const *const argv) {
             for (auto adj : coveredarr[i-iter]) {
                 seq_arrlist.data[adj.first].coveredcnt++;
                 assert(adj.second <= 100);
-                printf(" %d %d", adj.second, adj.first+1);
+                printf(" %d %u", (int)adj.second, adj.first+1);
             }
             printf("\n");
             coveredarr[i-iter].clear();

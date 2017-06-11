@@ -90,6 +90,6 @@ int main(int argc, char** argv) {
             }
         }
         assert(coveringsetsim.second > 0);
-        std::cout << (coveringsetsim.first+1) << "\t" << (elem+1) << "\t" << coveringsetsim.second << std::endl;
+        std::cout << (coveringsetsim.first+1) << "\t" << (elem+1) << "\t" << (int)coveringsetsim.second << std::endl;
     }
 }

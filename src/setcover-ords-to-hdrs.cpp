@@ -39,7 +39,7 @@ int main(int argc, char **argv) {
         assert(inner >= 0);
         assert(outer >= 0);
         assert(sim > 0);
-        std::cout << inner << "\t" << outer << "\t" << sim << std::endl;
+        std::cout << fastarecords.at(inner).first << "\t" << fastarecords.at(outer).first << "\t" << sim << std::endl;
     }
 }
 
