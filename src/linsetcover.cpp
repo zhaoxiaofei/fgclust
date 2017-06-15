@@ -94,6 +94,6 @@ int main(int argc, char** argv) {
         coverings.insert(coveringsetsim.first);
         std::cout << (coveringsetsim.first+1) << "\t" << (elem+1) << "\t" << (int)coveringsetsim.second << std::endl;
     }
-    std::cout << "linsetcover is done : " << nelems <<  " elements are clustered into " << coverings.size() << " sets." << std::endl;
+    std::cerr << "linsetcover is done : " << nelems <<  " elements are clustered into " << coverings.size() << " sets." << std::endl;
 }
 
