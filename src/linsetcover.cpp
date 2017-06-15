@@ -82,6 +82,7 @@ int main(int argc, char** argv) {
         }
     }
     
+    std::unordered_set<uint32_t> coverings;
     for (uint32_t elem = 0; elem < nelems; elem++) {
         std::pair<uint32_t, uint8_t> coveringsetsim = std::make_pair(0, 0);
         for (auto setsim : elem_to_setsims[elem]) {
@@ -90,6 +91,9 @@ int main(int argc, char** argv) {
             }
         }
         assert(coveringsetsim.second > 0);
+        coverings.insert(coveringsetsim.first);
         std::cout << (coveringsetsim.first+1) << "\t" << (elem+1) << "\t" << (int)coveringsetsim.second << std::endl;
     }
+    std::cout << "linsetcover is done : " << nelems <<  " elements are clustered into " << coverings.size() << " sets." << std::endl;
 }
+

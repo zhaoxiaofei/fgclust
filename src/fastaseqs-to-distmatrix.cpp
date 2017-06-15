@@ -45,10 +45,14 @@ int KMER_SPACE = 8; // 8; // 5
 int SIGN_SIZE = 7;
 int SIGN_MIN = 7; // 8-2; // 4;
 
-int MAX_COV = 15;
+int MAX_COV = 6;
 
 int ATTEMPT_INI = 100;
 int ATTEMPT_INC = 50;
+
+int SEED_SIZE_MAX = 1000;
+int SEED_SEQIDX_PAIR_MAX = 400;
+int SEED_SEQIDX_PAIR_PASS_SIGN_MIN_PERC = 5;
 
 char RED_ALPHA[256]; // derived
 
@@ -67,6 +71,10 @@ void showparams() {
     std::cerr << " MAX_COV     = " << MAX_COV       << std::endl;
     std::cerr << " ATTEMPT_INI = " << ATTEMPT_INI   << std::endl;
     std::cerr << " ATTEMPT_INC = " << ATTEMPT_INC   << std::endl;
+
+    std::cerr << " SEED_SIZE_MAX                       = " << SEED_SIZE_MAX                       << std::endl;
+    std::cerr << " SEED_SEQIDX_PAIR_MAX                = " << SEED_SEQIDX_PAIR_MAX                << std::endl;
+    std::cerr << " SEED_SEQIDX_PAIR_PASS_SIGN_MIN_PERC = " << SEED_SEQIDX_PAIR_PASS_SIGN_MIN_PERC << std::endl;
 }
 
 void show_usage(const int argc, const char *const *const argv) {
@@ -102,7 +110,7 @@ void PARAMS_init(const int argc, const char *const *const argv) {
         KMER_SPACE = 7;
         SIGN_SIZE = 6;
         SIGN_MIN = 6;
-        MAX_COV = 10;
+        // MAX_COV = 10;
         ATTEMPT_INI = 150;
         ATTEMPT_INC = 75;
         alphareduce("FY");
@@ -113,7 +121,7 @@ void PARAMS_init(const int argc, const char *const *const argv) {
         KMER_SPACE = 6;
         SIGN_SIZE = 5;
         SIGN_MIN = 5;
-        MAX_COV = 5;
+        // MAX_COV = 5;
         ATTEMPT_INI = 200;
         ATTEMPT_INC = 100;
         alphareduce("DENQ");
@@ -199,11 +207,12 @@ typedef struct {
     char *name;
     char *seq;
     uint16_t signatures[NUM_SIGNATURES];
-    uint16_t coveredcnt;
+    uint32_t coveredcnt;
+    uint16_t seqlen;
 }
 seq_t; // 16+16*4 bytes +++
 
-int are_probably_sim(const seq_t *seq1, const seq_t *seq2) {
+int calc_n_shared_signatures(const seq_t *seq1, const seq_t *seq2) {
     //fprintf(stderr, "Comparing the sim btw %s and %s\n", seq1->name, seq2->name);
     int i = 0;
     int j = 0;
@@ -265,7 +274,9 @@ void seq_arrlist_add(const kseq_t *kseq) {
     strcpy(seq_arrlist.data[seq_arrlist.size].name, kseq->name.s);
     strcpy(seq_arrlist.data[seq_arrlist.size].seq, kseq->seq.s);
     
+    seq_arrlist.data[seq_arrlist.size].seqlen = kseq->seq.l;
     seq_arrlist.data[seq_arrlist.size].coveredcnt = 0;
+    #if 0 
     memset(seq_arrlist.data[seq_arrlist.size].signatures, 0, NUM_SIGNATURES * sizeof(uint16_t));
     if ((int)kseq->seq.l >= (int)SIGN_SIZE) {
         std::vector<uint16_t> signs(kseq->seq.l * 8 * 0);
@@ -287,7 +298,7 @@ void seq_arrlist_add(const kseq_t *kseq) {
         }
         #endif
     }
-
+    #endif
     seq_arrlist.size++; 
     
     if ((int)kseq->seq.l >= (int)KMER_SIZE) {
@@ -300,6 +311,27 @@ void seq_arrlist_add(const kseq_t *kseq) {
     }
 }
 
+void seq_signatures_init(seq_t *const seq_ptr) {
+    memset(seq_ptr->signatures, 0, NUM_SIGNATURES * sizeof(uint16_t));
+    if ((int)seq_ptr->seqlen >= (int)SIGN_SIZE) {
+        std::vector<uint16_t> signs;
+        signs.reserve((int)seq_ptr->seqlen - (int)SIGN_SIZE + 1);
+        uint64_t sign = sign_init(seq_ptr->seq);
+        signs.push_back((uint16_t)sign);
+        for (int i = SIGN_SIZE; i < seq_ptr->seqlen; i += 1) {
+            sign = sign_update(sign, seq_ptr->seq[i-SIGN_SIZE], seq_ptr->seq[i]);
+            signs.push_back((uint16_t)sign);
+        }
+        std::sort(signs.begin(), signs.end());
+        int j = 0;
+        for (auto sign : signs) {
+            seq_ptr->signatures[j] = (uint16_t)sign;
+            j++;
+            if (NUM_SIGNATURES == j) { break; }
+        }
+    }
+}
+
 void seed_cover(const seed_t *seed, const uint32_t coveringidx, std::unordered_set<uint32_t> & visited, std::vector<std::pair<uint32_t, uint8_t>> & covered, int & filteredcnt) {
     seq_t *coveringseq = &seq_arrlist.data[coveringidx];
     for (int i = 0; i < seed->size; i++) {
@@ -307,7 +339,7 @@ void seed_cover(const seed_t *seed, const uint32_t coveringidx, std::unordered_s
         if (visited.find(coveredidx) == visited.end()) { 
             seq_t *coveredseq = &seq_arrlist.data[coveredidx];
             if ((coveringidx != coveredidx)) {
-                int probsim = are_probably_sim(&seq_arrlist.data[coveringidx], &seq_arrlist.data[coveredidx]);
+                int probsim = calc_n_shared_signatures(&seq_arrlist.data[coveringidx], &seq_arrlist.data[coveredidx]);
                 if (probsim >= SIGN_MIN) {
                     uint8_t sim = calc_perc_seq_sim_editdist(coveredseq->seq, coveringseq->seq); 
                     if (sim >= PERC_SIM) {
@@ -353,6 +385,31 @@ int main(const int argc, const char *const *const argv) {
     }
     kseq_destroy(kseq);
     
+    #pragma omp parallel for schedule(dynamic, 9999*10)
+    for (int i = 0 ; i < seq_arrlist.size; i++) {
+        seq_signatures_init(&seq_arrlist.data[i]);
+    }
+    
+    #pragma omp parallel for schedule(dynamic, 9999*100) 
+    for (int i = 0 ; i < NUM_SEEDS; i++) {
+        if (seeds[i].size > SEED_SIZE_MAX) {
+            unsigned int randstate = 1 + (unsigned int)i;
+            int probsimcnt = 0;
+            for (int j = 0; j < SEED_SEQIDX_PAIR_MAX; j++) {
+                uint32_t seqidx1 = seeds[i].seqidxs[rand_r(&randstate) % seeds[i].size];
+                uint32_t seqidx2 = seeds[i].seqidxs[rand_r(&randstate) % seeds[i].size];
+                if (calc_n_shared_signatures(&seq_arrlist.data[seqidx1], &seq_arrlist.data[seqidx2]) >= SIGN_MIN) {
+                    probsimcnt += 1;
+                }
+            }
+            if (probsimcnt * 100 / SEED_SEQIDX_PAIR_MAX < SEED_SEQIDX_PAIR_PASS_SIGN_MIN_PERC) {
+                seeds[i].size = 0;
+                seeds[i].bufsize = 0;
+                free(seeds[i].seqidxs);
+            }
+        }
+    }
+
     time_t begtime, endtime;
     time(&begtime);
     printf("%d %d\n", seq_arrlist.size, seq_arrlist.size);
@@ -379,9 +436,9 @@ int main(const int argc, const char *const *const argv) {
                 for (auto coveredidx: visited) {
                     seq_t *coveredseq = &seq_arrlist.data[coveredidx];
                     if ((i != coveredidx)) {
-                        int probsim = are_probably_sim(&seq_arrlist.data[i], &seq_arrlist.data[coveredidx]);
-                        nsharedsigns_to_coveredidxs_vec.at(probsim).push_back(coveredidx);
-                    } 
+                        int n_shared_signatures = calc_n_shared_signatures(&seq_arrlist.data[i], &seq_arrlist.data[coveredidx]);
+                        nsharedsigns_to_coveredidxs_vec.at(n_shared_signatures).push_back(coveredidx);
+                    }
                 }
                 
                 int attempts = ATTEMPT_INI;
