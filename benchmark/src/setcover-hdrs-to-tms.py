@@ -15,8 +15,8 @@ def process_line(line):
     assert(acterr.strip() == '')
     for outline in actout.split('\n'):
         if outline.startswith('TM-score=') and outline.endswith('(if normalized by length of Chain_2)'):
-            tmscore = float(outline.split('=')[1].split('(')[0].strip())
-    return (tokens, tmscore)
+            tmscore2 = float(outline.split('=')[1].split('(')[0].strip())
+    return (tokens, tmscore2)
 
 if __name__ == '__main__':
     lines = [line.strip() for line in sys.stdin.readlines() if line.strip() != '']
