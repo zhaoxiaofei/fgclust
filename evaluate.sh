@@ -31,27 +31,28 @@ function run_linclust_with_infastafile_seqid() {
 function run_cdhit_with_infastafile_seqid() {
     echo "run_cdhit_with_infastafile_seqid($1, $2, $3) began at $(date)"
     date; benchmark/bin/cd-hit -i "$1.faa" -o "$2_cdhit-M0-T0-d0-s80-c$3-n$cdhitwordsize.faa" -M 0 -T 0 -d 0 -s 0.8 -c 0.$3 -n $cdhitwordsize
-    date; cat "$2_cdhit-M0-T0-d0-s80-c$3-n$cdhitwordsize.faa.clstr" | benchmark/src/clstr-to-clu-tsv.py > "$2_cdhit-M0-T0-d0-s80-c$3-n$cdhitwordsize.cdhit-clu.tsv"
+    date; cat "$2_cdhit-M0-T0-d0-s80-c$3-n$cdhitwordsize.faa.clstr" | benchmark/src/clstr-to-clu-tsv.py > "$2-$3.cdhit-clu.tsv"
     echo "run_cdhit_with_infastafile_seqid($1, $2, $3) ended at $(date)"
 }
 
-# run pdb
+## run pdb
 
 run_mine_with_infastafile_seqid     "${INPREF}/pdbent-seqres_len-revname-sort" "${OUTDIR}/pdbent-seqres_len-revname-sort" $SIM
 run_linclust_with_infastafile_seqid "${INPREF}/pdbent-seqres_len-revname-sort" "${OUTDIR}/pdbent-seqres_len-revname-sort" $SIM
 run_cdhit_with_infastafile_seqid    "${INPREF}/pdbent-seqres_len-revname-sort" "${OUTDIR}/pdbent-seqres_len-revname-sort" $SIM
 
-cat "${OUTDIR}/pdbent-seqres_len-revname-sort-$3.hdrsetcover-clu.tsv" | benchmark/src/setcover-hdrs-to-tms.py > "${OUTDIR}/pdbent-seqres_len-revname-sort-$1.hdrsetcover-clu.tms"
-cat "${OUTDIR}/pdbent-seqres_len-revname-sort-$3.mmseqs-clu.tsv"      | benchmark/src/setcover-hdrs-to-tms.py > "${OUTDIR}/output/pdbent-seqres_len-revname-sort-$1.mmseqs-clu.tms"
-cat "${OUTDIR}/pdbent-seqres_len-revname-sort-$3.cdhit-clu.tsv"       | benchmark/src/setcover-hdrs-to-tms.py > "${OUTDIR}/output/pdbent-seqres_len-revname-sort-$1.cdhit-clu.tms"
+cat "${OUTDIR}/pdbent-seqres_len-revname-sort-${SIM}.hdrsetcover-clu.tsv" | benchmark/src/setcover-hdrs-to-tms.py > "${OUTDIR}/pdbent-seqres_len-revname-sort-${SIM}.hdrsetcover-clu.tms"
+cat "${OUTDIR}/pdbent-seqres_len-revname-sort-${SIM}.mmseqs-clu.tsv"      | benchmark/src/setcover-hdrs-to-tms.py > "${OUTDIR}/pdbent-seqres_len-revname-sort-${SIM}.mmseqs-clu.tms"
+cat "${OUTDIR}/pdbent-seqres_len-revname-sort-${SIM}.cdhit-clu.tsv"       | benchmark/src/setcover-hdrs-to-tms.py > "${OUTDIR}/pdbent-seqres_len-revname-sort-${SIM}.cdhit-clu.tms"
 
 benchmark/src/gen-pdbent-table.py \
-    "${OUTDIR}/pdbent-seqres_len-revname-sort-$1.hdrsetcover-clu.tms" \
-    "${OUTDIR}/output/pdbent-seqres_len-revname-sort-$1.mmseqs-clu.tms" \
-    "${OUTDIR}/output/pdbent-seqres_len-revname-sort-$1.cdhit-clu.tms"
+    "${OUTDIR}/pdbent-seqres_len-revname-sort-${SIM}.hdrsetcover-clu.tms" \
+    "${OUTDIR}/pdbent-seqres_len-revname-sort-${SIM}.mmseqs-clu.tms" \
+    "${OUTDIR}/pdbent-seqres_len-revname-sort-${SIM}.cdhit-clu.tms" > "${OUTDIR}/pdbent-seqres_len-revname-sort-${SIM}.distribution"
+
 # cat "${OUTDIR}/pdbent-seqres_len-revname-sort-$1.hdrsetcover-clu.tms" | grep "^tmscore" | awk '{print substr($2, 0, 4)}' | sort | uniq -c | awk '{print $2"\t"$1}'
 
-# run uniprot
+## run uniprot
 
 run_mine_with_infastafile_seqid     "${INPREF}/uniref100-2017-03_len-revname-sort" "${OUTDIR}/uniref100-2017-03_len-revname-sort" $SIM
 run_linclust_with_infastafile_seqid "${INPREF}/uniref100-2017-03_len-revname-sort" "${OUTDIR}/uniref100-2017-03_len-revname-sort" $SIM
