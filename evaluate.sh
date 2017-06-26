@@ -49,6 +49,10 @@ benchmark/src/gen-pdbent-table.py \
     "${OUTDIR}/pdbent-seqres_len-revname-sort-${SIM}.hdrsetcover-clu.tms" \
     "${OUTDIR}/pdbent-seqres_len-revname-sort-${SIM}.mmseqs-clu.tms" \
     "${OUTDIR}/pdbent-seqres_len-revname-sort-${SIM}.cdhit-clu.tms" > "${OUTDIR}/pdbent-seqres_len-revname-sort-${SIM}.distribution"
+benchmark/src/gen-pdbent-cdf.py \
+    "${OUTDIR}/pdbent-seqres_len-revname-sort-${SIM}.hdrsetcover-clu.tms" \
+    "${OUTDIR}/pdbent-seqres_len-revname-sort-${SIM}.mmseqs-clu.tms" \
+    "${OUTDIR}/pdbent-seqres_len-revname-sort-${SIM}.cdhit-clu.tms" > "${OUTDIR}/pdbent-seqres_len-revname-sort-${SIM}.cdf"
 
 # cat "${OUTDIR}/pdbent-seqres_len-revname-sort-$1.hdrsetcover-clu.tms" | grep "^tmscore" | awk '{print substr($2, 0, 4)}' | sort | uniq -c | awk '{print $2"\t"$1}'
 
