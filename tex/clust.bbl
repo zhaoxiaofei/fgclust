@@ -1,0 +1,55 @@
+\begin{thebibliography}{8}
+\providecommand{\natexlab}[1]{#1}
+\providecommand{\url}[1]{\texttt{#1}}
+\expandafter\ifx\csname urlstyle\endcsname\relax
+  \providecommand{\doi}[1]{doi: #1}\else
+  \providecommand{\doi}{doi: \begingroup \urlstyle{rm}\Url}\fi
+
+\bibitem[Holm and Sander(1998)]{holm1998removing}
+Liisa Holm and Chris Sander.
+\newblock Removing near-neighbour redundancy from large protein sequence
+  collections.
+\newblock \emph{Bioinformatics}, 14\penalty0 (5):\penalty0 423--429, 1998.
+
+\bibitem[Li et~al.(2001)Li, Jaroszewski, and Godzik]{li2001clustering}
+Weizhong Li, Lukasz Jaroszewski, and Adam Godzik.
+\newblock Clustering of highly homologous sequences to reduce the size of large
+  protein databases.
+\newblock \emph{Bioinformatics}, 17\penalty0 (3):\penalty0 282--283, 2001.
+
+\bibitem[Li et~al.(2002)Li, Jaroszewski, and Godzik]{li2002tolerating}
+Weizhong Li, Lukasz Jaroszewski, and Adam Godzik.
+\newblock Tolerating some redundancy significantly speeds up clustering of
+  large protein databases.
+\newblock \emph{Bioinformatics}, 18\penalty0 (1):\penalty0 77--82, 2002.
+
+\bibitem[Li and Godzik(2006)]{li2006cd}
+Weizhong Li and Adam Godzik.
+\newblock Cd-hit: a fast program for clustering and comparing large sets of
+  protein or nucleotide sequences.
+\newblock \emph{Bioinformatics}, 22\penalty0 (13):\penalty0 1658--1659, 2006.
+
+\bibitem[Fu et~al.(2012)Fu, Niu, Zhu, Wu, and Li]{fu2012cd}
+Limin Fu, Beifang Niu, Zhengwei Zhu, Sitao Wu, and Weizhong Li.
+\newblock Cd-hit: accelerated for clustering the next-generation sequencing
+  data.
+\newblock \emph{Bioinformatics}, 28\penalty0 (23):\penalty0 3150--3152, 2012.
+
+\bibitem[Edgar(2010)]{edgar2010search}
+Robert~C Edgar.
+\newblock Search and clustering orders of magnitude faster than blast.
+\newblock \emph{Bioinformatics}, 26\penalty0 (19):\penalty0 2460--2461, 2010.
+
+\bibitem[Rognes et~al.(2016)Rognes, Flouri, Nichols, Quince, and
+  Mah{\'e}]{rognes2016vsearch}
+Torbj{\o}rn Rognes, Tom{\'a}{\v{s}} Flouri, Ben Nichols, Christopher Quince,
+  and Fr{\'e}d{\'e}ric Mah{\'e}.
+\newblock Vsearch: a versatile open source tool for metagenomics.
+\newblock \emph{PeerJ}, 4:\penalty0 e2584, 2016.
+
+\bibitem[Zorita et~al.(2015)Zorita, Cusc{\'o}, and Filion]{zorita2015starcode}
+Eduard~Valera Zorita, Pol Cusc{\'o}, and Guillaume Filion.
+\newblock Starcode: sequence clustering based on all-pairs search.
+\newblock \emph{Bioinformatics}, page btv053, 2015.
+
+\end{thebibliography}
