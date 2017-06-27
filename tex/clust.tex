@@ -2,52 +2,9 @@
 
 \usepackage[margin=1in]{geometry}
 
-\usepackage{pgfplotstable,booktabs}
-\usepackage{filecontents}
-
-%\usepackage{csvsimple}
-
-\begin{filecontents*}{sim50.csv}
-TM-score,mine,linclust,cd-hit
-0.1,0,0,0
-0.2,31,29,40
-0.3,122,118,138
-0.4,249,253,280
-0.5,418,402,438
-0.6,656,656,694
-0.7,1026,1032,1107
-0.8,1553,1565,1632
-0.9,2363,2368,2445
-1.0,16264,16964,15712
-\end{filecontents*}
-
-\begin{filecontents*}{sim70.csv}
-TM score,mine,linclust,cd-hit
-0.1,0,0,0
-0.2,30,30,39
-0.3,110,119,126
-0.4,231,245,247
-0.5,369,378,380
-0.6,570,614,585
-0.7,893,957,913
-0.8,1361,1446,1390
-0.9,2097,2190,2118
-1.0,17773,17828,17668
-\end{filecontents*}
-
-\begin{filecontents*}{sim90.csv}
-TM score,mine,linclust,cd-hit
-0.1,0,0,0
-0.2,27,23,29
-0.3,92,89,114
-0.4,195,188,223
-0.5,318,316,342
-0.6,485,502,514
-0.7,747,796,772
-0.8,1138,1221,1160
-0.9,1839,1922,1852
-1.0,19213,19298,19194
-\end{filecontents*}
+\usepackage{booktabs}
+\usepackage{natbib}
+%\bibliographystyle{IEEEtranN}
 
 %opening
 \title{}
@@ -65,56 +22,82 @@ TM score,mine,linclust,cd-hit
 
 Sequence clustering is a classic problem in biology.
 Clustering of complete biological sequences generates de-novo taxonomy and reduces the redundancy of biological database.
-Clustering of short reads produced by sequencers can detect and correct sequencing error.
+%Clustering of short reads produced by sequencers can detect and correct sequencing error.
 
 We developed a new sequence-clustering algorithm that can scale to hundred of millions protein sequences.
 Our algorithm is more sensitive, more specific, and faster than known published sequence clustering algorithms.
-Our algorithm can generate better de-novo taxonomy, 
+%Our algorithm can generate better de-novo taxonomy, 
 
 \section{Related works}
 
 Clustering of biological sequences has a long history.
-\cite{holm1998removing} observed that two sufficiently long protein sequences that share no common decapeptide must have at most 90\% sequence identity.
-Based on this observation, \cite{holm1998removing} developed a method called nrdb90 that clusters protein sequences at 90\% sequence identity.
+\Citet{holm1998removing} observed that two sufficiently long protein sequences that share no common decapeptide must have at most 90\% sequence identity.
+Based on this observation, \citet{holm1998removing} developed a method called nrdb90 that clusters protein sequences at 90\% sequence identity.
 However, nrdb90 is slow and works only for sequence identity of at least 90\%.
-\cite{li2001clustering} observed that two protein sequences of lengths \(L_1\) and \(L_2\) must share at least \(x\) peptides of length \(y\) in order to share at least \(z\)\% sequence identity, 
+\Citet{li2001clustering} observed that two protein sequences of lengths \(L_1\) and \(L_2\) must share at least \(x\) peptides of length \(y\) in order to share at least \(z\)\% sequence identity, 
 	where \(L_1\), \(L_2\), \(x\), \(y\), and \(z\) are mathematically interdependent variables.
-\cite{li2001clustering} therefore generalized the decapeptide filter into short-word filter.
+\Citet{li2001clustering} therefore generalized the decapeptide filter into short-word filter.
 Based on this generalization, \cite{li2001clustering} developed a method called CD-HI that clusters protein sequences at 70\% or more sequence identity.
-\cite{li2001clustering} introduced the notion of greedy incremental update, where sequences are longest-first sorted and each sequence either belongs to an already formed cluster or forms a new cluster. 
+\Citet{li2001clustering} introduced the notion of greedy incremental update, where sequences are longest-first sorted and each sequence either belongs to an already formed cluster or forms a new cluster. 
 Since then, nearly all clustering methods used greedy incremental update, so we will assume such unless explicitly stated otherwise.
 CD-HI is both significantly faster and can cluster at lower sequence identity than nrdb90 without compromising neither sensitivity nor specificity.
 However, the exponential increase in the size of a typical protein database such as nr even made CD-HI too slow to be practical.
-\cite{li2002tolerating} extended the work of \cite{li2001clustering} by probabilistically filtering out sequence pairs that are likely to share less than a certain sequence-identity cutoff.
-\cite{li2002tolerating} observed that two protein sequences of lengths \(L_1\) and \(L_2\) are not necessarily , but likely, to share at least \(x\) peptides of length \(y\) in order to share at least \(z\)\% sequence identity.
-Based on this extension, \cite{li2002tolerating} developed a method called CD-HIT that clusters protein sequences at 50\% or more sequence identity. 
+\Citet{li2002tolerating} extended the work of \citet{li2001clustering} by probabilistically filtering out sequence pairs that are likely to share less than a certain sequence-identity cutoff.
+\Citet{li2002tolerating} observed that two protein sequences of lengths \(L_1\) and \(L_2\) are not necessarily , but likely, to share at least \(x\) peptides of length \(y\) in order to share at least \(z\)\% sequence identity.
+Based on this extension, \citet{li2002tolerating} developed a method called CD-HIT that clusters protein sequences at 50\% or more sequence identity. 
 At the same sequence-identity cutoff, CD-HIT produces 0.4\% more clusters than but is about 100 times faster than CD-HI.
-\cite{li2006cd} observed that the algorithm in CD-HIT can be used for clustering nucleotide sequences and for comparing two biological databases.
-\cite{fu2012cd} used OpenMP to parallelize CD-HIT.
+\Citet{li2006cd} observed that the algorithm in CD-HIT can be used for clustering nucleotide sequences and for comparing two biological databases.
+\Citet{fu2012cd} used OpenMP to parallelize CD-HIT.
 
-\cite{edgar2010search} developed a method called usearch which performs database search by sequence identity. 
+\Citet{edgar2010search} developed a method called usearch which performs database search by sequence identity. 
 In addition of using the short-word filter used by CD-HIT, usearch only searches a fixed maximum number of top hit target sequences per query sequence.  
-\cite{edgar2010search} also developed uclust which clusters biological sequences using the distance computed by usearch.
-Usearch and uclust are both closed-source commercial programs, so \cite{rognes2016vsearch} developed vsearch which is open-source and similar to usearch and uclust in terms of functionality and performance.
+\Citet{edgar2010search} also developed uclust which clusters biological sequences using the distance computed by usearch.
+Usearch and uclust are both closed-source commercial programs, so \citet{rognes2016vsearch} developed vsearch which is open-source and similar to usearch and uclust in terms of functionality and performance.
 
 Clustering of short reads produced by Next-Generation Sequencing (NGS) is also an ongoing research topic.
-\cite{zorita2015starcode} developed starcode, an algorithm for clustering sequences at high global similarity cutoff based edit distance.
+\Citet{zorita2015starcode} developed starcode, an algorithm for clustering sequences at high global similarity cutoff based edit distance.
 Starcode is especially useful for detection and correction of sequencing errors. 
 
 \section{Novel key ideas}
 
-In greedy incremental update, a sequence that is iterated over must either form a new cluster or be assigned to an existing cluster.
-However, such clustering decision rule can result in suboptimal solution.
-Instead, we delay the clustering decision until sufficient sequences are processed.
-Then, we make clustering decisions using an algorithm that is less greedy than the greedy incremental approach.
+In greedy incremental update, a iterated sequence either forms a new cluster or is assigned to an existing cluster.
+However, such clustering decision can result in suboptimal solution.
+Instead, we delay the clustering decision until sufficient sequences are iterated over.
+Then, we make clustering decisions using an algorithm that is less greedy than the greedy incremental update.
+This reduction in greediness increases sensitivity.
 
-Computation of sequence identity for a sequence pair is another important component for clustering of biological sequences. 
-Two similar sequences are likely to have
-\begin{enumerate}
-	\item at least one long word in common.
-	\item at least a certain number of short words in common.
-	\item edit distance that is short relative to their sequence lengths.  
-\end{enumerate}
+In short-word filter, the similarity between two sequences is estimated by counting their common short words.
+However, a typical biological sequence has hundreds of short words.
+Instead, we transform short words into hash values and select a fixed number of lowest hash values.
+Then, we use the lowest hash values as short words.
+This reduction in short words reduces runtime.
+
+Sequence identity is the number of matches divided by the length of the shorter sequence in an alignment.
+Usually, blosum62 matrix with linear gap model is used to compute such alignment.
+However, such computation of alignment is time-consuming.
+Moreover, deletions in the longer sequence are ignored.
+Therefore, normalization by the length of the shorter sequence can overestimate the true biological similarity.
+Conservation of biological function requires smaller number of matches of conserved residues than matches of non-conserved residues. 
+However, smaller number of matches decreases sequence identity.
+Unfortunately, substitution matrices such as blosum62 tend to produce matches of conserved residues.
+Thus, sequence identity computed with a substitution matrix can underestimate the true biological similarity.
+Instead of using sequence identity to estimate true biological similarity, we used edit-similarity.
+The edit-similarity between a query and a target is defined as follows: 
+	the length of the target minus the minimum number of single-character edits required such that the target is a substring of the query, divided by the length of the target.
+Then, we use edit-similarity as sequence identity.
+Edit-similarity takes less time to compute and more correlated with true biological similarity.
+Therefore, the use of edit-similarity instead of sequence identity improves sensitivity, specificity, and runtime.
+
+%Computation of sequence identity for a sequence pair is another important component for clustering of biological sequences. 
+%Two similar sequences are likely to have
+%\begin{enumerate}
+%	\item at least one long word in common.
+%	\item at least a certain number of short words in common.
+%	\item Levenshtein distance that is significantly short relative to their sequence lengths.  
+%\end{enumerate}
+%We used these three observations to improve the runtime
+
+\iffalse
 
 \subsection{Reduction of greediness in greedy incremental update}
 
@@ -145,7 +128,6 @@ In addition of producing a solution that consists of a set of sequences,
 For example, if sequence A can be represented by either representative sequences B or C but A is more similar to C,
 	then A will be clustered with C.  
 Our greedy set-cover algorithm uses linear memory and runtime and is highly optimized for memory usage.
-
 
 %\cite{steinegger2017linclust} used greedy set cover
 
@@ -231,7 +213,7 @@ For example, the edit similarity between \texttt{AAACGGG} and \texttt{AAAGGG} is
 
 \section{Methods}
 
-
+\fi
 
 \section{Results and discussion}
 
@@ -263,22 +245,23 @@ For example, the edit similarity between \texttt{AAACGGG} and \texttt{AAAGGG} is
 %display columns/0/.style={string type,column name={}}
 %]
 %{sim90.csv}
-\begin{tabular}{l c c c c c c c c c c}
+\begin{tabular}{l c c c c c c c c c c c}
 \toprule
- & \multicolumn{10}{c}{Intra-cluster TM scores} \\
-Program (intra-cluster similarity) & 0.1 & 0.2 & 0.3 & 0.4 & 0.5 & 0.6 & 0.7 & 0.8 & 0.9 & 1.0 \\
+Program & intra-cluster & \multicolumn{10}{c}{Intra-cluster TM scores} \\
+        & similarity & 0.1 & 0.2 & 0.3 & 0.4 & 0.5 & 0.6 & 0.7 & 0.8 & 0.9 & 1.0 \\
 \midrule
-mine 50 & 0 & 31 & 122 & 249 & 418 & 656 & 1026 & 1553 & 2363 & 16264 \\
-linclust 50 & 0 & 29 & 118 & 253 & 402 & 656 & 1032 & 1565 & 2368 & 16964 \\
-CD-HIT 50 & 0 & 40 & 138 & 280 & 438 & 694 & 1107 & 1632 & 2445 & 15712 \\
 
-mine 70 & 0 & 30 & 110 & 231 & 369 & 570 & 893 & 1361 & 2097 & 17773 \\
-linclust 70 & 0 & 30 & 119 & 245 & 378 & 614 & 957 & 1446 & 2190 & 17828 \\
-CD-HIT 70 & 0 & 39 & 126 & 247 & 380 & 585 & 913 & 1390 & 2118 & 17668 \\
+mine     & 50 & 0 & 7 & 46 & 137 & 283 & 510 & 877 & 1403 & 2214 & 16575 \\
+linclust & 50 & 0 & 29 & 118 & 253 & 402 & 656 & 1032 & 1565 & 2368 & 16964 \\
+CD-HIT   & 50 & 0 & 40 & 138 & 280 & 438 & 694 & 1107 & 1631 & 2445 & 15712 \\
 
-mine 90 & 0 & 27 & 92 & 195 & 318 & 485 & 747 & 1138 & 1839 & 19213 \\
-linclust 90 & 0 & 23 & 89 & 188 & 316 & 502 & 796 & 1221 & 1922 & 19298 \\
-CD-HIT 90 & 0 & 29 & 114 & 223 & 342 & 514 & 772 & 1160 & 1852 & 19194 \\
+mine     & 70 & 0 & 7 & 42 & 131 & 253 & 444 & 761 & 1228 & 1960 & 18010 \\
+linclust & 70 & 0 & 30 & 119 & 245 & 378 & 614 & 957 & 1446 & 2190 & 17828 \\
+CD-HIT   & 70 & 0 & 39 & 126 & 247 & 380 & 585 & 913 & 1390 & 2118 & 17668 \\
+
+mine     & 90 & 0 & 7 & 35 & 111 & 219 & 380 & 633 & 1022 & 1724 & 19400 \\
+linclust & 90 & 0 & 23 & 89 & 188 & 316 & 502 & 796 & 1221 & 1922 & 19298 \\
+CD-HIT   & 90 & 0 & 29 & 114 & 223 & 342 & 514 & 772 & 1160 & 1852 & 19194 \\
 
 \bottomrule
 \end{tabular}
@@ -298,9 +281,10 @@ CD-HIT & 53787568 & 33977706 & timeout \\
 \end{tabular}
 \end{table}
 
-\section{Conclusion}
+%\section{Conclusion}
 
-\bibliographystyle{unsrt}
+%\bibliographystyle{plainnat}
+\bibliographystyle{unsrtnat}
 \bibliography{clust}
 
 \end{document}
