@@ -45,5 +45,4 @@ for line in sys.stdin:
         content = []
     elif content:
         content += [line]
-processcontent(content)
 
