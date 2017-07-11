@@ -3,6 +3,8 @@
 \usepackage[margin=1in]{geometry}
 
 \usepackage{booktabs}
+\usepackage{cleveref}
+
 
 %\usepackage{pgfplotstable,booktabs}
 %\usepackage{filecontents}
@@ -71,12 +73,15 @@ However, such clustering decision can result in suboptimal solution.
 Instead, we delay the clustering decision until sufficient sequences are iterated over.
 Then, we make clustering decisions using an algorithm that is less greedy than the greedy incremental update.
 This reduction in greediness increases sensitivity.
+We implemented a memory-efficient version of the greedy set cover algorithm,
+	where each representative sequence represents and covers its member sequences.
 
 In short-word filter, the similarity between two sequences is estimated by counting their common short words.
 However, a typical biological sequence has hundreds of short words.
 Instead, we transform short words into hash values and select a fixed number of lowest hash values.
-Then, we use the lowest hash values as short words.
+Then, we use the lowest hash values as short words, similar to the technique of minhash.
 This reduction in short words reduces runtime.
+We implemented a version of rolling hash that produces pseudorandom hash values.
 
 Sequence identity is the number of matches divided by the length of the shorter sequence in an alignment.
 Usually, blosum62 matrix with linear gap model is used to compute such alignment.
@@ -91,17 +96,176 @@ Instead of using sequence identity to estimate true biological similarity, we us
 The edit-similarity between a query and a target is defined as follows: 
 	the length of the target minus the minimum number of single-character edits required such that the target is a substring of the query, divided by the length of the target.
 Then, we use edit-similarity as sequence identity.
-Edit-similarity takes less time to compute and more correlated with true biological similarity.
+Edit-similarity takes less time to compute \cite{vsovsic2017edlib} than sequence identity.
+Moreover, edit-similarity is more correlated with true biological similarity than sequence identity \cref{table:pdb,table:pfam}.
 Therefore, the use of edit-similarity instead of sequence identity improves sensitivity, specificity, and runtime.
+We used the library implemented by \citet{vsovsic2017edlib} to compute edit-similarity.
 
-%Computation of sequence identity for a sequence pair is another important component for clustering of biological sequences. 
-%Two similar sequences are likely to have
-%\begin{enumerate}
-%	\item at least one long word in common.
-%	\item at least a certain number of short words in common.
-%	\item Levenshtein distance that is significantly short relative to their sequence lengths.  
-%\end{enumerate}
-%We used these three observations to improve the runtime
+In addition of using the previously mentioned novel techniques, we also developed variants of existing sequence-search techniques.
+Given a query sequence, our algorithm searches only database sequence that shares at least one informative long word with the query sequence.
+A long word is a kmer and is represented by its hash value.
+Our algorithm ignores uninformative and abundant long words to improve runtime.
+A long word is uninformative if and only if the sequences that share this long word are usually dissimilar according to their min-hash signatures.
+Therefore, two sequences sharing only uninformative and abundant long words will be ignored in sequence search.
+Our algorithm uses the amino-acid alphabet reduction suggested by \cite{murphy2000simplified} to improve sensitivity.
+Long words and min-hash signatures are computed with the reduced alphabet, but edit-similarity is computed with the unreduced alphabet.
+Our algorithm sorts in descending order target candisdates by the number of min-hash values shared between the query and each target candidate.
+Our algorithm initializes and then keeps track of a number of remaining attempts.
+Each true/false-positive target candidate increases/decrease the number of remaining attempts.
+The search terminates when the number of remaining attempts reaches zero, similar to the pruning used in \cite{edgar2010search}.
+
+\section{Evaluation}
+
+We compared our algorithm with CD-HIT version 4.6 and Linclust commit 91644c75.
+Only the memory-limited 32-bit version of \citet{edgar2010search} is free and \citet{edgar2010search} is not open source.
+Therefore, we omitted \citet{edgar2010search} in our evaluation.
+We evaluated all clustering algorithms on a ``CentOS release 6.6'' server that runs on a 32-threads ``Intel(R) Xeon(R) CPU E5-2660 0 @ 2.20GHz''.
+
+\begin{table}%[!htbp]
+	\centering
+	\caption{
+		The sequences and structures of all monomeric proteins in PDB accessed in June 1st 2017 are given as input to each program. 
+		Each program is run with each intra-cluster similarity threshold to generate each set of clusters.
+		For each set of clusters, the number of clusters characterized by intra-cluster TM scores inclusively below each threshold is tabulated.
+		The intra-cluster TM score of a cluster is the lowest TM score between the representative sequence in the cluster as template and each represented sequence in the cluster.}
+	\begin{tabular}{l c c c c c c c c c c c}
+		
+		\toprule
+		Program & intra-cluster & \multicolumn{10}{c}{Intra-cluster TM scores} \\
+		& similarity & 0.1 & 0.2 & 0.3 & 0.4 & 0.5 & 0.6 & 0.7 & 0.8 & 0.9 & 1.0 \\
+		\midrule
+		
+		mine     & 50 & 0 & 7 & 46 & 137 & 283 & 510 & 877 & 1403 & 2214 & 16575 \\
+		linclust & 50 & 0 & 29 & 118 & 253 & 402 & 656 & 1032 & 1565 & 2368 & 16964 \\
+		CD-HIT   & 50 & 0 & 40 & 138 & 280 & 438 & 694 & 1107 & 1631 & 2445 & 15712 \\
+		
+		mine     & 70 & 0 & 7 & 42 & 131 & 253 & 444 & 761 & 1228 & 1960 & 18010 \\
+		linclust & 70 & 0 & 30 & 119 & 245 & 378 & 614 & 957 & 1446 & 2190 & 17828 \\
+		CD-HIT   & 70 & 0 & 39 & 126 & 247 & 380 & 585 & 913 & 1390 & 2118 & 17668 \\
+		
+		mine     & 90 & 0 & 7 & 35 & 111 & 219 & 380 & 633 & 1022 & 1724 & 19400 \\
+		linclust & 90 & 0 & 23 & 89 & 188 & 316 & 502 & 796 & 1221 & 1922 & 19298 \\
+		CD-HIT   & 90 & 0 & 29 & 114 & 223 & 342 & 514 & 772 & 1160 & 1852 & 19194 \\
+		
+		\bottomrule
+	\end{tabular}
+	\label{table:pdb}
+\end{table}
+
+First, we assessed the specificity of our sequence-clustering algorithm using only experimentally verified data.
+We downloaded all monomeric proteins with experimentally determined structures from PDB in June 1st 2017 \cite{bank1971protein}.
+The sequence of each protein is extracted.
+From these extracted sequences, every sequence-clustering algorithm produces a set of clusters.
+Within each cluster, the template-modeling (TM) score between the representative sequence and each represented sequence is computed by TM-Align developed by \citet{zhang2005tm}.
+The lowest such TM score within each cluster is extracted.
+The number of such extracted TM scores below certain TM score thresholds are shown in \cref{table:pdb}.
+The higher such extracted TM scores are, the more specific the clustering algorithm is. 
+\Cref{table:pdb} shows that our algorithm produces the fewest number of clusters with low intra-cluster TM scores.
+Therefore, our algorithm is more specific than other algorithms in terms of experimentally observed protein structures.
+
+\begin{table}%[!htbp]
+	\centering
+	\caption{
+		All sequences in a specified version of uniref are given as input to each program. 
+		Each program is run with each intra-cluster similarity threshold to generate each set of clusters.
+		Runtime is measured in minutes.
+	}
+	\begin{tabular}{l c c c c c c c}
+		\toprule
+		Program & intra-cluster & \multicolumn{2}{c}{uniref100-2011-01}
+		& \multicolumn{2}{c}{uniref100-2014-01}
+		& \multicolumn{2}{c}{uniref100-2017-01} \\ 
+		& similarity    & cluster count & runtime
+		& cluster count & runtime
+		& cluster count & runtime \\
+		\midrule
+		mine     & 90 & 7539905 & 43 & 19864156 & 117 & 48113438 & 442 \\
+		linclust & 90 & 8079020 & 11 & 21434130 & 35  & 53391467 & 109 \\
+		CD-HIT   & 90 & 7627325 & 46 & 20173024 & 132 & 49200220 & 724 \\
+		
+		mine     & 70 & 5531553 & 36 & 13482152 & 127 & 29938650 & 563 \\
+		linclust & 70 & 6192036 & 11 & 15548951 & 33  & 37011492 & 104 \\
+		CD-HIT   & 70 & 5671370 & 41 & 13921545 & 110 & 31178816 & 525 \\
+		
+		mine     & 50 & 3911258 & 62 & 8991582  & 276 & 19288061 & 1443 \\
+		linclust & 50 & 5114737 & 10 & 12535362 & 30  & 29461562  & 92 \\
+		CD-HIT   & 50 & timeout & \(>\)5000 & timeout & \(>\)5000 & timeout & \(>\)5000 \\
+		\bottomrule
+	\end{tabular}
+	\label{table:uniref}
+\end{table}
+
+Second, we assessed the sensitivity and runtime of our sequence-clustering algorithm.
+We downloaded the three version of UniRef \cite{suzek2007uniref} shown in \cref{table:uniref}.
+From each version of UniRef, we extracted protein sequences.
+From these extracted sequences, every sequence-clustering algorithm produces a set of clusters.
+The number of clusters produced by each algorithm and the runtime of each algorithm are listed in \cref{table:uniref}.
+A more sensitive clustering algorithm produces less number of clusters.
+\Cref{table:uniref} shows that our algorithm produces the least number of clusters.
+Therefore, our algorithm is the most sensitive.
+Moreover, \cref{table:uniref} shows that our algorithm is generally faster than CD-HIT.
+Our algorithm is slower but significantly more sensitive than Linclust.
+In fact, Linclust produces 50\% more clusters than our algorithm at 50\% intra-cluster similarity.
+CD-HIT times out at 50\% intra-clustr similarity.
+Therefore, only our algorithm is useful in practice at 50\% intra-cluster similarity.
+
+\begin{table}%[!htbp]
+	\centering
+	\caption{Results of clustering Pfam-A.seed versin 31.0.
+		A cluster is corrupted if and only if the cluster has at least two members that belong to different Pfam families.
+		A cluster member is corrupted if and only if the member belongs to a Pfam family that the representative of the cluster does not belong to.
+	}
+	\begin{tabular}{l c c c c}
+		\toprule
+		Program & intra-cluster & 
+		\multicolumn{3}{c}{numerical statistics for Pfam-A.seed} \\
+		& similarity    & cluster & corrupted cluster & corrupted cluster member \\
+		\midrule
+		mine     & 90 & 1285018 & 111 & 114 \\
+		linclust & 90 & 1281035 & 189 & 198 \\
+		cd-hit   & 90 & 1284610 & 135 & 139 \\
+		
+		mine     & 70 & 983161 & 429 & 506 \\
+		linclust & 70 & 971547 & 585 & 706 \\
+		cd-hit   & 70 & 976699 & 560 & 759 \\
+		
+		mine     & 50 & 592585 & 776 & 1206 \\
+		linclust & 50 & 664691 & 835 & 1450 \\
+		cd-hit   & 50 & 471363 & 1889 & 4207 \\
+		
+		\bottomrule
+	\end{tabular}
+	\label{table:pfam}
+\end{table}
+
+Third, we assessed the sensitivity and specificity of our sequence clustering algorithm using manually curated data.
+We downloaded the seed A dataset from Pfam version 31.0.
+We ran each clustering algorithm on this dataset.
+A corrupted cluster contains at least two sequences that belong to two different Pfam families.
+A corrupted cluster member belongs to a Pfam family that the representative of this cluster does not belong to.
+A more sensitive clustering algorithm produces fewer clusters.
+A more specific clustering algorithm produces fewer corrupted clusters and fewer corrupted cluster members.
+\Cref{table:pfam} shows that our algorithm usualy produces slightly more clusters.
+However, \cref{table:pfam} also shows that our algorithm always produces much fewer corrupted clusters and much fewer corrupted cluster members.
+Therefore, our algorithm overall performs the best. 
+
+\section{Conclusion}
+
+Clustering of protein sequences is a fundamental problem in Biology.
+We developed a new clustering algorithm that is in general more sensitive, more specific, and faster than known published clustering algorithms.
+We observed that cluster topology produced by greedy-incremental update suffers from local optimum.
+Therefore, our algorithm delays the assignment of a sequence to an existing cluster and uses greedy set cover to perform such assignment.
+We observed that there are too many short words in a protein sequence.
+Therefore, our algorithm uses min hashes instead of short words.
+We observed that sequence identity is not sufficiently correlated with biological simmilarity and that alignment is time-consuming to compute.
+Therefore, our algorithm uses edit-similarity instead of sequence identity.
+
+In the future, we will apply the techniques used in our clustering algorithm to other problems. For example, we may apply our techniques to metagenomic classification, chimera detection, detection of conserved protein domains, etc.
+Moreover, our clustering algorithm will generate smaller but more representative non-redundant biological database. Such database will power up FusionCloud\textsuperscript{TM}, a web portal that detects pathogens in NGS data.
+
+%\bibliographystyle{plainnat}
+\bibliographystyle{unsrtnat}
+\bibliography{clust}
 
 \iffalse
 
@@ -111,7 +275,7 @@ Greedy incremental update may not be optimal.
 For example, suppose we would like to cluster the following sequences at 65\% sequence identity:
 ABXXEFGHIJ, 
 ABXXEFXXI, and
- BCDEFXXIJ.
+BCDEFXXIJ.
 In this case, 65\% sequence identity corresponds to 6 inclusive matches, or equivalently, exclusive edit distance of 4.
 Then, greedy incremental update would pick ABXXEFGHIJ as the centroid of the first cluster, 
 assign ABXXEFXXI to the first cluster because ABXXEFXXI is 3 edit distance away from ABXXEFGHIJ, 
@@ -130,9 +294,9 @@ Therefore, the resulting graph is incomplete but does not substantially affect t
 
 Then, we the greedy set-cover algorithm to solve the dominating set problem on the incomplete graph.
 In addition of producing a solution that consists of a set of sequences, 
-	our greedy set-cover algorithm makes sure that each sequence is only represented by the best representative sequence.
+our greedy set-cover algorithm makes sure that each sequence is only represented by the best representative sequence.
 For example, if sequence A can be represented by either representative sequences B or C but A is more similar to C,
-	then A will be clustered with C.  
+then A will be clustered with C.  
 Our greedy set-cover algorithm uses linear memory and runtime and is highly optimized for memory usage.
 
 %\cite{steinegger2017linclust} used greedy set cover
@@ -148,7 +312,7 @@ An uninformative long word slows down the clustering process only if many sequen
 Therefore, we rank all long words by percentile in increasing order of abundance.
 For each long word that is longer than expected, we used hashed signatures, which are similar to short words in terms of function but are much less computationally intensive to work with, to estimate the sequence identity between some random pairs of sequences sharing this long word.
 If the frequency that the estimated sequence identity meets the user-defined threshold is below a certain threshold,
-	then we throw-away the long word.
+then we throw-away the long word.
 A throw-away long word does not initiate further computationally more expensive comparison between two sequences that share this long word.
 Therefore, computation time can be saved by removing uninformative long words without much sacrifice in sensitivity.
 To reduce memory usage, we use the hash values of long words instead of the long words themselves, which is similar to the technique used in \cite{steinegger2017linclust}.
@@ -188,7 +352,7 @@ Unless explicitly stated otherwise, we assume that the sequence alignment used t
 We developed a new measure of similarity between two sequences called edit-similarity.
 The edit-similarity between a query and a target is defined as: the length of the target minus the number of edits required such that the target is a substring of the query, divided by the length of the target.
 In terms of definition, edit-similarity is almost identical to the similarity in table 1 of \cite{vsovsic2017edlib}, 
-	except that edit-similarity uses target length as divisor whereas the similarity in \cite{vsovsic2017edlib} uses min(query-length, target-length) as the divisor. 
+except that edit-similarity uses target length as divisor whereas the similarity in \cite{vsovsic2017edlib} uses min(query-length, target-length) as the divisor. 
 For example, the edit-similarity between \texttt{ACGGT} and \texttt{ATGG} is (4-1)/4, and the edit-similarity between \texttt{ATGG} and \texttt{ACGGT} is (5-2)/5.
 The query is said to cover the target if the edit-similarity between the query and the target is higher than a predefined threshold.
 
@@ -206,10 +370,10 @@ Therefore, the alignment used to generate \(I(s_1, s_2)\) must have in general m
 However, the more conserved amino-acid substitutions from \(I(s_1, s_2)\) imply that \(I(s_1, s_2)\) probably underestimates the true biological similarity between \(s_1\) and \(s_2\) anyway, because more conserved amino-acid substitutions have bigger impact on protein structures and functions.
 Therefore, \(E(s_1, s_2)\) measures better the true biological similarity between \(s_1\) and \(s_2\) than \(I(s_1, s_2)\) even though the alignment used to compute \(I(s_1, s_2)\) can provide a white-box explanation for the relationship between \(s_1\) and \(s_2\).
 For example, suppose \(s_1 = \texttt{AIAISSRRSSWWW}\) and \(s_2 = \texttt{AIAIWWW}\), 
-	and suppose we use blosum62 matrix for computing \(I(s_1, s_2)\).
+and suppose we use blosum62 matrix for computing \(I(s_1, s_2)\).
 In blosum62, the match reward for \texttt{W} is 11, and the match reward for both \texttt{A} and \texttt{I} is 4.
 Therefore, \(I(s_1, s_2) = 4/7\) because the           chunk \texttt{AIAI} is shared between \(s_1\) and \(s_2\).
-       but \(E(s_1, s_2) = 3/7\) because the conserved chunk \texttt{WWW}  is shared between \(s_1\) and \(s_2\).
+but \(E(s_1, s_2) = 3/7\) because the conserved chunk \texttt{WWW}  is shared between \(s_1\) and \(s_2\).
 However, since \texttt{W} is so conserved, \(3/7\) is an underestimates of the extend of biological relationship between \(s_1\) and \(s_2\).
 Therefore, \(4/7\) is closer to such extend of biological relationship.
 
@@ -217,103 +381,6 @@ Edit similarity is supposed to be uncorrelated with conservation of amino-acid r
 In addition, edit similarity considers deletion of \(s_1\) in \(s_2\), whereas sequence identity ignores deletion of \(s_1\) in \(s_2\).
 For example, the edit similarity between \texttt{AAACGGG} and \texttt{AAAGGG} is (6-1)/6, but the corresponding sequence identity is 1. Therefore, edit similarity is supposed to be more informative than sequence identity if part of the longer sequence is deleted in the shorter sequence.
 
-\section{Methods}
-
 \fi
-
-\section{Results and discussion}
-
-\begin{table}%[!htbp]
-\centering
-\caption{
-The sequences and structures of all monomeric proteins in PDB are given as input to each program. 
-Each program is run with each intra-cluster similarity threshold to generate each set of clusters.
-For each set of clusters, the number of clusters characterized by intra-cluster TM scores inclusively below each threshold is tabulated.
-The intra-cluster TM score of a cluster is the lowest TM score between the representative sequence in the cluster as template and each represented sequence in the cluster.}
-
-
-%\pgfplotstabletypeset[
-%col sep = comma,
-%string replace*={_}{\textsubscript},
-%every head row/.style={before row=\toprule,after row=\midrule},
-%every last row/.style={after row=\bottomrule},
-%display columns/0/.style={string type,column name={TM score}}
-%]
-%{sim50.csv}
-%\pgfplotstabletypeset[
-%col sep = comma,
-%string replace*={_}{\textsubscript},
-%every head row/.style={before row=\toprule,after row=\midrule},
-%every last row/.style={after row=\bottomrule},
-%display columns/0/.style={string type,column name={}}
-%]
-%{sim70.csv}
-%\pgfplotstabletypeset[
-%col sep = comma,
-%string replace*={_}{\textsubscript},
-%every head row/.style={before row=\toprule,after row=\midrule},
-%every last row/.style={after row=\bottomrule},
-%display columns/0/.style={string type,column name={}}
-%]
-%{sim90.csv}
-\begin{tabular}{l c c c c c c c c c c c}
-
-\toprule
-Program & intra-cluster & \multicolumn{10}{c}{Intra-cluster TM scores} \\
-        & similarity & 0.1 & 0.2 & 0.3 & 0.4 & 0.5 & 0.6 & 0.7 & 0.8 & 0.9 & 1.0 \\
-\midrule
-
-mine     & 50 & 0 & 7 & 46 & 137 & 283 & 510 & 877 & 1403 & 2214 & 16575 \\
-linclust & 50 & 0 & 29 & 118 & 253 & 402 & 656 & 1032 & 1565 & 2368 & 16964 \\
-CD-HIT   & 50 & 0 & 40 & 138 & 280 & 438 & 694 & 1107 & 1631 & 2445 & 15712 \\
-
-mine     & 70 & 0 & 7 & 42 & 131 & 253 & 444 & 761 & 1228 & 1960 & 18010 \\
-linclust & 70 & 0 & 30 & 119 & 245 & 378 & 614 & 957 & 1446 & 2190 & 17828 \\
-CD-HIT   & 70 & 0 & 39 & 126 & 247 & 380 & 585 & 913 & 1390 & 2118 & 17668 \\
-
-mine     & 90 & 0 & 7 & 35 & 111 & 219 & 380 & 633 & 1022 & 1724 & 19400 \\
-linclust & 90 & 0 & 23 & 89 & 188 & 316 & 502 & 796 & 1221 & 1922 & 19298 \\
-CD-HIT   & 90 & 0 & 29 & 114 & 223 & 342 & 514 & 772 & 1160 & 1852 & 19194 \\
-
-\bottomrule
-\end{tabular}
-\end{table}
-
-\begin{table}%[!htbp]
-	\centering
-	\caption{
-		All sequences in Uniref100\_2017-03 are given as input to each program. 
-		Each program is run with each intra-cluster similarity threshold to generate each set of clusters.
-		%Every cluster has exactly one sequence as representative.
-	}
-	\begin{tabular}{l c c c c}
-		\toprule
-		Program & intra-cluster similarity & cluster count & amino-acid count & runtime \\
-		\midrule
-		
-		
-		\bottomrule
-	\end{tabular}
-\end{table}
-
-\begin{table}%[!htbp]
-\centering
-\begin{tabular}{l c c c}
-\toprule
-        & \multicolumn{3}{c}{intra-cluster similarity} \\
-Program & 90 & 70 & 50 \\
-\midrule
-mine & 52581967 & 32658006 & 20735460 \\
-linclust & 58268938 & 40473785 & 32077206 \\
-CD-HIT & 53787568 & 33977706 & timeout \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-%\section{Conclusion}
-
-%\bibliographystyle{plainnat}
-\bibliographystyle{unsrtnat}
-\bibliography{clust}
 
 \end{document}
