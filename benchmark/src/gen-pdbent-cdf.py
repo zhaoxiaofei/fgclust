@@ -34,7 +34,7 @@ if '-90.' in sys.argv[1] and '-90.' in sys.argv[2] and '-90.' in sys.argv[3]:
 assert sim > 0
 
 print('TM score & {} \\\\'.format(' & '.join([str((i+1)/10.0)  for i in range(10)])))
-print('mine {} & {} \\\\'    .format(sim, ' & '.join([str(mine[i])     for i in range(10)])))
-print('linclust {} & {} \\\\'.format(sim, ' & '.join([str(linclust[i]) for i in range(10)])))
-print('CD-HIT {} & {} \\\\'  .format(sim, ' & '.join([str(cdhit[i]) for i in range(10)])))
+print('mine     & {} & {} \\\\'    .format(sim, ' & '.join([str(mine[i])     for i in range(10)])))
+print('linclust & {} & {} \\\\'.format(sim, ' & '.join([str(linclust[i]) for i in range(10)])))
+print('CD-HIT   & {} & {} \\\\'  .format(sim, ' & '.join([str(cdhit[i]) for i in range(10)])))
 
