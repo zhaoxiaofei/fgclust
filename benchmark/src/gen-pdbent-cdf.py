@@ -16,9 +16,11 @@ def process_tmsfname(tmsfname):
         ret[i] = ret[i-1] + ret[i]
     return ret
 
-mine = process_tmsfname(sys.argv[1])
+mine     = process_tmsfname(sys.argv[1])
 linclust = process_tmsfname(sys.argv[2])
-cdhit = process_tmsfname(sys.argv[3])
+cdhit    = process_tmsfname(sys.argv[3])
+quaclust = process_tmsfname(sys.argv[4])
+kclust   = process_tmsfname(sys.argv[5])
 
 #print('TM score & mine & linclust &cd-hit')
 #for i in range(10):
@@ -33,8 +35,10 @@ if '-90.' in sys.argv[1] and '-90.' in sys.argv[2] and '-90.' in sys.argv[3]:
     sim = 90
 assert sim > 0
 
-print('TM score & {} \\\\'.format(' & '.join([str((i+1)/10.0)  for i in range(10)])))
-print('mine     & {} & {} \\\\'    .format(sim, ' & '.join([str(mine[i])     for i in range(10)])))
-print('linclust & {} & {} \\\\'.format(sim, ' & '.join([str(linclust[i]) for i in range(10)])))
-print('CD-HIT   & {} & {} \\\\'  .format(sim, ' & '.join([str(cdhit[i]) for i in range(10)])))
+print('TM score  & {} \\\\'     .format(     ' & '.join([str((i+1)/10.0)  for i in range(10)])))
+print('FgClust   & {} & {} \\\\'.format(sim, ' & '.join([str(mine[i])     for i in range(10)])))
+print('Linclust  & {} & {} \\\\'.format(sim, ' & '.join([str(linclust[i]) for i in range(10)])))
+print('CD-HIT    & {} & {} \\\\'.format(sim, ' & '.join([str(cdhit[i])    for i in range(10)])))
+print('MMseqs2   & {} & {} \\\\'.format(sim, ' & '.join([str(quaclust[i]) for i in range(10)])))
+print('kClust    & {} & {} \\\\'.format(sim, ' & '.join([str(kclust[i])   for i in range(10)])))
 

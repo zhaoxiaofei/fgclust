@@ -39,6 +39,7 @@ const uint64_t SIGN_BASE  = 48271L; // 10007L; // 17001L; // 1009L;
 const uint64_t PRIME_MOD  = (0x1L << 31L) - 1L; //1000*1000*1000+7;
 const uint64_t SIGN_MOD   = (0x1L << 31L) - 1L; //1000*1000*1000+7;
 
+bool ISNUC = false;
 uint8_t PERC_SIM = 90; // 33;
 int FLAT_SIM = 26;
 int KMER_SIZE = 11; // 6; // 15;
@@ -46,7 +47,7 @@ int KMER_SPACE = 6; // 8; // 5
 int SIGN_SIZE = 7;
 int SIGN_MIN = 7; // 8-2; // 4;
 
-int MAX_COV = 10;
+int MAX_COV = 5; //10;
 
 int ATTEMPT_INI = 12;
 int ATTEMPT_INC = 12;
@@ -66,6 +67,7 @@ void showparams() {
     std::cerr << " NUM_SEEDS       = " << NUM_SEEDS      << std::endl;
     std::cerr << " NUM_SIGNATURES  = " << NUM_SIGNATURES << std::endl;
 
+    std::cerr << " ISNUC       = " << ISNUC         << std::endl;
     std::cerr << " PERC_SIM    = " << (int)PERC_SIM << std::endl;
     std::cerr << " FLAT_SIM    = " << (int)FLAT_SIM << std::endl;
     
@@ -98,10 +100,16 @@ void alphareduce(const char *const strarg) {
     }
 }
 
+int calc_vecnorm(int a, int b) {
+    return (int)ceil(sqrt(a * a + b * b));
+}
+
 void PARAMS_init(const int argc, const char *const *const argv) {
     for (int i = 1; i < argc; i += 2) {
         if (!strcmp("--edsim", argv[i])) {
             PERC_SIM = atoi(argv[i+1]);
+        } else if (!strcmp("--isnuc", argv[i])) {
+            ISNUC = atoi(argv[i+1]);
         } else {
             show_usage(argc, argv);
         }
@@ -110,36 +118,41 @@ void PARAMS_init(const int argc, const char *const *const argv) {
     for (int i = 0; i < 256; i++) {
         RED_ALPHA[i] = (char)i;
     }
-
-    if (PERC_SIM < 85) {
-        // KMER_SIZE = 12;
-        // KMER_SPACE = 7;
-        SIGN_SIZE = 6;
-        SIGN_MIN = 6;
-        // MAX_COV = 10;
-        ATTEMPT_INI = 34;
-        ATTEMPT_INC = 34;
-        alphareduce("FY");
-        alphareduce("ILMV");
-        //alphareduce("LVIM");
-        alphareduce("KR");
+    
+    if (ISNUC) {
+        KMER_SIZE = calc_vecnorm(3 * (PERC_SIM + 10) / (110 - PERC_SIM), 11);
+        SIGN_SIZE = calc_vecnorm(2 * (PERC_SIM + 10) / (110 - PERC_SIM), 7);
+    } else {
+        if (PERC_SIM < 85) {
+            // KMER_SIZE = 12;
+            // KMER_SPACE = 7;
+            SIGN_SIZE = 6;
+            SIGN_MIN = 6;
+            // MAX_COV = 10;
+            ATTEMPT_INI = 34;
+            ATTEMPT_INC = 34;
+            alphareduce("FY");
+            alphareduce("ILMV");
+            //alphareduce("LVIM");
+            alphareduce("KR");
+        }
+        if (PERC_SIM < 62) {
+            // KMER_SIZE = 11;
+            // KMER_SPACE = 6;
+            SIGN_SIZE = 5;
+            SIGN_MIN = 5;
+            // MAX_COV = 5;
+            ATTEMPT_INI = 100;
+            ATTEMPT_INC = 100;
+            alphareduce("DENQ");
+            // alphareduce("EDNQ");
+            alphareduce("FWY");
+            alphareduce("ILMV");
+            // alphareduce("LVIM");
+            alphareduce("KR");
+            alphareduce("ST");
+        } 
     }
-    if (PERC_SIM < 62) {
-        // KMER_SIZE = 11;
-        // KMER_SPACE = 6;
-        SIGN_SIZE = 5;
-        SIGN_MIN = 5;
-        // MAX_COV = 5;
-        ATTEMPT_INI = 100;
-        ATTEMPT_INC = 100;
-        alphareduce("DENQ");
-        // alphareduce("EDNQ");
-        alphareduce("FWY");
-        alphareduce("ILMV");
-        // alphareduce("LVIM");
-        alphareduce("KR");
-        alphareduce("ST");
-    } 
 }
 
 void hash_sign_INIT() {

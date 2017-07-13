@@ -20,7 +20,7 @@ for line in sys.stdin:
     elif line.endswith('*'):
         clu.inner = line.split()[2].lstrip('>').rstrip('.')
     elif line.endswith('%'):
-        clu.outer_iden_s.append((line.split()[2].lstrip('>').rstrip('.'), float(line.split()[4].rstrip('%'))))
+        clu.outer_iden_s.append((line.split()[2].lstrip('>').rstrip('.'), float(line.split()[4].rstrip('%').lstrip('+/').lstrip('-/'))))
     else: raise RuntimeError()
 if clu: clu.printout()
 
