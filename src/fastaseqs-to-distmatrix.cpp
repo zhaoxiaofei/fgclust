@@ -31,7 +31,6 @@ KSEQ_INIT(int, read)
 #define UPDATE_MAX(a, b) { if ((a) < (b)) { (a) = (b); } } 
 #define SWAP(a, b) { (a)^=(b); (b)^=(a) ; (a)^=(b); }
 
-#define NUM_SEEDS (1000*1000*1000)
 #define NUM_SIGNATURES 32
 
 const uint64_t PRIME_BASE = 48271L; // 727L;
@@ -39,9 +38,14 @@ const uint64_t SIGN_BASE  = 48271L; // 10007L; // 17001L; // 1009L;
 const uint64_t PRIME_MOD  = (0x1L << 31L) - 1L; //1000*1000*1000+7;
 const uint64_t SIGN_MOD   = (0x1L << 31L) - 1L; //1000*1000*1000+7;
 
+const uint64_t NUM_RESIDUES_TO_NUM_SEEDS_RATIO = 25;
+
+uint64_t NUM_SEEDS = 0;
+
 bool ISNUC = false;
+
 uint8_t PERC_SIM = 90; // 33;
-int FLAT_SIM = 26;
+int FLAT_SIM = 25;
 int KMER_SIZE = 11; // 6; // 15;
 int KMER_SPACE = 6; // 8; // 5
 int SIGN_SIZE = 7;
@@ -49,8 +53,8 @@ int SIGN_MIN = 7; // 8-2; // 4;
 
 int MAX_COV = 5; //10;
 
-int ATTEMPT_INI = 12;
-int ATTEMPT_INC = 12;
+int ATTEMPT_INI = 10;
+int ATTEMPT_INC = 10;
 
 int SEED_SIZE_MAX = 1000;
 int SEED_SEQIDX_PAIR_MAX = 1000;
@@ -64,7 +68,7 @@ uint64_t PRIME_POWER = 0; // derived constant
 uint64_t SIGN_POWER = 0; // derived constant
 
 void showparams() {
-    std::cerr << " NUM_SEEDS       = " << NUM_SEEDS      << std::endl;
+    std::cerr << " NUM_RESIDUES_TO_NUM_SEEDS_RATIO = " << NUM_RESIDUES_TO_NUM_SEEDS_RATIO << std::endl;
     std::cerr << " NUM_SIGNATURES  = " << NUM_SIGNATURES << std::endl;
 
     std::cerr << " ISNUC       = " << ISNUC         << std::endl;
@@ -108,6 +112,10 @@ void PARAMS_init(const int argc, const char *const *const argv) {
     for (int i = 1; i < argc; i += 2) {
         if (!strcmp("--edsim", argv[i])) {
             PERC_SIM = atoi(argv[i+1]);
+        } else if (!strcmp("--flatsim", argv[i])) {
+            FLAT_SIM = atoi(argv[i+1]);
+        } else if (!strcmp("--kmersize", argv[i])) {
+            KMER_SIZE = atoi(argv[i+1]);
         } else if (!strcmp("--isnuc", argv[i])) {
             ISNUC = atoi(argv[i+1]);
         } else {
@@ -129,8 +137,8 @@ void PARAMS_init(const int argc, const char *const *const argv) {
             SIGN_SIZE = 6;
             SIGN_MIN = 6;
             // MAX_COV = 10;
-            ATTEMPT_INI = 34;
-            ATTEMPT_INC = 34;
+            ATTEMPT_INI = 30;
+            ATTEMPT_INC = 30;
             alphareduce("FY");
             alphareduce("ILMV");
             //alphareduce("LVIM");
@@ -142,8 +150,8 @@ void PARAMS_init(const int argc, const char *const *const argv) {
             SIGN_SIZE = 5;
             SIGN_MIN = 5;
             // MAX_COV = 5;
-            ATTEMPT_INI = 100;
-            ATTEMPT_INC = 100;
+            ATTEMPT_INI = 50;
+            ATTEMPT_INC = 50;
             alphareduce("DENQ");
             // alphareduce("EDNQ");
             alphareduce("FWY");
@@ -327,14 +335,16 @@ void seq_arrlist_add(const kseq_t *kseq) {
         #endif
     }
     #endif
-    seq_arrlist.size++; 
-    
-    if ((int)kseq->seq.l >= (int)KMER_SIZE) {
-        uint64_t hash = hash_init(kseq->seq.s);
-        seed_add(hash, seq_arrlist.size - 1);
-        for (i = KMER_SIZE; i < kseq->seq.l; i += 1) {
-            hash = hash_update(hash, kseq->seq.s[i-KMER_SIZE], kseq->seq.s[i]);
-            if (0 == i % KMER_SPACE) { seed_add(hash, seq_arrlist.size - 1); }
+    seq_arrlist.size++;
+}
+
+void seq_longword_init(seq_t *const seq_ptr, int idx) {
+    if ((int)seq_ptr->seqlen >= (int)KMER_SIZE) {
+        uint64_t hash = hash_init(seq_ptr->seq);
+        seed_add(hash, idx);
+        for (int i = KMER_SIZE; i < (int)seq_ptr->seqlen; i += 1) {
+            hash = hash_update(hash, seq_ptr->seq[i-KMER_SIZE], seq_ptr->seq[i]);
+            if (0 == i % KMER_SPACE) { seed_add(hash, idx); }
         }
     }
 }
@@ -393,12 +403,10 @@ int main(const int argc, const char *const *const argv) {
     PARAMS_init(argc, argv);
     hash_sign_INIT(); 
     std::unordered_set<int> printthresholds;
-    for (int i = 0; i < 400; i++) {
-        printthresholds.insert((i+1)*1000*10 + (int)pow(1.05, (double)i));
+    for (int i = 0; i < 140; i++) {
+        printthresholds.insert((i+1)*1000*10 * (int)pow(1.05, (double)i));
     }
 
-    seeds = (seed_t*) malloc(NUM_SEEDS * sizeof(seed_t));
-    memset(seeds, 0, NUM_SEEDS * sizeof(seed_t));
     seq_arrlist_init();
     
     showparams();
@@ -408,14 +416,35 @@ int main(const int argc, const char *const *const argv) {
         seq_arrlist_add(kseq);
         i++;
         if (printthresholds.find(i) != printthresholds.end()) {
-            fprintf(stderr, "Read and indexed %d sequences.\n", i);
+            fprintf(stderr, "Read %d sequences.\n", i);
         }
     }
     kseq_destroy(kseq);
     
+    uint64_t num_residues = 0;
+    for (int i = 0 ; i < seq_arrlist.size; i++) {
+        num_residues += seq_arrlist.data[i].seqlen;
+    }
+    NUM_SEEDS = num_residues / NUM_RESIDUES_TO_NUM_SEEDS_RATIO + 1; 
+    
+    std::cerr << "NUM_SEEDS = " << NUM_SEEDS << std::endl;
+
+    seeds = (seed_t*) malloc(NUM_SEEDS * sizeof(seed_t));
+    memset(seeds, 0, NUM_SEEDS * sizeof(seed_t));
+    
+    for (int i = 0 ; i < seq_arrlist.size; i++) {
+        seq_longword_init(&seq_arrlist.data[i], i);
+        if (printthresholds.find(i) != printthresholds.end()) {
+            fprintf(stderr, "Indexed %d sequences.\n", i);
+        }
+    }
+
     #pragma omp parallel for schedule(dynamic, 9999*10)
     for (int i = 0 ; i < seq_arrlist.size; i++) {
         seq_signatures_init(&seq_arrlist.data[i]);
+        if (printthresholds.find(i) != printthresholds.end()) {
+            fprintf(stderr, "Minhashed %d sequences.\n", i);
+        }
     }
     
     int seedsize_histogram[1000+1];
