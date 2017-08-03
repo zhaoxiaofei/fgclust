@@ -45,7 +45,7 @@ uint64_t NUM_SEEDS = 0;
 bool ISNUC = false;
 
 uint8_t PERC_SIM = 90; // 33;
-int FLAT_SIM = 25;
+int FLAT_SIM = 26;
 int KMER_SIZE = 11; // 6; // 15;
 int KMER_SPACE = 6; // 8; // 5
 int SIGN_SIZE = 7;
@@ -79,7 +79,7 @@ void showparams() {
     std::cerr << " KMER_SPACE  = " << KMER_SPACE    << std::endl;
     std::cerr << " SIGN_SIZE   = " << SIGN_SIZE     << std::endl;
     std::cerr << " SIGN_MIN    = " << SIGN_MIN      << std::endl;
-    std::cerr << " MAX_COV     = [is_covered = seqordinal % MAX(coveredcnt, 1)] " << std::endl;
+    std::cerr << " MAX_COV     = " << MAX_COV       << std::endl;
     std::cerr << " ATTEMPT_INI = " << ATTEMPT_INI   << std::endl;
     std::cerr << " ATTEMPT_INC = " << ATTEMPT_INC   << std::endl;
 
@@ -492,8 +492,8 @@ int main(const int argc, const char *const *const argv) {
             int filteredcnt = 0;
             int max_attempts = ATTEMPT_INI;
             int max_attempts_arg = 0;
-            int is_covered = i % MAX(seq_arrlist.data[i].coveredcnt, 1);
-            if (!is_covered && (int)strlen(seq_arrlist.data[i].seq) >= (int)KMER_SIZE) {
+            // int is_covered = i % MAX(seq_arrlist.data[i].coveredcnt, 1);
+            if (seq_arrlist.data[i].coveredcnt <= MAX_COV && (int)strlen(seq_arrlist.data[i].seq) >= (int)KMER_SIZE) {
                 uint64_t hash = hash_init(seq_arrlist.data[i].seq);
                 seed_cov(&seeds[hash % NUM_SEEDS], i, visited);
                 // seed_cover(&seeds[hash % NUM_SEEDS], i, visited, coveredarr[i-iter], filteredcnt);
