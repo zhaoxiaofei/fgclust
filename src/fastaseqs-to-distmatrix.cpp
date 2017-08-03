@@ -137,7 +137,7 @@ void PARAMS_init(const int argc, const char *const *const argv) {
             SIGN_SIZE = 6;
             SIGN_MIN = 6;
             // MAX_COV = 10;
-            ATTEMPT_INI = 30;
+            ATTEMPT_INI = 35;
             ATTEMPT_INC = 30;
             alphareduce("FY");
             alphareduce("ILMV");
@@ -150,7 +150,7 @@ void PARAMS_init(const int argc, const char *const *const argv) {
             SIGN_SIZE = 5;
             SIGN_MIN = 5;
             // MAX_COV = 5;
-            ATTEMPT_INI = 50;
+            ATTEMPT_INI = 65;
             ATTEMPT_INC = 50;
             alphareduce("DENQ");
             // alphareduce("EDNQ");
