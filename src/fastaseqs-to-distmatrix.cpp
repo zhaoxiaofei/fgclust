@@ -79,7 +79,7 @@ void showparams() {
     std::cerr << " KMER_SPACE  = " << KMER_SPACE    << std::endl;
     std::cerr << " SIGN_SIZE   = " << SIGN_SIZE     << std::endl;
     std::cerr << " SIGN_MIN    = " << SIGN_MIN      << std::endl;
-    std::cerr << " MAX_COV     = " << MAX_COV       << std::endl;
+    std::cerr << " MAX_COV     = [is_covered = seqordinal % MAX(coveredcnt, 1)] " << std::endl;
     std::cerr << " ATTEMPT_INI = " << ATTEMPT_INI   << std::endl;
     std::cerr << " ATTEMPT_INC = " << ATTEMPT_INC   << std::endl;
 
@@ -404,7 +404,7 @@ int main(const int argc, const char *const *const argv) {
     hash_sign_INIT(); 
     std::unordered_set<int> printthresholds;
     for (int i = 0; i < 140; i++) {
-        printthresholds.insert((i+1)*1000*10 * (int)pow(1.05, (double)i));
+        printthresholds.insert((int)((double)((i+1)*1000*10) * pow(1.05, (double)i)));
     }
 
     seq_arrlist_init();
@@ -492,7 +492,8 @@ int main(const int argc, const char *const *const argv) {
             int filteredcnt = 0;
             int max_attempts = ATTEMPT_INI;
             int max_attempts_arg = 0;
-            if (seq_arrlist.data[i].coveredcnt <= MAX_COV && (int)strlen(seq_arrlist.data[i].seq) >= (int)KMER_SIZE) {
+            int is_covered = i % MAX(seq_arrlist.data[i].coveredcnt, 1);
+            if (!is_covered && (int)strlen(seq_arrlist.data[i].seq) >= (int)KMER_SIZE) {
                 uint64_t hash = hash_init(seq_arrlist.data[i].seq);
                 seed_cov(&seeds[hash % NUM_SEEDS], i, visited);
                 // seed_cover(&seeds[hash % NUM_SEEDS], i, visited, coveredarr[i-iter], filteredcnt);
