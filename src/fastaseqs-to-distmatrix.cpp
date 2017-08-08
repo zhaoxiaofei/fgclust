@@ -211,27 +211,6 @@ const uint64_t sign_update(uint64_t hash, char prv, char nxt) {
     return hash % SIGN_MOD;
 }
 
-static const int calc_perc_seq_sim_editdist(const char *s1, const char *s2) {
-    if (strlen(s1) * 80 > strlen(s2) * 100 || strlen(s2) * 80 > strlen(s1) * 100) { return 0; }
-    if (strlen(s1) < FLAT_SIM || strlen(s2) < FLAT_SIM) { return 0; }
-    int maxEditDist = MIN((int)(strlen(s1) * (100 - PERC_SIM) / 100), (int)(strlen(s1) - FLAT_SIM)); // PRIOR_EDIT_DIST;
-    assert (maxEditDist >= 0);
-    // if (maxEditDist < 0) { return 0; }
-    EdlibAlignResult result;
-    result = edlibAlign(s1, strlen(s1), s2, strlen(s2),
-                        edlibNewAlignConfig(maxEditDist, EDLIB_MODE_HW, EDLIB_TASK_DISTANCE));
-    int editdist = result.editDistance;
-    edlibFreeAlignResult(result);
-
-    assert(editdist >= -1);
-    assert(editdist <= (int)strlen(s1));
-    assert(editdist <= (int)strlen(s2));
-    
-    if (-1 == editdist) { return 0; }
-    int ret = 100 * (strlen(s1) - editdist) / ( strlen(s1) /*strlen(s1) + 18 */); 
-    return ret;
-}
-
 typedef struct {
     uint32_t bufsize;    // 4 bytes
     uint32_t size;       // 4 bytes
@@ -247,6 +226,27 @@ typedef struct {
     uint32_t seqlen;
 }
 seq_t; // 16+16*4 bytes +++
+
+static const int calc_perc_seq_sim_editdist(const seq_t *seq1, const seq_t *seq2) {
+    if (seq1->seqlen * 80 > seq2->seqlen * 100 || seq2->seqlen * 80 > seq1->seqlen * 100) { return 0; }
+    if (seq1->seqlen < FLAT_SIM || seq2->seqlen < FLAT_SIM) { return 0; }
+    int maxEditDist = MIN((int)(seq1->seqlen * (100 - PERC_SIM) / 100), (int)(seq1->seqlen - FLAT_SIM)); // PRIOR_EDIT_DIST;
+    assert (maxEditDist >= 0);
+    // if (maxEditDist < 0) { return 0; }
+    EdlibAlignResult result;
+    result = edlibAlign(seq1->seq, seq1->seqlen, seq2->seq, seq2->seqlen,
+                        edlibNewAlignConfig(maxEditDist, EDLIB_MODE_HW, EDLIB_TASK_DISTANCE));
+    int editdist = result.editDistance;
+    edlibFreeAlignResult(result);
+
+    assert(editdist >= -1);
+    assert(editdist <= (int)seq1->seqlen);
+    assert(editdist <= (int)seq2->seqlen);
+    
+    if (-1 == editdist) { return 0; }
+    int ret = 100 * (seq1->seqlen - editdist) / ( seq1->seqlen /*strlen(s1) + 18 */); 
+    return ret;
+}
 
 int calc_n_shared_signatures(const seq_t *seq1, const seq_t *seq2) {
     //fprintf(stderr, "Comparing the sim btw %s and %s\n", seq1->name, seq2->name);
@@ -370,6 +370,7 @@ void seq_signatures_init(seq_t *const seq_ptr) {
     }
 }
 
+#if 0
 void seed_cover(const seed_t *seed, const uint32_t coveringidx, std::unordered_set<uint32_t> & visited, std::vector<std::pair<uint32_t, uint8_t>> & covered, int & filteredcnt) {
     seq_t *coveringseq = &seq_arrlist.data[coveringidx];
     for (int i = 0; i < seed->size; i++) {
@@ -390,6 +391,7 @@ void seed_cover(const seed_t *seed, const uint32_t coveringidx, std::unordered_s
         }
     }
 }
+#endif
 
 void seed_cov(const seed_t *seed, const uint32_t coveringidx, std::unordered_set<uint32_t> & visited) {
     seq_t *coveringseq = &seq_arrlist.data[coveringidx];
@@ -516,7 +518,7 @@ int main(const int argc, const char *const *const argv) {
                     for (auto coveredidx : nsharedsigns_to_coveredidxs_vec.at(nsigns)) {
                         seq_t *coveringseq = &seq_arrlist.data[i];
                         seq_t *coveredseq = &seq_arrlist.data[coveredidx];
-                        uint8_t sim = calc_perc_seq_sim_editdist(coveredseq->seq, coveringseq->seq);
+                        uint8_t sim = calc_perc_seq_sim_editdist(coveredseq, coveringseq);
                         if (sim >= PERC_SIM) {
                             coveredarr[i-iter].push_back(std::make_pair(coveredidx, sim));
                             attempts += ATTEMPT_INC;
