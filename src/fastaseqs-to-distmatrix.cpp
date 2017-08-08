@@ -53,8 +53,9 @@ int SIGN_MIN = 7; // 8-2; // 4;
 
 int MAX_COV = 5; //10;
 
-int ATTEMPT_INI = 10;
+int ATTEMPT_INI = 20;
 int ATTEMPT_INC = 10;
+int ATTEMPT_MAX = 40;
 
 int SEED_SIZE_MAX = 1000;
 int SEED_SEQIDX_PAIR_MAX = 1000;
@@ -82,6 +83,7 @@ void showparams() {
     std::cerr << " MAX_COV     = " << MAX_COV       << std::endl;
     std::cerr << " ATTEMPT_INI = " << ATTEMPT_INI   << std::endl;
     std::cerr << " ATTEMPT_INC = " << ATTEMPT_INC   << std::endl;
+    std::cerr << " ATTEMPT_MAX = " << ATTEMPT_MAX   << std::endl;
 
     std::cerr << " SEED_SIZE_MAX                       = " << SEED_SIZE_MAX                       << std::endl;
     std::cerr << " SEED_SEQIDX_PAIR_MAX                = " << SEED_SEQIDX_PAIR_MAX                << std::endl;
@@ -137,8 +139,9 @@ void PARAMS_init(const int argc, const char *const *const argv) {
             SIGN_SIZE = 6;
             SIGN_MIN = 6;
             // MAX_COV = 10;
-            ATTEMPT_INI = 35;
+            ATTEMPT_INI = 60;
             ATTEMPT_INC = 30;
+            ATTEMPT_MAX = 120;
             alphareduce("FY");
             alphareduce("ILMV");
             //alphareduce("LVIM");
@@ -150,8 +153,9 @@ void PARAMS_init(const int argc, const char *const *const argv) {
             SIGN_SIZE = 5;
             SIGN_MIN = 5;
             // MAX_COV = 5;
-            ATTEMPT_INI = 65;
+            ATTEMPT_INI = 100;
             ATTEMPT_INC = 50;
+            ATTEMPT_MAX = 200;
             alphareduce("DENQ");
             // alphareduce("EDNQ");
             alphareduce("FWY");
@@ -514,7 +518,7 @@ int main(const int argc, const char *const *const argv) {
                 }
                 
                 int attempts = ATTEMPT_INI;
-                for (int nsigns = NUM_SIGNATURES; nsigns >= SIGN_MIN && attempts > 0; nsigns--) {
+                for (int nsigns = NUM_SIGNATURES; nsigns >= SIGN_MIN && attempts > 0 && attempts > max_attempts - ATTEMPT_MAX; nsigns--) {
                     for (auto coveredidx : nsharedsigns_to_coveredidxs_vec.at(nsigns)) {
                         seq_t *coveringseq = &seq_arrlist.data[i];
                         seq_t *coveredseq = &seq_arrlist.data[coveredidx];
@@ -530,7 +534,7 @@ int main(const int argc, const char *const *const argv) {
                             attempts--;
                         }
                         filteredcnt++;
-                        if (attempts <= 0) { break; }
+                        if (!(attempts > 0 && attempts > max_attempts - ATTEMPT_MAX)) { break; }
                     }
                 }
                 
