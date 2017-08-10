@@ -5,6 +5,7 @@ ROOTDIR=$(dirname `which $0`)
 INPREF=$1
 OUTDIR=$2
 SIM=$3
+MINEONLY=$4
 
 mkdir -p "${OUTDIR}"
 
@@ -120,56 +121,74 @@ function run_cdhitest_with_infastafile_seqid() {
     fi
 }
 
+if false; then
+
 ## run Rfam.seed
 
 run_minenuc_with_infastafile_seqid  "${INPREF}/Rfam.seed_len-revname-sort" "${OUTDIR}/Rfam.seed_len-revname-sort" $SIM 3334
-run_vsearch_with_infastafile_seqid  "${INPREF}/Rfam.seed_len-revname-sort" "${OUTDIR}/Rfam.seed_len-revname-sort" $SIM 3334
-run_cdhitest_with_infastafile_seqid "${INPREF}/Rfam.seed_len-revname-sort" "${OUTDIR}/Rfam.seed_len-revname-sort" $SIM 3334
+if [ "${MINEONLY}" != mineonly ]; then
+    run_vsearch_with_infastafile_seqid  "${INPREF}/Rfam.seed_len-revname-sort" "${OUTDIR}/Rfam.seed_len-revname-sort" $SIM 3334
+    run_cdhitest_with_infastafile_seqid "${INPREF}/Rfam.seed_len-revname-sort" "${OUTDIR}/Rfam.seed_len-revname-sort" $SIM 3334
+fi
 
 cat "${OUTDIR}/Rfam.seed_len-revname-sort-${SIM}.hdrsetcover-clu.tsv" | "${ROOTDIR}"/benchmark/src/pfam-clstr-to-metrics.py
-cat "${OUTDIR}/Rfam.seed_len-revname-sort_vsearch-${SIM}-clu.tsv"     | "${ROOTDIR}"/benchmark/src/pfam-clstr-to-metrics.py
-cat "${OUTDIR}/Rfam.seed_len-revname-sort-${SIM}.cdhitest-clu.tsv"    | "${ROOTDIR}"/benchmark/src/pfam-clstr-to-metrics.py
+if [ "${MINEONLY}" != mineonly ]; then
+    cat "${OUTDIR}/Rfam.seed_len-revname-sort_vsearch-${SIM}-clu.tsv"     | "${ROOTDIR}"/benchmark/src/pfam-clstr-to-metrics.py
+    cat "${OUTDIR}/Rfam.seed_len-revname-sort-${SIM}.cdhitest-clu.tsv"    | "${ROOTDIR}"/benchmark/src/pfam-clstr-to-metrics.py
+fi
 
 ## run Pfam-A.seed
 
 run_mine_with_infastafile_seqid     "${INPREF}/Pfam-A.seed_len-revname-sort" "${OUTDIR}/Pfam-A.seed_len-revname-sort" $SIM 3334
-run_linclust_with_infastafile_seqid "${INPREF}/Pfam-A.seed_len-revname-sort" "${OUTDIR}/Pfam-A.seed_len-revname-sort" $SIM 3334
-run_cdhit_with_infastafile_seqid    "${INPREF}/Pfam-A.seed_len-revname-sort" "${OUTDIR}/Pfam-A.seed_len-revname-sort" $SIM 3334
-run_quaclust_with_infastafile_seqid "${INPREF}/Pfam-A.seed_len-revname-sort" "${OUTDIR}/Pfam-A.seed_len-revname-sort" $SIM 3334
-run_kclust_with_infastafile_seqid   "${INPREF}/Pfam-A.seed_len-revname-sort" "${OUTDIR}/Pfam-A.seed_len-revname-sort" $SIM 3334
+if [ "${MINEONLY}" != mineonly ]; then
+    run_linclust_with_infastafile_seqid "${INPREF}/Pfam-A.seed_len-revname-sort" "${OUTDIR}/Pfam-A.seed_len-revname-sort" $SIM 3334
+    run_cdhit_with_infastafile_seqid    "${INPREF}/Pfam-A.seed_len-revname-sort" "${OUTDIR}/Pfam-A.seed_len-revname-sort" $SIM 3334
+    run_quaclust_with_infastafile_seqid "${INPREF}/Pfam-A.seed_len-revname-sort" "${OUTDIR}/Pfam-A.seed_len-revname-sort" $SIM 3334
+    run_kclust_with_infastafile_seqid   "${INPREF}/Pfam-A.seed_len-revname-sort" "${OUTDIR}/Pfam-A.seed_len-revname-sort" $SIM 3334
+fi
 
 cat "${OUTDIR}/Pfam-A.seed_len-revname-sort-${SIM}.hdrsetcover-clu.tsv" | "${ROOTDIR}"/benchmark/src/pfam-clstr-to-metrics.py
-cat "${OUTDIR}/Pfam-A.seed_len-revname-sort-${SIM}.linclust-clu.tsv"    | "${ROOTDIR}"/benchmark/src/pfam-clstr-to-metrics.py
-cat "${OUTDIR}/Pfam-A.seed_len-revname-sort-${SIM}.cdhit-clu.tsv"       | "${ROOTDIR}"/benchmark/src/pfam-clstr-to-metrics.py
-cat "${OUTDIR}/Pfam-A.seed_len-revname-sort-${SIM}.quaclust-clu.tsv"    | "${ROOTDIR}"/benchmark/src/pfam-clstr-to-metrics.py
-cat "${OUTDIR}/Pfam-A.seed_len-revname-sort-${SIM}.kclust-clu.tsv"      | "${ROOTDIR}"/benchmark/src/pfam-clstr-to-metrics.py
+if [ "${MINEONLY}" != mineonly ]; then
+    cat "${OUTDIR}/Pfam-A.seed_len-revname-sort-${SIM}.linclust-clu.tsv"    | "${ROOTDIR}"/benchmark/src/pfam-clstr-to-metrics.py
+    cat "${OUTDIR}/Pfam-A.seed_len-revname-sort-${SIM}.cdhit-clu.tsv"       | "${ROOTDIR}"/benchmark/src/pfam-clstr-to-metrics.py
+    cat "${OUTDIR}/Pfam-A.seed_len-revname-sort-${SIM}.quaclust-clu.tsv"    | "${ROOTDIR}"/benchmark/src/pfam-clstr-to-metrics.py
+    cat "${OUTDIR}/Pfam-A.seed_len-revname-sort-${SIM}.kclust-clu.tsv"      | "${ROOTDIR}"/benchmark/src/pfam-clstr-to-metrics.py
+fi
 
 ## run pdb
 
 run_mine_with_infastafile_seqid     "${INPREF}/pdbent-seqres_len-revname-sort" "${OUTDIR}/pdbent-seqres_len-revname-sort" $SIM 3334
-run_linclust_with_infastafile_seqid "${INPREF}/pdbent-seqres_len-revname-sort" "${OUTDIR}/pdbent-seqres_len-revname-sort" $SIM 3334
-run_cdhit_with_infastafile_seqid    "${INPREF}/pdbent-seqres_len-revname-sort" "${OUTDIR}/pdbent-seqres_len-revname-sort" $SIM 3334
-run_quaclust_with_infastafile_seqid "${INPREF}/pdbent-seqres_len-revname-sort" "${OUTDIR}/pdbent-seqres_len-revname-sort" $SIM 3334
-run_kclust_with_infastafile_seqid   "${INPREF}/pdbent-seqres_len-revname-sort" "${OUTDIR}/pdbent-seqres_len-revname-sort" $SIM 3334
+if [ "${MINEONLY}" != mineonly ]; then
+    run_linclust_with_infastafile_seqid "${INPREF}/pdbent-seqres_len-revname-sort" "${OUTDIR}/pdbent-seqres_len-revname-sort" $SIM 3334
+    run_cdhit_with_infastafile_seqid    "${INPREF}/pdbent-seqres_len-revname-sort" "${OUTDIR}/pdbent-seqres_len-revname-sort" $SIM 3334
+    run_quaclust_with_infastafile_seqid "${INPREF}/pdbent-seqres_len-revname-sort" "${OUTDIR}/pdbent-seqres_len-revname-sort" $SIM 3334
+    run_kclust_with_infastafile_seqid   "${INPREF}/pdbent-seqres_len-revname-sort" "${OUTDIR}/pdbent-seqres_len-revname-sort" $SIM 3334
+fi
 
-parallel <<ParallelInput
-cat "${OUTDIR}/pdbent-seqres_len-revname-sort-${SIM}.hdrsetcover-clu.tsv" | "${ROOTDIR}"/benchmark/src/setcover-hdrs-to-tms.py > "${OUTDIR}/pdbent-seqres_len-revname-sort-${SIM}.hdrsetcover-clu.tms"
-cat "${OUTDIR}/pdbent-seqres_len-revname-sort-${SIM}.linclust-clu.tsv"    | "${ROOTDIR}"/benchmark/src/setcover-hdrs-to-tms.py > "${OUTDIR}/pdbent-seqres_len-revname-sort-${SIM}.linclust-clu.tms"
-cat "${OUTDIR}/pdbent-seqres_len-revname-sort-${SIM}.cdhit-clu.tsv"       | "${ROOTDIR}"/benchmark/src/setcover-hdrs-to-tms.py > "${OUTDIR}/pdbent-seqres_len-revname-sort-${SIM}.cdhit-clu.tms"
-cat "${OUTDIR}/pdbent-seqres_len-revname-sort-${SIM}.quaclust-clu.tsv"    | "${ROOTDIR}"/benchmark/src/setcover-hdrs-to-tms.py > "${OUTDIR}/pdbent-seqres_len-revname-sort-${SIM}.quaclust-clu.tms"
-cat "${OUTDIR}/pdbent-seqres_len-revname-sort-${SIM}.kclust-clu.tsv"      | "${ROOTDIR}"/benchmark/src/setcover-hdrs-to-tms.py > "${OUTDIR}/pdbent-seqres_len-revname-sort-${SIM}.kclust-clu.tms"
+$fi
+
+if [ "${MINEONLY}" == mineonly ]; then
+    #cat "${OUTDIR}/pdbent-seqres_len-revname-sort-${SIM}.hdrsetcover-clu.tsv" | "${ROOTDIR}"/benchmark/src/setcover-hdrs-to-tms.py > "${OUTDIR}/pdbent-seqres_len-revname-sort-${SIM}.hdrsetcover-clu.tms"
+    benchmark/src/gen-pdbent-cdf.py "${OUTDIR}/pdbent-seqres_len-revname-sort-${SIM}.hdrsetcover-clu.tms" > "${OUTDIR}/pdbent-seqres_len-revname-sort-${SIM}.hdrsetcover-clu.cdf"
+else
+    parallel <<ParallelInput
+    cat "${OUTDIR}/pdbent-seqres_len-revname-sort-${SIM}.hdrsetcover-clu.tsv" | "${ROOTDIR}"/benchmark/src/setcover-hdrs-to-tms.py > "${OUTDIR}/pdbent-seqres_len-revname-sort-${SIM}.hdrsetcover-clu.tms"
+    cat "${OUTDIR}/pdbent-seqres_len-revname-sort-${SIM}.linclust-clu.tsv"    | "${ROOTDIR}"/benchmark/src/setcover-hdrs-to-tms.py > "${OUTDIR}/pdbent-seqres_len-revname-sort-${SIM}.linclust-clu.tms"
+    cat "${OUTDIR}/pdbent-seqres_len-revname-sort-${SIM}.cdhit-clu.tsv"       | "${ROOTDIR}"/benchmark/src/setcover-hdrs-to-tms.py > "${OUTDIR}/pdbent-seqres_len-revname-sort-${SIM}.cdhit-clu.tms"
+    cat "${OUTDIR}/pdbent-seqres_len-revname-sort-${SIM}.quaclust-clu.tsv"    | "${ROOTDIR}"/benchmark/src/setcover-hdrs-to-tms.py > "${OUTDIR}/pdbent-seqres_len-revname-sort-${SIM}.quaclust-clu.tms"
+    cat "${OUTDIR}/pdbent-seqres_len-revname-sort-${SIM}.kclust-clu.tsv"      | "${ROOTDIR}"/benchmark/src/setcover-hdrs-to-tms.py > "${OUTDIR}/pdbent-seqres_len-revname-sort-${SIM}.kclust-clu.tms"
 ParallelInput
-
-benchmark/src/gen-pdbent-cdf.py \
-    "${OUTDIR}/pdbent-seqres_len-revname-sort-${SIM}.hdrsetcover-clu.tms" \
-    "${OUTDIR}/pdbent-seqres_len-revname-sort-${SIM}.linclust-clu.tms" \
-    "${OUTDIR}/pdbent-seqres_len-revname-sort-${SIM}.cdhit-clu.tms" \
-    "${OUTDIR}/pdbent-seqres_len-revname-sort-${SIM}.quaclust-clu.tms" \
-    "${OUTDIR}/pdbent-seqres_len-revname-sort-${SIM}.kclust-clu.tms" \
-    > "${OUTDIR}/pdbent-seqres_len-revname-sort-${SIM}.cdf"
+    benchmark/src/gen-pdbent-cdf.py \
+        "${OUTDIR}/pdbent-seqres_len-revname-sort-${SIM}.hdrsetcover-clu.tms" \
+        "${OUTDIR}/pdbent-seqres_len-revname-sort-${SIM}.linclust-clu.tms" \
+        "${OUTDIR}/pdbent-seqres_len-revname-sort-${SIM}.cdhit-clu.tms" \
+        "${OUTDIR}/pdbent-seqres_len-revname-sort-${SIM}.quaclust-clu.tms" \
+        "${OUTDIR}/pdbent-seqres_len-revname-sort-${SIM}.kclust-clu.tms" \
+        > "${OUTDIR}/pdbent-seqres_len-revname-sort-${SIM}.cdf"
+fi
 
 # cat "${OUTDIR}/pdbent-seqres_len-revname-sort-$1.hdrsetcover-clu.tms" | grep "^tmscore" | awk '{print substr($2, 0, 4)}' | sort | uniq -c | awk '{print $2"\t"$1}'
-
+fi
 ## run uniprot
 
 timelimit=20000
@@ -178,6 +197,7 @@ quaclust_timeout=false
 kclust_timeout=false
 for uniref in uniref100-2011-01 uniref100-2014-01 uniref100-2017-01; do
     run_mine_with_infastafile_seqid     "${INPREF}/${uniref}_len-revname-sort" "${OUTDIR}/${uniref}_len-revname-sort" $SIM $timelimit
+    if [ "${MINEONLY}" == mineonly ]; then continue; fi
     run_linclust_with_infastafile_seqid "${INPREF}/${uniref}_len-revname-sort" "${OUTDIR}/${uniref}_len-revname-sort" $SIM $timelimit
     if [ false == $cdhit_timeout    ]; then run_cdhit_with_infastafile_seqid    "${INPREF}/${uniref}_len-revname-sort" "${OUTDIR}/${uniref}_len-revname-sort" $SIM $timelimit; fi
     if [ false == $quaclust_timeout ]; then run_quaclust_with_infastafile_seqid "${INPREF}/${uniref}_len-revname-sort" "${OUTDIR}/${uniref}_len-revname-sort" $SIM $timelimit; fi

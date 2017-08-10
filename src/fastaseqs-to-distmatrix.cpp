@@ -38,7 +38,7 @@ const uint64_t SIGN_BASE  = 48271L; // 10007L; // 17001L; // 1009L;
 const uint64_t PRIME_MOD  = (0x1L << 31L) - 1L; //1000*1000*1000+7;
 const uint64_t SIGN_MOD   = (0x1L << 31L) - 1L; //1000*1000*1000+7;
 
-const uint64_t NUM_RESIDUES_TO_NUM_SEEDS_RATIO = 25;
+const uint64_t NUM_RESIDUES_TO_NUM_SEEDS_RATIO = 33;
 
 uint64_t NUM_SEEDS = 0;
 
@@ -46,7 +46,7 @@ bool ISNUC = false;
 
 uint8_t PERC_SIM = 90; // 33;
 int FLAT_SIM = 26;
-int KMER_SIZE = 11; // 6; // 15;
+int KMER_SIZE = 12; //11; // 6; // 15;
 int KMER_SPACE = 6; // 8; // 5
 int SIGN_SIZE = 7;
 int SIGN_MIN = 7; // 8-2; // 4;
@@ -54,12 +54,15 @@ int SIGN_MIN = 7; // 8-2; // 4;
 int MAX_COV = 5; //10;
 
 int ATTEMPT_INI = 20;
-int ATTEMPT_INC = 10;
-int ATTEMPT_MAX = 40;
+int ATTEMPT_INC = 20;
+int ATTEMPT_MAX = 20;
+int ATTEMPT_RES_PER_DEC = 500; // 1200;
 
 int SEED_SIZE_MAX = 1000;
 int SEED_SEQIDX_PAIR_MAX = 1000;
 int SEED_SEQIDX_PAIR_PASS_SIGN_MIN_PERC = 2;
+
+int SEED_COV_MAX = 1000;
 
 //int PRIOR_EDIT_DIST = 2;
 
@@ -84,10 +87,13 @@ void showparams() {
     std::cerr << " ATTEMPT_INI = " << ATTEMPT_INI   << std::endl;
     std::cerr << " ATTEMPT_INC = " << ATTEMPT_INC   << std::endl;
     std::cerr << " ATTEMPT_MAX = " << ATTEMPT_MAX   << std::endl;
+    std::cerr << " ATTEMPT_RES_PER_DEC = " << ATTEMPT_RES_PER_DEC << std::endl;
 
     std::cerr << " SEED_SIZE_MAX                       = " << SEED_SIZE_MAX                       << std::endl;
     std::cerr << " SEED_SEQIDX_PAIR_MAX                = " << SEED_SEQIDX_PAIR_MAX                << std::endl;
     std::cerr << " SEED_SEQIDX_PAIR_PASS_SIGN_MIN_PERC = " << SEED_SEQIDX_PAIR_PASS_SIGN_MIN_PERC << std::endl;
+    
+    std::cerr << " SEED_COV_MAX = " << SEED_COV_MAX << std::endl;
     // std::cerr << " PRIOR_EDIT_DIST                     = " << PRIOR_EDIT_DIST                     << std::endl;
 }
 
@@ -140,8 +146,8 @@ void PARAMS_init(const int argc, const char *const *const argv) {
             SIGN_MIN = 6;
             // MAX_COV = 10;
             ATTEMPT_INI = 60;
-            ATTEMPT_INC = 30;
-            ATTEMPT_MAX = 120;
+            ATTEMPT_INC = 60;
+            ATTEMPT_MAX = 60;
             alphareduce("FY");
             alphareduce("ILMV");
             //alphareduce("LVIM");
@@ -154,8 +160,8 @@ void PARAMS_init(const int argc, const char *const *const argv) {
             SIGN_MIN = 5;
             // MAX_COV = 5;
             ATTEMPT_INI = 100;
-            ATTEMPT_INC = 50;
-            ATTEMPT_MAX = 200;
+            ATTEMPT_INC = 100;
+            ATTEMPT_MAX = 100;
             alphareduce("DENQ");
             // alphareduce("EDNQ");
             alphareduce("FWY");
@@ -399,9 +405,17 @@ void seed_cover(const seed_t *seed, const uint32_t coveringidx, std::unordered_s
 
 void seed_cov(const seed_t *seed, const uint32_t coveringidx, std::unordered_set<uint32_t> & visited) {
     seq_t *coveringseq = &seq_arrlist.data[coveringidx];
-    for (int i = 0; i < seed->size; i++) { 
-        int coveredidx = seed->seqidxs[i];
-        visited.insert(coveredidx);
+    if (seed->size <= SEED_COV_MAX) {
+        for (int i = 0; i < seed->size; i++) { 
+            int coveredidx = seed->seqidxs[i];
+            visited.insert(coveredidx);
+        }
+    } else {
+        unsigned int randstate = 1 + (unsigned int)coveringidx;
+        for (int i = 0; i < seed->size; i++) {
+            int coveredidx = seed->seqidxs[rand_r(&randstate)%seed->size];
+            visited.insert(coveredidx);
+        }
     }
 }
 
@@ -454,12 +468,14 @@ int main(const int argc, const char *const *const argv) {
     }
     
     int seedsize_histogram[1000+1];
+    memset(seedsize_histogram, 0, (1000+1) * sizeof(int));
     for (int i = 0 ; i < NUM_SEEDS; i++) {
         uint32_t seedsize = (seeds[i].size > 1000 ? 1000 : seeds[i].size);
         seedsize_histogram[seedsize]++;
     }
-    for (int i = 0; i < 1000; i++) {
-        std::cerr << i << ":" << seedsize_histogram[i] << "\t";
+    std::cerr << "Start of seedsize_histogram" << std::endl;
+    for (int i = 0; i < 1000+1; i++) {
+        std::cerr << i << "\t" << seedsize_histogram[i] << std::endl;
     }
     std::cerr << "End of seedsize_histogram" << std::endl;
 
@@ -531,7 +547,7 @@ int main(const int argc, const char *const *const argv) {
                                 max_attempts_arg = filteredcnt + 1;
                             }
                         } else {
-                            attempts--;
+                            attempts -= 1 + coveringseq->seqlen / ATTEMPT_RES_PER_DEC;
                         }
                         filteredcnt++;
                         if (!(attempts > 0 && attempts > max_attempts - ATTEMPT_MAX)) { break; }
