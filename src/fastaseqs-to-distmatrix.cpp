@@ -62,7 +62,7 @@ int ATTEMPT_RES_PER_DEC = 500; // 1200;
 
 int SEED_SIZE_MAX = 150; // 1000;
 int SEED_SEQIDX_PAIR_MAX = 1000;
-int SEED_SEQIDX_PAIR_PASS_SIGN_MIN_PERC = 2;
+int SEED_SEQIDX_PAIR_PASS_SIGN_MIN_PERC = 5;
 
 int SEED_COV_MAX = 1000;
 
@@ -253,21 +253,22 @@ typedef struct {
 }
 seq_t; // 16+16*4 bytes +++
 
-static const int calc_perc_seq_sim_editdist(const seq_t *seq1, const seq_t *seq2, char redseqs[2][1024*64]) {
+static const int calc_perc_seq_sim_editdist(const seq_t *seq1, const seq_t *seq2 /*, char redseqs[2][1024*64] */) {
     if (seq1->seqlen * 80 > seq2->seqlen * 100 || seq2->seqlen * 80 > seq1->seqlen * 100) { return 0; }
     if (seq1->seqlen < FLAT_SIM || seq2->seqlen < FLAT_SIM) { return 0; }
     int maxEditDist = MIN((int)(seq1->seqlen * (100 - PERC_SIM) / 100), (int)(seq1->seqlen - FLAT_SIM)); // PRIOR_EDIT_DIST;
     assert (maxEditDist >= 0);
     // if (maxEditDist < 0) { return 0; }
     EdlibAlignResult result;
+    /*
     for (int i = 0; i < seq1->seqlen; i++) {
         redseqs[0][i] = RED_ALPHA[2][seq1->seq[i]];
     }
     for (int i = 0; i < seq2->seqlen; i++) {
         redseqs[1][i] = RED_ALPHA[2][seq2->seq[i]];
     }
-    
-    result = edlibAlign(redseqs[0], seq1->seqlen, redseqs[1], seq2->seqlen,
+    */
+    result = edlibAlign(seq1->seq, seq1->seqlen, seq2->seq, seq2->seqlen,
                         edlibNewAlignConfig(maxEditDist, EDLIB_MODE_HW, EDLIB_TASK_DISTANCE));
     int editdist = result.editDistance;
     edlibFreeAlignResult(result);
@@ -341,7 +342,9 @@ void seq_arrlist_add(const kseq_t *kseq) {
     seq_arrlist.data[seq_arrlist.size].name = (char*)malloc(kseq->name.l + 1);
     seq_arrlist.data[seq_arrlist.size].seq = (char*)malloc(kseq->seq.l + 1);
     strcpy(seq_arrlist.data[seq_arrlist.size].name, kseq->name.s);
-    strcpy(seq_arrlist.data[seq_arrlist.size].seq, kseq->seq.s);
+    for (i = 0; i <= kseq->seq.l; i++) { seq_arrlist.data[seq_arrlist.size].seq[i] = RED_ALPHA[2][kseq->seq.s[i]]; }
+    assert( seq_arrlist.data[seq_arrlist.size].seq[kseq->seq.l] == '\0' );
+    // strcpy(seq_arrlist.data[seq_arrlist.size].seq, kseq->seq.s);
     
     seq_arrlist.data[seq_arrlist.size].seqlen = kseq->seq.l;
     seq_arrlist.data[seq_arrlist.size].coveredcnt = 0;
@@ -538,7 +541,7 @@ int main(const int argc, const char *const *const argv) {
         #pragma omp parallel for schedule(dynamic, 1)
         for (int i = iter; i < itermax; i++)
         {
-            char redseqs[2][1024*64];
+            // char redseqs[2][1024*64];
             std::unordered_set<uint32_t> visited;
             int filteredcnt = 0;
             int max_attempts = ATTEMPT_INI;
@@ -567,7 +570,9 @@ int main(const int argc, const char *const *const argv) {
                     for (auto coveredidx : nsharedsigns_to_coveredidxs_vec.at(nsigns)) {
                         seq_t *coveringseq = &seq_arrlist.data[i];
                         seq_t *coveredseq = &seq_arrlist.data[coveredidx];
-                        uint8_t sim = calc_perc_seq_sim_editdist(coveredseq, coveringseq, redseqs);
+                        uint8_t sim = calc_perc_seq_sim_editdist(coveredseq, coveringseq);
+                        // uint8_t sim = calc_perc_seq_sim_editdist(coveredseq, coveringseq, redseqs);
+
                         if (sim >= PERC_SIM) {
                             coveredarr[i-iter].push_back(std::make_pair(coveredidx, sim));
                             attempts += ATTEMPT_INC;
