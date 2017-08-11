@@ -44,6 +44,8 @@ uint64_t NUM_SEEDS = 0;
 
 bool ISNUC = false;
 
+int ALPHASIZE_SIM = 20;
+
 uint8_t PERC_SIM = 90; // 33;
 int FLAT_SIM = 26;
 int KMER_SIZE = 12; //11; // 6; // 15;
@@ -66,7 +68,7 @@ int SEED_COV_MAX = 1000;
 
 //int PRIOR_EDIT_DIST = 2;
 
-char RED_ALPHA[256]; // derived
+char RED_ALPHA[3][256]; // derived
 
 uint64_t PRIME_POWER = 0; // derived constant
 uint64_t SIGN_POWER = 0; // derived constant
@@ -105,10 +107,10 @@ void show_usage(const int argc, const char *const *const argv) {
 }
 
 
-void alphareduce(const char *const strarg) {
+void alphareduce(const char *const strarg, const int reducetype) {
     const char *str = strarg;
     for (; *str; str++) {
-        RED_ALPHA[*str] = *strarg;
+        RED_ALPHA[reducetype][*str] = *strarg;
     }
 }
 
@@ -126,20 +128,24 @@ void PARAMS_init(const int argc, const char *const *const argv) {
             KMER_SIZE = atoi(argv[i+1]);
         } else if (!strcmp("--isnuc", argv[i])) {
             ISNUC = atoi(argv[i+1]);
+        } else if (!strcmp("--alphasize_sim", argv[i])) {
+            ALPHASIZE_SIM = atoi(argv[i+1]);
         } else {
             show_usage(argc, argv);
         }
     }
     
     for (int i = 0; i < 256; i++) {
-        RED_ALPHA[i] = (char)i;
+        for (int j = 0; j < 3; j++) {
+            RED_ALPHA[j][i] = (char)i;
+        }
     }
     
     if (ISNUC) {
         KMER_SIZE = calc_vecnorm(3 * (PERC_SIM + 10) / (110 - PERC_SIM), 11);
         SIGN_SIZE = calc_vecnorm(2 * (PERC_SIM + 10) / (110 - PERC_SIM), 7);
     } else {
-        if (PERC_SIM < 85) {
+        if (62 <= PERC_SIM && PERC_SIM < 85) {
             // KMER_SIZE = 12;
             // KMER_SPACE = 7;
             SIGN_SIZE = 6;
@@ -148,12 +154,14 @@ void PARAMS_init(const int argc, const char *const *const argv) {
             ATTEMPT_INI = 60;
             ATTEMPT_INC = 60;
             ATTEMPT_MAX = 60;
-            alphareduce("FY");
-            alphareduce("ILMV");
-            //alphareduce("LVIM");
-            alphareduce("KR");
+            for (int t = 0; t < 2; t++) {
+                alphareduce("FY", t);
+                alphareduce("ILMV", t);
+                //alphareduce("LVIM");
+                alphareduce("KR", t);
+            }
         }
-        if (PERC_SIM < 62) {
+        if (40 <= PERC_SIM && PERC_SIM < 62) {
             // KMER_SIZE = 11;
             // KMER_SPACE = 6;
             SIGN_SIZE = 5;
@@ -162,14 +170,22 @@ void PARAMS_init(const int argc, const char *const *const argv) {
             ATTEMPT_INI = 100;
             ATTEMPT_INC = 100;
             ATTEMPT_MAX = 100;
-            alphareduce("DENQ");
-            // alphareduce("EDNQ");
-            alphareduce("FWY");
-            alphareduce("ILMV");
-            // alphareduce("LVIM");
-            alphareduce("KR");
-            alphareduce("ST");
-        } 
+            for (int t = 0; t < 2; t++) {
+                alphareduce("DENQ", t);
+                // alphareduce("EDNQ");
+                alphareduce("FWY", t);
+                alphareduce("ILMV", t);
+                // alphareduce("LVIM");
+                alphareduce("KR", t);
+                alphareduce("ST", t);
+            }
+        }
+        assert(20 == ALPHASIZE_SIM || 15 == ALPHASIZE_SIM);
+        if (15 == ALPHASIZE_SIM) {
+            alphareduce("FY", 2);
+            alphareduce("ILMV", 2);
+            alphareduce("KR", 2);
+        }
     }
 }
 
@@ -190,16 +206,16 @@ const uint64_t hash_init(const char *beg) {
     int i;
     for (i = 0; i < KMER_SIZE; i++) {
         ret *= PRIME_BASE;
-        ret += (uint64_t) RED_ALPHA[beg[i]];
+        ret += (uint64_t) RED_ALPHA[0][beg[i]];
         ret %= PRIME_MOD; 
     }
     return ret;
 }
 
 const uint64_t hash_update(uint64_t hash, char prv, char nxt) {
-    hash = hash * PRIME_BASE + (uint64_t)RED_ALPHA[nxt];
+    hash = hash * PRIME_BASE + (uint64_t)RED_ALPHA[0][nxt];
     hash += PRIME_MOD;
-    hash -= (PRIME_POWER * (uint64_t)RED_ALPHA[prv]) % PRIME_MOD;
+    hash -= (PRIME_POWER * (uint64_t)RED_ALPHA[0][prv]) % PRIME_MOD;
     return hash % PRIME_MOD;
 }
 
@@ -208,16 +224,16 @@ const uint64_t sign_init(const char *beg) {
     int i;
     for (i = 0; i < SIGN_SIZE; i++) {
         ret *= SIGN_BASE;
-        ret += (uint64_t) RED_ALPHA[beg[i]];
+        ret += (uint64_t) RED_ALPHA[0][beg[i]];
         ret %= SIGN_MOD; 
     }
     return ret;
 }
 
 const uint64_t sign_update(uint64_t hash, char prv, char nxt) {
-    hash = hash * SIGN_BASE + (uint64_t) RED_ALPHA[nxt];
+    hash = hash * SIGN_BASE + (uint64_t) RED_ALPHA[0][nxt];
     hash += SIGN_MOD;
-    hash -= (SIGN_POWER * (uint64_t) RED_ALPHA[prv]) % SIGN_MOD;
+    hash -= (SIGN_POWER * (uint64_t) RED_ALPHA[0][prv]) % SIGN_MOD;
     return hash % SIGN_MOD;
 }
 
@@ -237,14 +253,21 @@ typedef struct {
 }
 seq_t; // 16+16*4 bytes +++
 
-static const int calc_perc_seq_sim_editdist(const seq_t *seq1, const seq_t *seq2) {
+static const int calc_perc_seq_sim_editdist(const seq_t *seq1, const seq_t *seq2, char redseqs[2][1024*64]) {
     if (seq1->seqlen * 80 > seq2->seqlen * 100 || seq2->seqlen * 80 > seq1->seqlen * 100) { return 0; }
     if (seq1->seqlen < FLAT_SIM || seq2->seqlen < FLAT_SIM) { return 0; }
     int maxEditDist = MIN((int)(seq1->seqlen * (100 - PERC_SIM) / 100), (int)(seq1->seqlen - FLAT_SIM)); // PRIOR_EDIT_DIST;
     assert (maxEditDist >= 0);
     // if (maxEditDist < 0) { return 0; }
     EdlibAlignResult result;
-    result = edlibAlign(seq1->seq, seq1->seqlen, seq2->seq, seq2->seqlen,
+    for (int i = 0; i < seq1->seqlen; i++) {
+        redseqs[0][i] = RED_ALPHA[2][seq1->seq[i]];
+    }
+    for (int i = 0; i < seq2->seqlen; i++) {
+        redseqs[0][i] = RED_ALPHA[2][seq2->seq[i]];
+    }
+    
+    result = edlibAlign(redseqs[0], seq1->seqlen, redseqs[1], seq2->seqlen,
                         edlibNewAlignConfig(maxEditDist, EDLIB_MODE_HW, EDLIB_TASK_DISTANCE));
     int editdist = result.editDistance;
     edlibFreeAlignResult(result);
@@ -510,6 +533,7 @@ int main(const int argc, const char *const *const argv) {
         #pragma omp parallel for schedule(dynamic, 1)
         for (int i = iter; i < itermax; i++)
         {
+            char redseqs[2][1024*64];
             std::unordered_set<uint32_t> visited;
             int filteredcnt = 0;
             int max_attempts = ATTEMPT_INI;
@@ -538,7 +562,7 @@ int main(const int argc, const char *const *const argv) {
                     for (auto coveredidx : nsharedsigns_to_coveredidxs_vec.at(nsigns)) {
                         seq_t *coveringseq = &seq_arrlist.data[i];
                         seq_t *coveredseq = &seq_arrlist.data[coveredidx];
-                        uint8_t sim = calc_perc_seq_sim_editdist(coveredseq, coveringseq);
+                        uint8_t sim = calc_perc_seq_sim_editdist(coveredseq, coveringseq, redseqs);
                         if (sim >= PERC_SIM) {
                             coveredarr[i-iter].push_back(std::make_pair(coveredidx, sim));
                             attempts += ATTEMPT_INC;
