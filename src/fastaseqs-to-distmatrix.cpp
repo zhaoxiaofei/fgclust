@@ -48,7 +48,7 @@ int ALPHASIZE_SIM = 20;
 
 uint8_t PERC_SIM = 90; // 33;
 int FLAT_SIM = 26;
-int KMER_SIZE = 12; //11; // 6; // 15;
+int KMER_SIZE = 11; // 12; //11; // 6; // 15;
 int KMER_SPACE = 6; // 8; // 5
 int SIGN_SIZE = 7;
 int SIGN_MIN = 7; // 8-2; // 4;
@@ -60,7 +60,7 @@ int ATTEMPT_INC = 20;
 int ATTEMPT_MAX = 20;
 int ATTEMPT_RES_PER_DEC = 500; // 1200;
 
-int SEED_SIZE_MAX = 1000;
+int SEED_SIZE_MAX = 150; // 1000;
 int SEED_SEQIDX_PAIR_MAX = 1000;
 int SEED_SEQIDX_PAIR_PASS_SIGN_MIN_PERC = 2;
 
@@ -224,16 +224,16 @@ const uint64_t sign_init(const char *beg) {
     int i;
     for (i = 0; i < SIGN_SIZE; i++) {
         ret *= SIGN_BASE;
-        ret += (uint64_t) RED_ALPHA[0][beg[i]];
+        ret += (uint64_t) RED_ALPHA[1][beg[i]];
         ret %= SIGN_MOD; 
     }
     return ret;
 }
 
 const uint64_t sign_update(uint64_t hash, char prv, char nxt) {
-    hash = hash * SIGN_BASE + (uint64_t) RED_ALPHA[0][nxt];
+    hash = hash * SIGN_BASE + (uint64_t) RED_ALPHA[1][nxt];
     hash += SIGN_MOD;
-    hash -= (SIGN_POWER * (uint64_t) RED_ALPHA[0][prv]) % SIGN_MOD;
+    hash -= (SIGN_POWER * (uint64_t) RED_ALPHA[1][prv]) % SIGN_MOD;
     return hash % SIGN_MOD;
 }
 
@@ -264,7 +264,7 @@ static const int calc_perc_seq_sim_editdist(const seq_t *seq1, const seq_t *seq2
         redseqs[0][i] = RED_ALPHA[2][seq1->seq[i]];
     }
     for (int i = 0; i < seq2->seqlen; i++) {
-        redseqs[0][i] = RED_ALPHA[2][seq2->seq[i]];
+        redseqs[1][i] = RED_ALPHA[2][seq2->seq[i]];
     }
     
     result = edlibAlign(redseqs[0], seq1->seqlen, redseqs[1], seq2->seqlen,
@@ -442,6 +442,19 @@ void seed_cov(const seed_t *seed, const uint32_t coveringidx, std::unordered_set
     }
 }
 
+void print_seedsize_histogram(int seedsize_histogram[], const char *name) {
+    memset(seedsize_histogram, 0, (1000+1) * sizeof(int));
+    for (int i = 0 ; i < NUM_SEEDS; i++) {
+        uint32_t seedsize = (seeds[i].size > 1000 ? 1000 : seeds[i].size);
+        seedsize_histogram[seedsize]++;
+    }
+    std::cerr << "Start of " << name << std::endl;
+    for (int i = 0; i < 1000+1; i++) {
+        std::cerr << i << "\t" << seedsize_histogram[i] << std::endl;
+    }
+    std::cerr << "End of " << name << std::endl;
+}
+
 int main(const int argc, const char *const *const argv) {
     PARAMS_init(argc, argv);
     hash_sign_INIT(); 
@@ -491,16 +504,7 @@ int main(const int argc, const char *const *const argv) {
     }
     
     int seedsize_histogram[1000+1];
-    memset(seedsize_histogram, 0, (1000+1) * sizeof(int));
-    for (int i = 0 ; i < NUM_SEEDS; i++) {
-        uint32_t seedsize = (seeds[i].size > 1000 ? 1000 : seeds[i].size);
-        seedsize_histogram[seedsize]++;
-    }
-    std::cerr << "Start of seedsize_histogram" << std::endl;
-    for (int i = 0; i < 1000+1; i++) {
-        std::cerr << i << "\t" << seedsize_histogram[i] << std::endl;
-    }
-    std::cerr << "End of seedsize_histogram" << std::endl;
+    print_seedsize_histogram(seedsize_histogram, "seedsize_histogram 1"); 
 
     #pragma omp parallel for schedule(dynamic, 9999*100) 
     for (int i = 0 ; i < NUM_SEEDS; i++) {
@@ -521,6 +525,7 @@ int main(const int argc, const char *const *const argv) {
             }
         }
     }
+    print_seedsize_histogram(seedsize_histogram, "seedsize_histogram 2"); 
 
     time_t begtime, endtime;
     time(&begtime);
