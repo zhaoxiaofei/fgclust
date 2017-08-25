@@ -45,13 +45,15 @@ if 'quaclust' in sys.argv[1]:
     progname = 'MMSeqs2'
 if 'cdhit' in sys.argv[1]:
     progname = 'CD-HIT'
+if 'kclust' in sys.argv[1]:
+    progname = 'kClust'
 assert progname
 
-print('TM score  & {} \\\\'     .format(     ' & '.join([str((i+1)/10.0)  for i in range(10)])))
-print('FgClust   & {} & {} \\\\'.format(sim, ' & '.join([str(mine[i])     for i in range(10)])))
+print('TM score  & {} \\\\'.format(' & '.join([str((i+1)/10.0)  for i in range(1, 10)])))
+print('{} & {} & {} \\\\'.format(progname, sim, ' & '.join([str(mine[i])     for i in range(1, 10)])))
 if len(sys.argv) > 2:
-    print('Linclust  & {} & {} \\\\'.format(sim, ' & '.join([str(linclust[i]) for i in range(10)])))
-    print('CD-HIT    & {} & {} \\\\'.format(sim, ' & '.join([str(cdhit[i])    for i in range(10)])))
-    print('MMseqs2   & {} & {} \\\\'.format(sim, ' & '.join([str(quaclust[i]) for i in range(10)])))
-    print('kClust    & {} & {} \\\\'.format(sim, ' & '.join([str(kclust[i])   for i in range(10)])))
+    print('Linclust  & {} & {} \\\\'.format(sim, ' & '.join([str(linclust[i]) for i in range(1, 10)])))
+    print('CD-HIT    & {} & {} \\\\'.format(sim, ' & '.join([str(cdhit[i])    for i in range(1, 10)])))
+    print('MMseqs2   & {} & {} \\\\'.format(sim, ' & '.join([str(quaclust[i]) for i in range(1, 10)])))
+    print('kClust    & {} & {} \\\\'.format(sim, ' & '.join([str(kclust[i])   for i in range(1, 10)])))
 

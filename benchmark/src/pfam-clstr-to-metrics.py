@@ -12,7 +12,8 @@ for line in sys.stdin:
     if innfam != outfam:
         n_corrupted_members += 1
         corrupted_clusters.add(inner)
-print('Pfam-results:{} clusters are corrupted and {} members are corrupted out of {} clusters'.format(len(corrupted_clusters), n_corrupted_members, len(clusters)))
+print('Pfam-results: (number-of-clusters, number-of-corrupted-clusters) = ({}, {}) and (number-of-clusters, number-of-corrupted-cluster-members) = ({}, {})'
+      .format(len(clusters), len(corrupted_clusters), len(clusters), n_corrupted_members))
 #for clu in corrupted_clusters:
 #    sys.stdout.write('{}\t'.format(clu))
 #sys.stdout.write('\n')
