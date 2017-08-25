@@ -17,9 +17,11 @@ def processcontent(content):
             Tax = prop.get('value')
         if prop.tag == 'property' and prop.get('type') == 'common taxon ID':
             TaxID = prop.get('value')
-    name = root.find('name').text.replace('Cluster: ', '')
-
-
+    try:
+        name = root.find('name').text.replace('Cluster: ', '')
+    except AttributeError as err:
+        sys.stderr.write('{}\nDoes not have a valid name attribute\n'.format(content))
+        name = 'None'
     repr = root.find('representativeMember')
     dbref = repr.find('dbReference')
     accession = proteinname = ncbitax = sourceorg = ''

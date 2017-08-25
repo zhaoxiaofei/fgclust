@@ -36,6 +36,17 @@ if '-90.' in sys.argv[1]:
     sim = 90
 assert sim > 0
 
+progname = None
+if 'hdrsetcover' in sys.argv[1]:
+    progname = 'FgClust'
+if 'linclust' in sys.argv[1]:
+    progname = 'Linclust'
+if 'quaclust' in sys.argv[1]:
+    progname = 'MMSeqs2'
+if 'cdhit' in sys.argv[1]:
+    progname = 'CD-HIT'
+assert progname
+
 print('TM score  & {} \\\\'     .format(     ' & '.join([str((i+1)/10.0)  for i in range(10)])))
 print('FgClust   & {} & {} \\\\'.format(sim, ' & '.join([str(mine[i])     for i in range(10)])))
 if len(sys.argv) > 2:
