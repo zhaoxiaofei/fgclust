@@ -158,7 +158,7 @@ for SIM in $(echo $CSVSIM | sed "s/,/ /g"); do
     if [[ $4 == *"kclust"* ]];   then gen_fam_metrics "${OUTDIR}/Pfam-A.seed_shuf-${SIM}.kclust-clu"     ; fi
     
     # skip the rest if sim is either 60 or 80 
-    if [ "60,80" == *"$SIM"* ]; then continue; fi
+    if [[ "60,80" == *"$SIM"* ]]; then continue; fi
 
     ## run pdb 
     (
