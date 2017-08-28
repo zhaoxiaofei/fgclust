@@ -51,7 +51,7 @@ bool ISNUC = false;
 int SIM_ALPHASIZE = 20;
 
 uint8_t PERC_SIM = 90; // 33;
-uint8_t CANOPY_PERC_SIM = 95;
+// uint8_t CANOPY_PERC_SIM = 95;
 
 int BASE_SIM = 25; //30; // 26;
 int KMER_SIZE = 7; // 12; //11; // 6; // 15;
@@ -61,8 +61,8 @@ int MIN_NUM_KMERS = 70;
 int SIGN_SIZE = 7;
 int SIGN_MIN = 6; // 8-2; // 4;
 
-int MAX_COV_AS_QUERY = 5; // 5; //10;
-int MAX_COV_AS_TARGET = 20; // 1000*1000*1000;
+int MAX_COV_AS_QUERY = 3; // 5; //10;
+int MAX_COV_AS_TARGET = 12; // 1000*1000*1000;
 
 int ATTEMPT_INI = 10;
 int ATTEMPT_INC = 10;
@@ -144,8 +144,6 @@ void PARAMS_init(const int argc, const char *const *const argv) {
             PERC_SIM = atoi(argv[i+1]);
         } else if (!strcmp("--flatsim", argv[i])) {
             BASE_SIM = atoi(argv[i+1]);
-        } else if (!strcmp("--kmersize", argv[i])) {
-            KMER_SIZE = atoi(argv[i+1]);
         } else if (!strcmp("--isnuc", argv[i])) {
             ISNUC = atoi(argv[i+1]);
         } else if (!strcmp("--alphasize_sim", argv[i])) {
@@ -167,10 +165,10 @@ void PARAMS_init(const int argc, const char *const *const argv) {
         }
     }
     
-    CANOPY_PERC_SIM = (PERC_SIM + 100) / 2;
+    //CANOPY_PERC_SIM = (PERC_SIM + 100) / 2;
 
     if (ISNUC) {
-        KMER_SIZE = calc_vecnorm(3 * (PERC_SIM + 10) / (110 - PERC_SIM), 9);
+        // KMER_SIZE = calc_vecnorm(3 * (PERC_SIM + 10) / (110 - PERC_SIM), 9);
         SIGN_SIZE = calc_vecnorm(2 * (PERC_SIM + 10) / (110 - PERC_SIM), 6);
     } else {
         for (int t = 0; t < 3; t++) {
@@ -185,7 +183,8 @@ void PARAMS_init(const int argc, const char *const *const argv) {
             // KMER_SPACE = 7;
             SIGN_SIZE = 6;
             SIGN_MIN = 5;
-            // MAX_COV_AS_QUERY = 10;
+            MAX_COV_AS_QUERY = 4;
+            MAX_COV_AS_TARGET = 16;
             ATTEMPT_INI = 30; //50;
             ATTEMPT_INC = 30; //50;
             ATTEMPT_MAX = 40; //50;
@@ -204,7 +203,8 @@ void PARAMS_init(const int argc, const char *const *const argv) {
             SIGN_SIZE = 4; // 5
             SIGN_MIN = 1; // 4;
             // if (PERC_SIM < 45 || SIM_ALPHASIZE < 20) { SIGN_MIN = 1; }
-            // MAX_COV_AS_QUERY = 5;
+            MAX_COV_AS_QUERY = 5;
+            MAX_COV_AS_TARGET = 20;
             ATTEMPT_INI = 50; // 125;
             ATTEMPT_INC = 50; // 125;
             ATTEMPT_MAX = 60; // 125;
@@ -552,15 +552,27 @@ int main(const int argc, const char *const *const argv) {
     }
     NUM_SEEDS = num_residues / NUM_RESIDUES_TO_NUM_SEEDS_RATIO + 1; 
     std::cerr << "NUM_SEEDS = " << NUM_SEEDS << std::endl;
-
-    double adjusted_kmer_size = MAX(log((double)num_residues+1.0) / log(8.5), 7.0); /// about 3 bits per reduced amino acid
-    KMER_SIZE = MAX(KMER_SIZE, (int)floor(adjusted_kmer_size)); // heuristic estimate of kmer size
-    int adjusted_kmer_space_ratio = (int)(100.0 * (adjusted_kmer_size - floor(adjusted_kmer_size)));
     
-    KMER_SPACE = KMER_SPACE * (100 + adjusted_kmer_space_ratio) / 100; 
-    MIN_NUM_KMERS = MIN_NUM_KMERS * 100 / (100 + adjusted_kmer_space_ratio);
+    double INFO_PER_LETTER = (ISNUC ? 3.3 : 8.5);
+    double adjusted_kmer_size = log((double)num_residues+INFO_PER_LETTER) / log(INFO_PER_LETTER);
+    int inf_kmer_size = (int)floor(adjusted_kmer_size);
+    int sim_kmer_size = 150 / (100 - MIN((int)PERC_SIM, 99));
+    if (inf_kmer_size > sim_kmer_size) { 
+        KMER_SIZE = inf_kmer_size;
+        int adjusted_kmer_space_ratio = (int)(100.0 * ((double)(100 - PERC_SIM)) / ((double)PERC_SIM) * (adjusted_kmer_size - floor(adjusted_kmer_size)));
+        KMER_SPACE = KMER_SPACE * (100 + adjusted_kmer_space_ratio) / 100; 
+        MIN_NUM_KMERS = MIN_NUM_KMERS * 100 / (100 + adjusted_kmer_space_ratio);
+    } else {
+        KMER_SIZE = sim_kmer_size;
+    }
+    KMER_SIZE = MIN(MAX(KMER_SIZE, 7), 25);
+    KMER_SPACE = MAX(KMER_SPACE, 1);
+    MIN_NUM_KMERS = MAX(MIN_NUM_KMERS, 20);
+
     for (int i = 1; i < argc; i += 2) {
-        if (!strcmp("--kmersize", argv[i])) { KMER_SIZE = atoi(argv[i+1]); } 
+        if (!strcmp("--kmer_size",     argv[i])) { KMER_SIZE     = atoi(argv[i+1]); } 
+        if (!strcmp("--kmer_space",    argv[i])) { KMER_SPACE    = atoi(argv[i+1]); }
+        if (!strcmp("--min_num_kmers", argv[i])) { MIN_NUM_KMERS = atoi(argv[i+1]); }
     }
 
     std::cerr << "After adjustment, (KMER_SIZE, KMER_SPACE, MIN_NUM_KMERS) = " << KMER_SIZE << ", " << KMER_SPACE << "," << MIN_NUM_KMERS << std::endl;
