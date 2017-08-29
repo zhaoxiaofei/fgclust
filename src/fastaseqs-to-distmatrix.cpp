@@ -747,6 +747,8 @@ int main(const int argc, const char *const *const argv) {
                 //attempt_inc = MAX(1, MIN(ATTEMPT_INC, attempt_inc));
             }
             printf("\n");
+            edgecnt += coveredarr[i-iter].size();
+            coveredarr[i-iter].clear();
         }
     }
 }
