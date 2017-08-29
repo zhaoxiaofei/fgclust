@@ -171,6 +171,13 @@ void PARAMS_init(const int argc, const char *const *const argv) {
         // KMER_SIZE = calc_vecnorm(3 * (PERC_SIM + 10) / (110 - PERC_SIM), 9);
         SIGN_SIZE = calc_vecnorm(2 * (PERC_SIM + 10) / (110 - PERC_SIM), 6);
     } else {
+        MIN_NUM_KMERS = 120 - PERC_SIM;
+        MIN_NUM_KMERS = 120 - PERC_SIM;
+
+        ATTEMPT_INI = 100 - PERC_SIM;
+        ATTEMPT_INC = 100 - PERC_SIM;
+        ATTEMPT_MAX = 110 - PERC_SIM;
+
         for (int t = 0; t < 3; t++) {
             alphareduce("DENQ", t);
             alphareduce("FWY", t);
@@ -209,6 +216,12 @@ void PARAMS_init(const int argc, const char *const *const argv) {
             ATTEMPT_INC = 50; // 125;
             ATTEMPT_MAX = 60; // 125;
             #if 0
+            // if (PERC_SIM < 45 || SIM_ALPHASIZE < 20) { SIGN_MIN = 1; }
+            MAX_COV_AS_QUERY = 5;
+            MAX_COV_AS_TARGET = 20;
+            ATTEMPT_INI = 50; // 125;
+            ATTEMPT_INC = 50; // 125;
+            ATTEMPT_MAX = 60; // 125;
             for (int t = 0; t < 3; t++) {
                 alphareduce("DENQ", t);
                 // alphareduce("EDNQ");
@@ -523,6 +536,7 @@ void print_seedsize_histogram(int seedsize_histogram[], const char *name) {
 }
 
 int main(const int argc, const char *const *const argv) {
+    std::cerr << "GITCOMMIT = " << GITCOMMIT << std::endl;
     PARAMS_init(argc, argv);
     // hash_sign_INIT(); 
     std::set<int> printthresholds;
@@ -550,7 +564,9 @@ int main(const int argc, const char *const *const argv) {
     for (int i = 0 ; i < seq_arrlist.size; i++) {
         num_residues += seq_arrlist.data[i].seqlen;
     }
-    NUM_SEEDS = num_residues / NUM_RESIDUES_TO_NUM_SEEDS_RATIO + 1; 
+    NUM_SEEDS = num_residues / NUM_RESIDUES_TO_NUM_SEEDS_RATIO + 1;
+    std::cerr << "NUM_SEQS = " << seq_arrlist.size << std::endl;
+    std::cerr << "NUM_RESIDUES = " << num_residues << std::endl;
     std::cerr << "NUM_SEEDS = " << NUM_SEEDS << std::endl;
     
     double INFO_PER_LETTER = (ISNUC ? 3.3 : 8.5);
@@ -558,12 +574,14 @@ int main(const int argc, const char *const *const argv) {
     int inf_kmer_size = (int)floor(adjusted_kmer_size);
     int sim_kmer_size = 150 / (100 - MIN((int)PERC_SIM, 99));
     if (inf_kmer_size > sim_kmer_size) { 
+        int adjusted_kmer_space_ratio = (int)(100.0 * (adjusted_kmer_size - floor(adjusted_kmer_size)));
         KMER_SIZE = inf_kmer_size;
-        int adjusted_kmer_space_ratio = (int)(100.0 * ((double)(100 - PERC_SIM)) / ((double)PERC_SIM) * (adjusted_kmer_size - floor(adjusted_kmer_size)));
-        KMER_SPACE = KMER_SPACE * (100 + adjusted_kmer_space_ratio) / 100; 
-        MIN_NUM_KMERS = MIN_NUM_KMERS * 100 / (100 + adjusted_kmer_space_ratio);
+        KMER_SPACE = (PERC_SIM / 5) * (100 + adjusted_kmer_space_ratio) / 100; 
+        MIN_NUM_KMERS = (120 - PERC_SIM) * 100 / (100 + adjusted_kmer_space_ratio);
     } else {
         KMER_SIZE = sim_kmer_size;
+        KMER_SPACE = (PERC_SIM / 5);
+        MIN_NUM_KMERS = (120 - PERC_SIM); 
     }
     KMER_SIZE = MIN(MAX(KMER_SIZE, 7), 25);
     KMER_SPACE = MAX(KMER_SPACE, 1);
@@ -732,17 +750,11 @@ int main(const int argc, const char *const *const argv) {
                 // }
                 assert(adj.second <= 100);
                 printf(" %d %u", (int)adj.second, adj.first+1);
+                //attempt_ini = MAX(1, MIN(ATTEMPT_INI, attempt_ini));
+                //attempt_inc = (attempt_inc * (100 - ATTEMPT_LEARNING_RATE) + 400 * (itermax - iter) * ATTEMPT_LEARNING_RATE / coveredtotal) / 100;
+                //attempt_inc = MAX(1, MIN(ATTEMPT_INC, attempt_inc));
             }
-            printf("\n");
-            edgecnt += coveredarr[i-iter].size();
-            coveredarr[i-iter].clear();
         }
-        #if 0
-        attempt_ini = (attempt_ini * (100 - ATTEMPT_LEARNING_RATE) + 400 * (itermax - iter) * ATTEMPT_LEARNING_RATE / coveredtotal) / 100;
-        attempt_ini = MAX(1, MIN(ATTEMPT_INI, attempt_ini));
-        attempt_inc = (attempt_inc * (100 - ATTEMPT_LEARNING_RATE) + 400 * (itermax - iter) * ATTEMPT_LEARNING_RATE / coveredtotal) / 100;
-        attempt_inc = MAX(1, MIN(ATTEMPT_INC, attempt_inc));
-        #endif
     }
 }
 

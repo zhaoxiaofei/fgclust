@@ -10,6 +10,7 @@
 KSEQ_INIT(int, read)
 
 int main(int argc, char **argv) {
+    std::cerr << "GITCOMMIT = " << GITCOMMIT << std::endl;
     
     std::vector<std::pair<std::string, std::string>> fastarecords;
     

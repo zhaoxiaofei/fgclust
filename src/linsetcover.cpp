@@ -8,6 +8,7 @@
 #include <vector>
 
 int main(int argc, char** argv) {
+    std::cerr << "GITCOMMIT = " << GITCOMMIT << std::endl;
     uint32_t nsets, nelems;
     
     std::string line;

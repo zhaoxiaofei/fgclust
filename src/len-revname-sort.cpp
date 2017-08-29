@@ -43,6 +43,8 @@ struct
 customLess;
 
 int main(int argc, char **argv) {
+    std::cerr << "GITCOMMIT = " << GITCOMMIT << std::endl;
+
     bool israndom = false;
     for (int i = 1; i < argc; i++) {
         if (!strcmp("--israndom", argv[i])) {
