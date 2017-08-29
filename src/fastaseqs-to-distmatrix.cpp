@@ -754,6 +754,7 @@ int main(const int argc, const char *const *const argv) {
                 //attempt_inc = (attempt_inc * (100 - ATTEMPT_LEARNING_RATE) + 400 * (itermax - iter) * ATTEMPT_LEARNING_RATE / coveredtotal) / 100;
                 //attempt_inc = MAX(1, MIN(ATTEMPT_INC, attempt_inc));
             }
+            printf("\n");
         }
     }
 }
