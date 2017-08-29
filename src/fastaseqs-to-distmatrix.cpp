@@ -545,7 +545,7 @@ int main(const int argc, const char *const *const argv) {
         i++;
         if (printthresholds.find(i) != printthresholds.end()) {
             time(&endtime);
-            fprintf(stderr, "Read %d sequences in %u seconds.\n", i, difftime(endtime, begtime));
+            fprintf(stderr, "Read %d sequences in %.f seconds.\n", i, difftime(endtime, begtime));
         }
     }
     kseq_destroy(kseq);
@@ -596,7 +596,7 @@ int main(const int argc, const char *const *const argv) {
         seq_longword_init(&seq_arrlist.data[i], i);
         if (printthresholds.find(i) != printthresholds.end()) {
             time(&endtime);
-            fprintf(stderr, "Indexed %d sequences in %u seconds.\n", i, difftime(endtime, begtime));
+            fprintf(stderr, "Indexed %d sequences in %.f seconds.\n", i, difftime(endtime, begtime));
         }
     }
 
