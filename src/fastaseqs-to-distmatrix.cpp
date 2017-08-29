@@ -165,19 +165,19 @@ void PARAMS_init(const int argc, const char *const *const argv) {
         }
     }
     
-    //CANOPY_PERC_SIM = (PERC_SIM + 100) / 2;
+    MAX_COV_AS_QUERY  = (150 - PERC_SIM) / 20;
+    MAX_COV_AS_TARGET = (150 - PERC_SIM) / 5;
+
+    SIGN_SIZE = MAX(4, PERC_SIM / 10 - 1);
+    SIGN_MIN  = MAX(1, PERC_SIM / 10 - 4); 
+
+    ATTEMPT_INI = 100 - PERC_SIM;
+    ATTEMPT_INC = 100 - PERC_SIM;
+    ATTEMPT_MAX = 110 - PERC_SIM;
 
     if (ISNUC) {
-        // KMER_SIZE = calc_vecnorm(3 * (PERC_SIM + 10) / (110 - PERC_SIM), 9);
         SIGN_SIZE = calc_vecnorm(2 * (PERC_SIM + 10) / (110 - PERC_SIM), 6);
     } else {
-        MIN_NUM_KMERS = 120 - PERC_SIM;
-        MIN_NUM_KMERS = 120 - PERC_SIM;
-
-        ATTEMPT_INI = 100 - PERC_SIM;
-        ATTEMPT_INC = 100 - PERC_SIM;
-        ATTEMPT_MAX = 110 - PERC_SIM;
-
         for (int t = 0; t < 3; t++) {
             alphareduce("DENQ", t);
             alphareduce("FWY", t);
@@ -185,9 +185,8 @@ void PARAMS_init(const int argc, const char *const *const argv) {
             alphareduce("KR", t);
             alphareduce("ST", t);
         }
+        #if 0
         if (62 <= PERC_SIM && PERC_SIM < 81) {
-            // KMER_SIZE = 12;
-            // KMER_SPACE = 7;
             SIGN_SIZE = 6;
             SIGN_MIN = 5;
             MAX_COV_AS_QUERY = 4;
@@ -205,32 +204,19 @@ void PARAMS_init(const int argc, const char *const *const argv) {
             #endif
         }
         if (10 <= PERC_SIM && PERC_SIM < 62) {
-            // KMER_SIZE = 11;
-            // KMER_SPACE = 6;
+            #if 0
             SIGN_SIZE = 4; // 5
             SIGN_MIN = 1; // 4;
-            // if (PERC_SIM < 45 || SIM_ALPHASIZE < 20) { SIGN_MIN = 1; }
             MAX_COV_AS_QUERY = 5;
             MAX_COV_AS_TARGET = 20;
             ATTEMPT_INI = 50; // 125;
             ATTEMPT_INC = 50; // 125;
             ATTEMPT_MAX = 60; // 125;
-            #if 0
-            // if (PERC_SIM < 45 || SIM_ALPHASIZE < 20) { SIGN_MIN = 1; }
             MAX_COV_AS_QUERY = 5;
             MAX_COV_AS_TARGET = 20;
             ATTEMPT_INI = 50; // 125;
             ATTEMPT_INC = 50; // 125;
             ATTEMPT_MAX = 60; // 125;
-            for (int t = 0; t < 3; t++) {
-                alphareduce("DENQ", t);
-                // alphareduce("EDNQ");
-                alphareduce("FWY", t);
-                alphareduce("ILMV", t);
-                // alphareduce("LVIM");
-                alphareduce("KR", t);
-                alphareduce("ST", t);
-            }
             #endif
         }
         assert(20 == SIM_ALPHASIZE || 15 == SIM_ALPHASIZE || 10 == SIM_ALPHASIZE || 0 == SIM_ALPHASIZE);
@@ -246,6 +232,7 @@ void PARAMS_init(const int argc, const char *const *const argv) {
             alphareduce("KR", 2);
             alphareduce("ST", 2);
         }
+        #endif
     }
 }
 
@@ -536,6 +523,8 @@ void print_seedsize_histogram(int seedsize_histogram[], const char *name) {
 }
 
 int main(const int argc, const char *const *const argv) {
+    time_t begtime, endtime;
+
     std::cerr << "GITCOMMIT = " << GITCOMMIT << std::endl;
     PARAMS_init(argc, argv);
     // hash_sign_INIT(); 
@@ -550,11 +539,13 @@ int main(const int argc, const char *const *const argv) {
     showparams();
     kseq_t *kseq = kseq_init(fileno(stdin));
     int i = 0;
+    time(&begtime);
     while ( kseq_read(kseq) >= 0 ) {
         seq_arrlist_add(kseq);
         i++;
         if (printthresholds.find(i) != printthresholds.end()) {
-            fprintf(stderr, "Read %d sequences.\n", i);
+            time(&endtime);
+            fprintf(stderr, "Read %d sequences in %u seconds.\n", i, difftime(endtime, begtime));
         }
     }
     kseq_destroy(kseq);
@@ -600,10 +591,12 @@ int main(const int argc, const char *const *const argv) {
     seeds = (seed_t*) malloc(NUM_SEEDS * sizeof(seed_t));
     memset(seeds, 0, NUM_SEEDS * sizeof(seed_t));
     
+    time(&begtime);
     for (int i = 0 ; i < seq_arrlist.size; i++) {
         seq_longword_init(&seq_arrlist.data[i], i);
         if (printthresholds.find(i) != printthresholds.end()) {
-            fprintf(stderr, "Indexed %d sequences.\n", i);
+            time(&endtime);
+            fprintf(stderr, "Indexed %d sequences in %u seconds.\n", i, difftime(endtime, begtime));
         }
     }
 
@@ -667,7 +660,6 @@ int main(const int argc, const char *const *const argv) {
     uint64_t attempt_norm_fact = (uint64_t)(1000 * pow((double)(100*1000*1000) / (double)(seq_arrlist.size + 1), 0.2));
     int64_t edgecnt = 0;
 
-    time_t begtime, endtime;
     time(&begtime);
 
     for (int64_t iter = 0; iter < seq_arrlist.size; iter += BATCH_SIZE) {
