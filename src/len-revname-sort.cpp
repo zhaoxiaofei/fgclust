@@ -44,6 +44,7 @@ customLess;
 
 int main(int argc, char **argv) {
     std::cerr << "GITCOMMIT = " << GITCOMMIT << std::endl;
+    std::cerr << "CXXVERSION = " << CXXVERSION << std::endl;
 
     bool israndom = false;
     for (int i = 1; i < argc; i++) {

@@ -11,7 +11,8 @@ KSEQ_INIT(int, read)
 
 int main(int argc, char **argv) {
     std::cerr << "GITCOMMIT = " << GITCOMMIT << std::endl;
-    
+    std::cerr << "CXXVERSION = " << CXXVERSION << std::endl;
+
     std::vector<std::pair<std::string, std::string>> fastarecords;
     
     FILE *fastafile = fopen(argv[1], "r");
@@ -29,17 +30,13 @@ int main(int argc, char **argv) {
         std::getline(std::cin, line);
         std::stringstream ss(line);
         int inner, outer, sim;
-        ss >> inner; //assert(inner > 0); representative--;
-        ss >> outer; //assert(outer > 0);  representated--;
-        //ss >> sim;
+        ss >> inner;
+        ss >> outer;
         if (0 == outer) {
             dec = 0;
         }
         inner -= dec;
         outer -= dec;
-        //assert(inner >= 0);
-        //assert(outer >= 0);
-        //assert(sim > 0);
         inner_to_outers[inner].push_back(outer);
     }
 
