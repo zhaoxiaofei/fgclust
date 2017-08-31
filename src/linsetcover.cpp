@@ -8,7 +8,9 @@
 #include <vector>
 
 int main(int argc, char** argv) {
-    std::cerr << "GITCOMMIT = " << GITCOMMIT << std::endl;
+    std::cerr << "GITCOMMIT = "  << GITCOMMIT  << std::endl;
+    std::cerr << "CXXVERSION = " << CXXVERSION << std::endl; 
+    
     uint32_t nsets, nelems;
     
     std::string line;
@@ -16,7 +18,6 @@ int main(int argc, char** argv) {
     std::stringstream ss(line);
     ss >> nelems;
     ss >> nsets;
-    // assert(nsets == nobjs);
     
     std::vector<std::vector<uint32_t>>                     set_to_elems(nsets, std::vector<uint32_t>());
     std::vector<std::vector<std::pair<uint32_t, uint8_t>>> elem_to_setsims(nelems, std::vector<std::pair<uint32_t, uint8_t>>());
@@ -48,7 +49,6 @@ int main(int argc, char** argv) {
         set_to_nelems[set] = nelems;
         nelems_to_sets[nelems].insert(set);
     }
-    //assert(!std::getline(std::cin, line));
 
     for (uint32_t tmpnelems = nelems; tmpnelems > 0; tmpnelems--) {
         std::unordered_set<uint32_t> nextsets;

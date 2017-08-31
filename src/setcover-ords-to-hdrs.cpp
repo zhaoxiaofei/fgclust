@@ -12,7 +12,8 @@ KSEQ_INIT(int, read)
 
 int main(int argc, char **argv) {
     std::cerr << "GITCOMMIT = " << GITCOMMIT << std::endl;
-    
+    std::cerr << "CXXVERSION = " << CXXVERSION << std::endl;
+
     std::vector<std::pair<std::string, std::string>> fastarecords;
     
     FILE *fastafile = fopen(argv[1], "r");
