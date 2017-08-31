@@ -6,9 +6,10 @@
 
 #include <algorithm>
 #include <iostream>
+#include <set>
 #include <vector>
 #include <unordered_map>
-#include <unordered_set>
+#include <set>
 
 #include <assert.h>
 #include <limits.h>
@@ -30,56 +31,91 @@ KSEQ_INIT(int, read)
 #define UPDATE_MIN(a, b) { if ((a) > (b)) { (a) = (b); } } 
 #define UPDATE_MAX(a, b) { if ((a) < (b)) { (a) = (b); } } 
 #define SWAP(a, b) { (a)^=(b); (b)^=(a) ; (a)^=(b); }
+#define SQUARE(a) ((a)*(a))
 
-#define NUM_SEEDS (1000*1000*1000)
-#define NUM_SIGNATURES 32
+#define NUM_SIGNATURES (32)
 
 const uint64_t PRIME_BASE = 48271L; // 727L;
 const uint64_t SIGN_BASE  = 48271L; // 10007L; // 17001L; // 1009L;
 const uint64_t PRIME_MOD  = (0x1L << 31L) - 1L; //1000*1000*1000+7;
 const uint64_t SIGN_MOD   = (0x1L << 31L) - 1L; //1000*1000*1000+7;
 
+int BATCH_SIZE = 15999;
+
+const uint64_t NUM_RESIDUES_TO_NUM_SEEDS_RATIO = 40; // 33;
+
+uint64_t NUM_SEEDS = 0;
+
+bool ISNUC = false;
+
+int SIM_ALPHASIZE = 20;
+
 uint8_t PERC_SIM = 90; // 33;
-int FLAT_SIM = 26;
-int KMER_SIZE = 11; // 6; // 15;
-int KMER_SPACE = 6; // 8; // 5
+// uint8_t CANOPY_PERC_SIM = 95;
+
+int BASE_SIM = 25; //30; // 26;
+int KMER_SIZE = 7; // 12; //11; // 6; // 15;
+int KMER_SPACE = 8; // 8; // 5
+int MIN_NUM_KMERS = 70;
+
 int SIGN_SIZE = 7;
-int SIGN_MIN = 7; // 8-2; // 4;
+int SIGN_MIN = 6; // 8-2; // 4;
 
-int MAX_COV = 10;
+int MAX_COV_AS_QUERY = 3; // 5; //10;
+int MAX_COV_AS_TARGET = 12; // 1000*1000*1000;
 
-int ATTEMPT_INI = 12;
-int ATTEMPT_INC = 12;
+int ATTEMPT_INI = 10;
+int ATTEMPT_INC = 10;
+int ATTEMPT_MAX = 20;
+// int ATTEMPT_RES_PER_DEC = 900; // 1200;
+// int ATTEMPT_LEARNING_RATE = 5;
 
-int SEED_SIZE_MAX = 1000;
-int SEED_SEQIDX_PAIR_MAX = 1000;
-int SEED_SEQIDX_PAIR_PASS_SIGN_MIN_PERC = 2;
+int SEED_SIZE_MAX = 1000; // 3*300; // 30; // 1000;
+int SEED_SEQIDX_PAIR_MAX = 800; //400;
+// int SEED_SEQIDX_PAIR_PASS_SIGN_MIN_PERC = 25;
+
+int SEED_COV_MAX = 1000*1000; // 1000*10;
+
+int SEED_TRUE_HIT_MIN = 4;
+int SEED_ATTEMPT_MIN = 10;
 
 //int PRIOR_EDIT_DIST = 2;
 
-char RED_ALPHA[256]; // derived
+char RED_ALPHA[3][256]; // derived
 
 uint64_t PRIME_POWER = 0; // derived constant
 uint64_t SIGN_POWER = 0; // derived constant
 
 void showparams() {
-    std::cerr << " NUM_SEEDS       = " << NUM_SEEDS      << std::endl;
+    std::cerr << " BATCH_SIZE = " << BATCH_SIZE << std::endl;
+
+    std::cerr << " NUM_RESIDUES_TO_NUM_SEEDS_RATIO = " << NUM_RESIDUES_TO_NUM_SEEDS_RATIO << std::endl;
     std::cerr << " NUM_SIGNATURES  = " << NUM_SIGNATURES << std::endl;
 
+    std::cerr << " ISNUC       = " << ISNUC         << std::endl;
     std::cerr << " PERC_SIM    = " << (int)PERC_SIM << std::endl;
-    std::cerr << " FLAT_SIM    = " << (int)FLAT_SIM << std::endl;
+    std::cerr << " BASE_SIM    = " << (int)BASE_SIM << std::endl;
     
     std::cerr << " KMER_SIZE   = " << KMER_SIZE     << std::endl;
     std::cerr << " KMER_SPACE  = " << KMER_SPACE    << std::endl;
     std::cerr << " SIGN_SIZE   = " << SIGN_SIZE     << std::endl;
     std::cerr << " SIGN_MIN    = " << SIGN_MIN      << std::endl;
-    std::cerr << " MAX_COV     = " << MAX_COV       << std::endl;
+    std::cerr << " MAX_COV_AS_QUERY  = " << MAX_COV_AS_QUERY  << std::endl;
+    std::cerr << " MAX_COV_AS_TARGET = " << MAX_COV_AS_TARGET << std::endl;
+
     std::cerr << " ATTEMPT_INI = " << ATTEMPT_INI   << std::endl;
     std::cerr << " ATTEMPT_INC = " << ATTEMPT_INC   << std::endl;
-
+    std::cerr << " ATTEMPT_MAX = " << ATTEMPT_MAX   << std::endl;
+    // std::cerr << " ATTEMPT_RES_PER_DEC = "   << ATTEMPT_RES_PER_DEC << std::endl;
+    // std::cerr << " ATTEMPT_LEARNING_RATE = " << ATTEMPT_LEARNING_RATE << std::endl;
     std::cerr << " SEED_SIZE_MAX                       = " << SEED_SIZE_MAX                       << std::endl;
     std::cerr << " SEED_SEQIDX_PAIR_MAX                = " << SEED_SEQIDX_PAIR_MAX                << std::endl;
-    std::cerr << " SEED_SEQIDX_PAIR_PASS_SIGN_MIN_PERC = " << SEED_SEQIDX_PAIR_PASS_SIGN_MIN_PERC << std::endl;
+    // std::cerr << " SEED_SEQIDX_PAIR_PASS_SIGN_MIN_PERC = " << SEED_SEQIDX_PAIR_PASS_SIGN_MIN_PERC << std::endl;
+    
+    std::cerr << " SEED_TRUE_HIT_MIN                   = " << SEED_TRUE_HIT_MIN                 << std::endl;
+    std::cerr << " SEED_ATTEMPT_MIN                    = " << SEED_ATTEMPT_MIN                  << std::endl;
+
+    std::cerr << " SEED_COV_MAX = " << SEED_COV_MAX << std::endl;
     // std::cerr << " PRIOR_EDIT_DIST                     = " << PRIOR_EDIT_DIST                     << std::endl;
 }
 
@@ -91,55 +127,113 @@ void show_usage(const int argc, const char *const *const argv) {
 }
 
 
-void alphareduce(const char *const strarg) {
+void alphareduce(const char *const strarg, const int reducetype) {
     const char *str = strarg;
     for (; *str; str++) {
-        RED_ALPHA[*str] = *strarg;
+        RED_ALPHA[reducetype][*str] = *strarg;
     }
+}
+
+int calc_vecnorm(int a, int b) {
+    return (int)ceil(sqrt(a * a + b * b));
 }
 
 void PARAMS_init(const int argc, const char *const *const argv) {
     for (int i = 1; i < argc; i += 2) {
         if (!strcmp("--edsim", argv[i])) {
             PERC_SIM = atoi(argv[i+1]);
+        } else if (!strcmp("--flatsim", argv[i])) {
+            BASE_SIM = atoi(argv[i+1]);
+        } else if (!strcmp("--isnuc", argv[i])) {
+            ISNUC = atoi(argv[i+1]);
+        } else if (!strcmp("--alphasize_sim", argv[i])) {
+            SIM_ALPHASIZE = atoi(argv[i+1]);
+        } else if (!strcmp("--seed_size_max", argv[i])) {
+            SEED_SIZE_MAX = atoi(argv[i+1]);
+        } else if (!strcmp("--sign_min", argv[i])) {
+            SIGN_MIN = atoi(argv[i+1]);
+        } else if (!strcmp("--batch_size", argv[i])) {
+            BATCH_SIZE = atoi(argv[i+1]);
         } else {
             show_usage(argc, argv);
         }
     }
     
     for (int i = 0; i < 256; i++) {
-        RED_ALPHA[i] = (char)i;
+        for (int j = 0; j < 3; j++) {
+            RED_ALPHA[j][i] = (char)i;
+        }
     }
+    
+    MAX_COV_AS_QUERY  = (150 - PERC_SIM) / 20;
+    MAX_COV_AS_TARGET = (150 - PERC_SIM) / 5;
 
-    if (PERC_SIM < 85) {
-        // KMER_SIZE = 12;
-        // KMER_SPACE = 7;
-        SIGN_SIZE = 6;
-        SIGN_MIN = 6;
-        // MAX_COV = 10;
-        ATTEMPT_INI = 34;
-        ATTEMPT_INC = 34;
-        alphareduce("FY");
-        alphareduce("ILMV");
-        //alphareduce("LVIM");
-        alphareduce("KR");
+    SIGN_SIZE = MAX(4, PERC_SIM / 10 - 1);
+    SIGN_MIN  = MAX(1, PERC_SIM / 10 - 4); 
+
+    ATTEMPT_INI = 100 - PERC_SIM;
+    ATTEMPT_INC = 100 - PERC_SIM;
+    ATTEMPT_MAX = 110 - PERC_SIM;
+
+    if (ISNUC) {
+        SIGN_SIZE = calc_vecnorm(2 * (PERC_SIM + 10) / (110 - PERC_SIM), 6);
+    } else {
+        for (int t = 0; t < 3; t++) {
+            alphareduce("DENQ", t);
+            alphareduce("FWY", t);
+            alphareduce("ILMV", t);
+            alphareduce("KR", t);
+            alphareduce("ST", t);
+        }
+        #if 0
+        if (62 <= PERC_SIM && PERC_SIM < 81) {
+            SIGN_SIZE = 6;
+            SIGN_MIN = 5;
+            MAX_COV_AS_QUERY = 4;
+            MAX_COV_AS_TARGET = 16;
+            ATTEMPT_INI = 30; //50;
+            ATTEMPT_INC = 30; //50;
+            ATTEMPT_MAX = 40; //50;
+            #if 0
+            for (int t = 0; t < 3; t++) {
+                alphareduce("FY", t);
+                alphareduce("ILMV", t);
+                //alphareduce("LVIM");
+                alphareduce("KR", t);
+            }
+            #endif
+        }
+        if (10 <= PERC_SIM && PERC_SIM < 62) {
+            #if 0
+            SIGN_SIZE = 4; // 5
+            SIGN_MIN = 1; // 4;
+            MAX_COV_AS_QUERY = 5;
+            MAX_COV_AS_TARGET = 20;
+            ATTEMPT_INI = 50; // 125;
+            ATTEMPT_INC = 50; // 125;
+            ATTEMPT_MAX = 60; // 125;
+            MAX_COV_AS_QUERY = 5;
+            MAX_COV_AS_TARGET = 20;
+            ATTEMPT_INI = 50; // 125;
+            ATTEMPT_INC = 50; // 125;
+            ATTEMPT_MAX = 60; // 125;
+            #endif
+        }
+        assert(20 == SIM_ALPHASIZE || 15 == SIM_ALPHASIZE || 10 == SIM_ALPHASIZE || 0 == SIM_ALPHASIZE);
+        if (15 == SIM_ALPHASIZE) {
+            alphareduce("FY", 2);
+            alphareduce("ILMV", 2);
+            alphareduce("KR", 2);
+        }
+        if (10 == SIM_ALPHASIZE) {
+            alphareduce("DENQ", 2);
+            alphareduce("FWY", 2);
+            alphareduce("ILMV", 2);
+            alphareduce("KR", 2);
+            alphareduce("ST", 2);
+        }
+        #endif
     }
-    if (PERC_SIM < 62) {
-        // KMER_SIZE = 11;
-        // KMER_SPACE = 6;
-        SIGN_SIZE = 5;
-        SIGN_MIN = 5;
-        // MAX_COV = 5;
-        ATTEMPT_INI = 100;
-        ATTEMPT_INC = 100;
-        alphareduce("DENQ");
-        // alphareduce("EDNQ");
-        alphareduce("FWY");
-        alphareduce("ILMV");
-        // alphareduce("LVIM");
-        alphareduce("KR");
-        alphareduce("ST");
-    } 
 }
 
 void hash_sign_INIT() {
@@ -159,16 +253,16 @@ const uint64_t hash_init(const char *beg) {
     int i;
     for (i = 0; i < KMER_SIZE; i++) {
         ret *= PRIME_BASE;
-        ret += (uint64_t) RED_ALPHA[beg[i]];
+        ret += (uint64_t) RED_ALPHA[0][beg[i]];
         ret %= PRIME_MOD; 
     }
     return ret;
 }
 
 const uint64_t hash_update(uint64_t hash, char prv, char nxt) {
-    hash = hash * PRIME_BASE + (uint64_t)RED_ALPHA[nxt];
+    hash = hash * PRIME_BASE + (uint64_t)RED_ALPHA[0][nxt];
     hash += PRIME_MOD;
-    hash -= (PRIME_POWER * (uint64_t)RED_ALPHA[prv]) % PRIME_MOD;
+    hash -= (PRIME_POWER * (uint64_t)RED_ALPHA[0][prv]) % PRIME_MOD;
     return hash % PRIME_MOD;
 }
 
@@ -177,38 +271,17 @@ const uint64_t sign_init(const char *beg) {
     int i;
     for (i = 0; i < SIGN_SIZE; i++) {
         ret *= SIGN_BASE;
-        ret += (uint64_t) RED_ALPHA[beg[i]];
+        ret += (uint64_t) RED_ALPHA[1][beg[i]];
         ret %= SIGN_MOD; 
     }
     return ret;
 }
 
 const uint64_t sign_update(uint64_t hash, char prv, char nxt) {
-    hash = hash * SIGN_BASE + (uint64_t) RED_ALPHA[nxt];
+    hash = hash * SIGN_BASE + (uint64_t) RED_ALPHA[1][nxt];
     hash += SIGN_MOD;
-    hash -= (SIGN_POWER * (uint64_t) RED_ALPHA[prv]) % SIGN_MOD;
+    hash -= (SIGN_POWER * (uint64_t) RED_ALPHA[1][prv]) % SIGN_MOD;
     return hash % SIGN_MOD;
-}
-
-static const int calc_perc_seq_sim_editdist(const char *s1, const char *s2) {
-    if (strlen(s1) * 80 > strlen(s2) * 100 || strlen(s2) * 80 > strlen(s1) * 100) { return 0; }
-    if (strlen(s1) < FLAT_SIM || strlen(s2) < FLAT_SIM) { return 0; }
-    int maxEditDist = MIN((int)(strlen(s1) * (100 - PERC_SIM) / 100), (int)(strlen(s1) - FLAT_SIM)); // PRIOR_EDIT_DIST;
-    assert (maxEditDist >= 0);
-    // if (maxEditDist < 0) { return 0; }
-    EdlibAlignResult result;
-    result = edlibAlign(s1, strlen(s1), s2, strlen(s2),
-                        edlibNewAlignConfig(maxEditDist, EDLIB_MODE_HW, EDLIB_TASK_DISTANCE));
-    int editdist = result.editDistance;
-    edlibFreeAlignResult(result);
-
-    assert(editdist >= -1);
-    assert(editdist <= (int)strlen(s1));
-    assert(editdist <= (int)strlen(s2));
-    
-    if (-1 == editdist) { return 0; }
-    int ret = 100 * (strlen(s1) - editdist) / ( strlen(s1) /*strlen(s1) + 18 */); 
-    return ret;
 }
 
 typedef struct {
@@ -226,6 +299,37 @@ typedef struct {
     uint32_t seqlen;
 }
 seq_t; // 16+16*4 bytes +++
+
+static const int calc_perc_seq_sim_editdist(const seq_t *seq1, const seq_t *seq2 /*, char redseqs[2][1024*64] */) {
+    if (seq1->seqlen * 80 > seq2->seqlen * 100 || seq2->seqlen * 80 > seq1->seqlen * 100) { return 0; }
+    int maxEditDist = seq1->seqlen - ceil(sqrt(SQUARE((double)BASE_SIM) + SQUARE((double)(seq1->seqlen * PERC_SIM) / 100.0)));
+    if (maxEditDist < 0) { return 0; }
+    // if (seq1->seqlen < BASE_SIM || seq2->seqlen < BASE_SIM) { return 0; }
+    // int maxEditDist = MIN((int)(seq1->seqlen * (100 - PERC_SIM) / 100), (int)(seq1->seqlen - BASE_SIM)); // PRIOR_EDIT_DIST;
+    // assert (maxEditDist >= 0);
+    // if (maxEditDist < 0) { return 0; }
+    EdlibAlignResult result;
+    /*
+    for (int i = 0; i < seq1->seqlen; i++) {
+        redseqs[0][i] = RED_ALPHA[2][seq1->seq[i]];
+    }
+    for (int i = 0; i < seq2->seqlen; i++) {
+        redseqs[1][i] = RED_ALPHA[2][seq2->seq[i]];
+    }
+    */
+    result = edlibAlign(seq1->seq, seq1->seqlen, seq2->seq, seq2->seqlen,
+                        edlibNewAlignConfig(maxEditDist, EDLIB_MODE_HW, EDLIB_TASK_DISTANCE));
+    int editdist = result.editDistance;
+    edlibFreeAlignResult(result);
+
+    assert(editdist >= -1);
+    assert(editdist <= (int)seq1->seqlen);
+    assert(editdist <= (int)seq2->seqlen);
+    
+    if (-1 == editdist) { return 0; }
+    int ret = 100 * (seq1->seqlen - editdist) / ( seq1->seqlen /*strlen(s1) + 18 */); 
+    return ret;
+}
 
 int calc_n_shared_signatures(const seq_t *seq1, const seq_t *seq2) {
     //fprintf(stderr, "Comparing the sim btw %s and %s\n", seq1->name, seq2->name);
@@ -287,7 +391,9 @@ void seq_arrlist_add(const kseq_t *kseq) {
     seq_arrlist.data[seq_arrlist.size].name = (char*)malloc(kseq->name.l + 1);
     seq_arrlist.data[seq_arrlist.size].seq = (char*)malloc(kseq->seq.l + 1);
     strcpy(seq_arrlist.data[seq_arrlist.size].name, kseq->name.s);
-    strcpy(seq_arrlist.data[seq_arrlist.size].seq, kseq->seq.s);
+    for (i = 0; i <= kseq->seq.l; i++) { seq_arrlist.data[seq_arrlist.size].seq[i] = RED_ALPHA[2][kseq->seq.s[i]]; }
+    assert( seq_arrlist.data[seq_arrlist.size].seq[kseq->seq.l] == '\0' );
+    // strcpy(seq_arrlist.data[seq_arrlist.size].seq, kseq->seq.s);
     
     seq_arrlist.data[seq_arrlist.size].seqlen = kseq->seq.l;
     seq_arrlist.data[seq_arrlist.size].coveredcnt = 0;
@@ -314,14 +420,17 @@ void seq_arrlist_add(const kseq_t *kseq) {
         #endif
     }
     #endif
-    seq_arrlist.size++; 
-    
-    if ((int)kseq->seq.l >= (int)KMER_SIZE) {
-        uint64_t hash = hash_init(kseq->seq.s);
-        seed_add(hash, seq_arrlist.size - 1);
-        for (i = KMER_SIZE; i < kseq->seq.l; i += 1) {
-            hash = hash_update(hash, kseq->seq.s[i-KMER_SIZE], kseq->seq.s[i]);
-            if (0 == i % KMER_SPACE) { seed_add(hash, seq_arrlist.size - 1); }
+    seq_arrlist.size++;
+}
+
+void seq_longword_init(seq_t *const seq_ptr, int idx) {
+    if ((int)seq_ptr->seqlen >= (int)KMER_SIZE) {
+        int kmerspace = MAX(1, MIN(KMER_SPACE, seq_ptr->seqlen / MIN_NUM_KMERS));
+        uint64_t hash = hash_init(seq_ptr->seq);
+        seed_add(hash, idx);
+        for (int i = KMER_SIZE; i < (int)seq_ptr->seqlen; i += 1) {
+            hash = hash_update(hash, seq_ptr->seq[i-KMER_SIZE], seq_ptr->seq[i]);
+            if (0 == i % kmerspace) { seed_add(hash, idx); }
         }
     }
 }
@@ -329,25 +438,35 @@ void seq_arrlist_add(const kseq_t *kseq) {
 void seq_signatures_init(seq_t *const seq_ptr) {
     memset(seq_ptr->signatures, 0, NUM_SIGNATURES * sizeof(uint16_t));
     if ((int)seq_ptr->seqlen >= (int)SIGN_SIZE) {
-        std::vector<uint16_t> signs;
+        std::vector<uint64_t> signs;
         signs.reserve((int)seq_ptr->seqlen - (int)SIGN_SIZE + 1);
         uint64_t sign = sign_init(seq_ptr->seq);
-        signs.push_back((uint16_t)sign);
+        signs.push_back(sign);
         for (int i = SIGN_SIZE; i < seq_ptr->seqlen; i += 1) {
             sign = sign_update(sign, seq_ptr->seq[i-SIGN_SIZE], seq_ptr->seq[i]);
-            signs.push_back((uint16_t)sign);
+            signs.push_back(sign);
         }
         std::sort(signs.rbegin(), signs.rend());
         int j = 0;
+        std::vector<uint16_t> signatures;
+        signatures.reserve(NUM_SIGNATURES);
         for (auto sign : signs) {
-            seq_ptr->signatures[j] = (uint16_t)sign;
+            signatures.push_back((uint16_t)sign);
             j++;
             if (NUM_SIGNATURES == j) { break; }
         }
+        std::sort(signatures.rbegin(), signatures.rend());
+        j = 0;
+        for (auto sign : signatures) {
+            seq_ptr->signatures[j] = sign;
+            j++;
+        }
+        assert(j <= NUM_SIGNATURES);
     }
 }
 
-void seed_cover(const seed_t *seed, const uint32_t coveringidx, std::unordered_set<uint32_t> & visited, std::vector<std::pair<uint32_t, uint8_t>> & covered, int & filteredcnt) {
+#if 0
+void seed_cover(const seed_t *seed, const uint32_t coveringidx, std::set<uint32_t> & visited, std::vector<std::pair<uint32_t, uint8_t>> & covered, int & filteredcnt) {
     seq_t *coveringseq = &seq_arrlist.data[coveringidx];
     for (int i = 0; i < seed->size; i++) {
         int coveredidx = seed->seqidxs[i];
@@ -367,90 +486,201 @@ void seed_cover(const seed_t *seed, const uint32_t coveringidx, std::unordered_s
         }
     }
 }
+#endif
 
-void seed_cov(const seed_t *seed, const uint32_t coveringidx, std::unordered_set<uint32_t> & visited) {
+void seed_cov(const seed_t *seed, const uint32_t coveringidx, std::set<uint32_t> & visited) {
     seq_t *coveringseq = &seq_arrlist.data[coveringidx];
-    for (int i = 0; i < seed->size; i++) { 
-        int coveredidx = seed->seqidxs[i];
-        visited.insert(coveredidx);
+    if (seed->size <= SEED_COV_MAX) {
+        for (int i = 0; i < seed->size; i++) { 
+            int coveredidx = seed->seqidxs[i];
+            visited.insert(coveredidx);
+        }
+    } else {
+        unsigned int randstate = 1 + (unsigned int)coveringidx;
+        for (int i = 0; i < seed->size; i++) {
+            int coveredidx = seed->seqidxs[rand_r(&randstate)%seed->size];
+            visited.insert(coveredidx);
+        }
     }
 }
 
+void print_seedsize_histogram(int seedsize_histogram[], const char *name) {
+    memset(seedsize_histogram, 0, (1000+1) * sizeof(int));
+    for (int i = 0 ; i < NUM_SEEDS; i++) {
+        uint32_t seedsize = (seeds[i].size > 1000 ? 1000 : seeds[i].size);
+        seedsize_histogram[seedsize]++;
+    }
+    std::cerr << "Start of " << name << std::endl;
+    for (int i = 0; i < 1000+1; i++) {
+        std::cerr << i << "\t";
+    }
+    std::cerr << std::endl;
+    for (int i = 0; i < 1000+1; i++) {
+        std::cerr << seedsize_histogram[i] << "\t";
+    }
+    std::cerr << std::endl;
+    std::cerr << "End of " << name << std::endl;
+}
+
 int main(const int argc, const char *const *const argv) {
+    time_t begtime, endtime;
+
+    std::cerr << "GITCOMMIT = " << GITCOMMIT << std::endl;
     PARAMS_init(argc, argv);
-    hash_sign_INIT(); 
-    std::unordered_set<int> printthresholds;
-    for (int i = 0; i < 400; i++) {
-        printthresholds.insert((i+1)*1000*10 + (int)pow(1.05, (double)i));
+    // hash_sign_INIT(); 
+    std::set<int> printthresholds;
+    for (int i = 0; i < 190; i++) {
+        double thres = (double)((i+1)*(BATCH_SIZE+1)) * pow(1.05, (double)i);
+        if (thres * 1.01 < (double)(INT_MAX)) { printthresholds.insert((int)thres); }
     }
 
-    seeds = (seed_t*) malloc(NUM_SEEDS * sizeof(seed_t));
-    memset(seeds, 0, NUM_SEEDS * sizeof(seed_t));
     seq_arrlist_init();
     
     showparams();
     kseq_t *kseq = kseq_init(fileno(stdin));
     int i = 0;
+    time(&begtime);
     while ( kseq_read(kseq) >= 0 ) {
         seq_arrlist_add(kseq);
         i++;
         if (printthresholds.find(i) != printthresholds.end()) {
-            fprintf(stderr, "Read and indexed %d sequences.\n", i);
+            time(&endtime);
+            fprintf(stderr, "Read %d sequences in %.f seconds.\n", i, difftime(endtime, begtime));
         }
     }
     kseq_destroy(kseq);
     
+    // reinitialize some vars
+    uint64_t num_residues = 0;
+    for (int i = 0 ; i < seq_arrlist.size; i++) {
+        num_residues += seq_arrlist.data[i].seqlen;
+    }
+    NUM_SEEDS = num_residues / NUM_RESIDUES_TO_NUM_SEEDS_RATIO + 1;
+    std::cerr << "NUM_SEQS = " << seq_arrlist.size << std::endl;
+    std::cerr << "NUM_RESIDUES = " << num_residues << std::endl;
+    std::cerr << "NUM_SEEDS = " << NUM_SEEDS << std::endl;
+    
+    double INFO_PER_LETTER = (ISNUC ? 3.3 : 8.5);
+    double adjusted_kmer_size = log((double)num_residues+INFO_PER_LETTER) / log(INFO_PER_LETTER);
+    int inf_kmer_size = (int)floor(adjusted_kmer_size);
+    int sim_kmer_size = 150 / (100 - MIN((int)PERC_SIM, 99));
+    if (inf_kmer_size > sim_kmer_size) { 
+        int adjusted_kmer_space_ratio = (int)(100.0 * (adjusted_kmer_size - floor(adjusted_kmer_size)));
+        KMER_SIZE = inf_kmer_size;
+        KMER_SPACE = (PERC_SIM / 5) * (100 + adjusted_kmer_space_ratio) / 100; 
+        MIN_NUM_KMERS = (120 - PERC_SIM) * 100 / (100 + adjusted_kmer_space_ratio);
+    } else {
+        KMER_SIZE = sim_kmer_size;
+        KMER_SPACE = (PERC_SIM / 5);
+        MIN_NUM_KMERS = (120 - PERC_SIM); 
+    }
+    KMER_SIZE = MIN(MAX(KMER_SIZE, 7), 25);
+    KMER_SPACE = MAX(KMER_SPACE, 1);
+    MIN_NUM_KMERS = MAX(MIN_NUM_KMERS, 20);
+
+    for (int i = 1; i < argc; i += 2) {
+        if (!strcmp("--kmer_size",     argv[i])) { KMER_SIZE     = atoi(argv[i+1]); } 
+        if (!strcmp("--kmer_space",    argv[i])) { KMER_SPACE    = atoi(argv[i+1]); }
+        if (!strcmp("--min_num_kmers", argv[i])) { MIN_NUM_KMERS = atoi(argv[i+1]); }
+    }
+
+    std::cerr << "After adjustment, (KMER_SIZE, KMER_SPACE, MIN_NUM_KMERS) = " << KMER_SIZE << ", " << KMER_SPACE << "," << MIN_NUM_KMERS << std::endl;
+
+    hash_sign_INIT();
+
+    seeds = (seed_t*) malloc(NUM_SEEDS * sizeof(seed_t));
+    memset(seeds, 0, NUM_SEEDS * sizeof(seed_t));
+    
+    time(&begtime);
+    for (int i = 0 ; i < seq_arrlist.size; i++) {
+        seq_longword_init(&seq_arrlist.data[i], i);
+        if (printthresholds.find(i) != printthresholds.end()) {
+            time(&endtime);
+            fprintf(stderr, "Indexed %d sequences in %.f seconds.\n", i, difftime(endtime, begtime));
+        }
+    }
+
     #pragma omp parallel for schedule(dynamic, 9999*10)
     for (int i = 0 ; i < seq_arrlist.size; i++) {
         seq_signatures_init(&seq_arrlist.data[i]);
+        /*
+        if (printthresholds.find(i) != printthresholds.end()) {
+            fprintf(stderr, "Minhashed %d sequences.\n", i);
+        }
+        */
     }
     
     int seedsize_histogram[1000+1];
-    for (int i = 0 ; i < NUM_SEEDS; i++) {
-        uint32_t seedsize = (seeds[i].size > 1000 ? 1000 : seeds[i].size);
-        seedsize_histogram[seedsize]++;
-    }
-    for (int i = 0; i < 1000; i++) {
-        std::cerr << i << ":" << seedsize_histogram[i] << "\t";
-    }
-    std::cerr << "End of seedsize_histogram" << std::endl;
+    print_seedsize_histogram(seedsize_histogram, "seedsize_histogram 1"); 
 
     #pragma omp parallel for schedule(dynamic, 9999*100) 
     for (int i = 0 ; i < NUM_SEEDS; i++) {
         if (seeds[i].size > SEED_SIZE_MAX) {
             unsigned int randstate = 1 + (unsigned int)i;
             int probsimcnt = 0;
+            std::array<std::set<std::pair<uint32_t, uint32_t>>, NUM_SIGNATURES+1> nsigns_to_seqidx_pairs;
+            std::fill(nsigns_to_seqidx_pairs.begin(), nsigns_to_seqidx_pairs.end(), std::set<std::pair<uint32_t, uint32_t>>());
             for (int j = 0; j < SEED_SEQIDX_PAIR_MAX; j++) {
                 uint32_t seqidx1 = seeds[i].seqidxs[rand_r(&randstate) % seeds[i].size];
-                uint32_t seqidx2 = seeds[i].seqidxs[rand_r(&randstate) % seeds[i].size];
-                if (calc_n_shared_signatures(&seq_arrlist.data[seqidx1], &seq_arrlist.data[seqidx2]) >= SIGN_MIN) {
+                uint32_t seqidx2 = seeds[i].seqidxs[rand_r(&randstate) % (seeds[i].size - 1)];
+                if (seqidx1 == seqidx2) { seqidx2 = seeds[i].size-1; }
+                int nsharedsigns = calc_n_shared_signatures(&seq_arrlist.data[seqidx1], &seq_arrlist.data[seqidx2]); 
+                nsigns_to_seqidx_pairs[nsharedsigns].insert(std::make_pair(seqidx1, seqidx2));
+                /*
+                if (nsharedsigns >= SIGN_MIN) {
                     probsimcnt += 1;
+                }*/
+            }
+            int nhits = 0;
+            int attemptcnt = 0;
+            for (int nsigns = NUM_SIGNATURES; nsigns >= SIGN_MIN && attemptcnt < SEED_ATTEMPT_MIN && nhits <= 4; nsigns--, attemptcnt++) {
+                for (auto seqidxpair : nsigns_to_seqidx_pairs[nsigns]) {
+                    int seqidx1 = seqidxpair.first;
+                    int seqidx2 = seqidxpair.second;
+                    uint8_t sim = calc_perc_seq_sim_editdist(&seq_arrlist.data[seqidx1], &seq_arrlist.data[seqidx2]);
+                    if (sim >= PERC_SIM) { nhits++; }
                 }
             }
-            if (probsimcnt * 100 / SEED_SEQIDX_PAIR_MAX < SEED_SEQIDX_PAIR_PASS_SIGN_MIN_PERC) {
+            if ( /*probsimcnt * 100 / SEED_SEQIDX_PAIR_MAX < SEED_SEQIDX_PAIR_PASS_SIGN_MIN_PERC*/ 
+                    nhits <= SEED_TRUE_HIT_MIN // 4
+                ) {
                 seeds[i].size = 0;
                 seeds[i].bufsize = 0;
                 free(seeds[i].seqidxs);
             }
         }
     }
-
-    time_t begtime, endtime;
-    time(&begtime);
+    print_seedsize_histogram(seedsize_histogram, "seedsize_histogram 2"); 
+    
     printf("%d %d\n", seq_arrlist.size, seq_arrlist.size);
-    std::array<std::vector<std::pair<uint32_t, uint8_t>>, 9999> coveredarr;
+    std::vector<std::vector<std::pair<uint32_t, uint8_t>>> coveredarr(BATCH_SIZE);
     std::fill(coveredarr.begin(), coveredarr.end(), std::vector<std::pair<uint32_t, uint8_t>>(0));
-    for (int iter = 0; iter < seq_arrlist.size; iter += 9999) {
-        int itermax = MIN(iter+9999, seq_arrlist.size);
+    
+    // this constant is estimated empirically, the intuition is that clusters do not grow as fast as db
+    uint64_t attempt_norm_fact = (uint64_t)(1000 * pow((double)(100*1000*1000) / (double)(seq_arrlist.size + 1), 0.2));
+    int64_t edgecnt = 0;
+
+    time(&begtime);
+
+    for (int64_t iter = 0; iter < seq_arrlist.size; iter += BATCH_SIZE) {
+        int itermax = MIN(iter+BATCH_SIZE, seq_arrlist.size);
+
+        // ensure that runtime is linear in size of output as well 
+        int attempt_ini = ATTEMPT_INI; //MAX(5, ATTEMPT_INI * attempt_norm_fact * (1000*200 + 0 * iter) / (1000*200 + 0 * (iter + edgecnt)) / 2000);
+        int attempt_inc = ATTEMPT_INC; //MAX(5, ATTEMPT_INC * attempt_norm_fact * (1000*200 + 0 * iter) / (1000*200 + 0 * (iter + edgecnt)) / 2000);
+        int attempt_max = ATTEMPT_MAX; //MAX(5, ATTEMPT_MAX * attempt_norm_fact * (1000*200 + 0 * iter) / (1000*200 + 0 * (iter + edgecnt)) / 2000); 
         
         #pragma omp parallel for schedule(dynamic, 1)
         for (int i = iter; i < itermax; i++)
         {
-            std::unordered_set<uint32_t> visited;
+            // char redseqs[2][1024*64];
+            std::set<uint32_t> visited;
             int filteredcnt = 0;
-            int max_attempts = ATTEMPT_INI;
+            int distcompcnt = 0;
+            int max_attempts = attempt_ini;
             int max_attempts_arg = 0;
-            if (seq_arrlist.data[i].coveredcnt <= MAX_COV && (int)strlen(seq_arrlist.data[i].seq) >= (int)KMER_SIZE) {
+            // int is_covered = i % MAX(seq_arrlist.data[i].coveredcnt, 1);
+            if (seq_arrlist.data[i].coveredcnt <= MAX_COV_AS_QUERY && (int)(seq_arrlist.data[i].seqlen) >= (int)KMER_SIZE) {
                 uint64_t hash = hash_init(seq_arrlist.data[i].seq);
                 seed_cov(&seeds[hash % NUM_SEEDS], i, visited);
                 // seed_cover(&seeds[hash % NUM_SEEDS], i, visited, coveredarr[i-iter], filteredcnt);
@@ -467,25 +697,31 @@ int main(const int argc, const char *const *const argv) {
                         nsharedsigns_to_coveredidxs_vec.at(n_shared_signatures).push_back(coveredidx);
                     }
                 }
-                
-                int attempts = ATTEMPT_INI;
-                for (int nsigns = NUM_SIGNATURES; nsigns >= SIGN_MIN && attempts > 0; nsigns--) {
+                for (int nsigns = NUM_SIGNATURES; nsigns >= SIGN_MIN; nsigns--) {
+                    filteredcnt += nsharedsigns_to_coveredidxs_vec.at(nsigns).size();
+                } 
+                int attempts = attempt_ini;
+                for (int nsigns = NUM_SIGNATURES; nsigns >= SIGN_MIN && attempts > 0 && attempts > max_attempts - ATTEMPT_MAX; nsigns--) {
                     for (auto coveredidx : nsharedsigns_to_coveredidxs_vec.at(nsigns)) {
                         seq_t *coveringseq = &seq_arrlist.data[i];
                         seq_t *coveredseq = &seq_arrlist.data[coveredidx];
-                        uint8_t sim = calc_perc_seq_sim_editdist(coveredseq->seq, coveringseq->seq);
-                        if (sim >= PERC_SIM) {
-                            coveredarr[i-iter].push_back(std::make_pair(coveredidx, sim));
-                            attempts += ATTEMPT_INC;
-                            if (attempts > max_attempts) {
-                                max_attempts = attempts;
-                                max_attempts_arg = filteredcnt + 1;
+                        if (coveredseq->coveredcnt <= MAX_COV_AS_TARGET) {
+                            uint8_t sim = calc_perc_seq_sim_editdist(coveredseq, coveringseq);
+                            // uint8_t sim = calc_perc_seq_sim_editdist(coveredseq, coveringseq, redseqs);
+
+                            if (sim >= PERC_SIM) {
+                                coveredarr[i-iter].push_back(std::make_pair(coveredidx, sim));
+                                attempts += attempt_inc;
+                                if (attempts > max_attempts) {
+                                    max_attempts = attempts;
+                                    max_attempts_arg = distcompcnt + 1;
+                                }
+                            } else {
+                                attempts -= 1 ; // + coveringseq->seqlen / ATTEMPT_RES_PER_DEC;
                             }
-                        } else {
-                            attempts--;
+                            distcompcnt++;
                         }
-                        filteredcnt++;
-                        if (attempts <= 0) { break; }
+                        if (!(attempts > 0 && attempts > max_attempts - ATTEMPT_MAX)) { break; }
                     }
                 }
                 
@@ -493,20 +729,24 @@ int main(const int argc, const char *const *const argv) {
             }
             if (printthresholds.find(i) != printthresholds.end()) {
                 time(&endtime);
-                fprintf(stderr, "In %.f seconds processed %d sequences. h1/h2/h3 = %u/%u/%u. max_attempts=%i at %i\n", 
-                        difftime(endtime, begtime), i+1, coveredarr[i-iter].size(), filteredcnt, visited.size(), max_attempts, max_attempts_arg); 
+                fprintf(stderr, "In %.f seconds processed %d sequences.\th1to4=%u/%i/%i/%u.\tmax_attempts=%i at %i\tattempt_ini=%i\tattempt_inc=%i\tseqlen=%u\tcoveredcnt=%u\n", 
+                        difftime(endtime, begtime), i+1, coveredarr[i-iter].size(), distcompcnt, filteredcnt, visited.size(), max_attempts, max_attempts_arg, 
+                        attempt_ini, attempt_inc, seq_arrlist.data[i].seqlen, seq_arrlist.data[i].coveredcnt); 
             }
         }
-
         for (int i = iter; i < itermax; i++) {
             printf("100 %d", i+1);
             for (auto adj : coveredarr[i-iter]) {
+                // if (adj.second >= CANOPY_PERC_SIM) {
                 seq_arrlist.data[adj.first].coveredcnt++;
+                // }
                 assert(adj.second <= 100);
                 printf(" %d %u", (int)adj.second, adj.first+1);
+                //attempt_ini = MAX(1, MIN(ATTEMPT_INI, attempt_ini));
+                //attempt_inc = (attempt_inc * (100 - ATTEMPT_LEARNING_RATE) + 400 * (itermax - iter) * ATTEMPT_LEARNING_RATE / coveredtotal) / 100;
+                //attempt_inc = MAX(1, MIN(ATTEMPT_INC, attempt_inc));
             }
             printf("\n");
-            coveredarr[i-iter].clear();
         }
     }
 }

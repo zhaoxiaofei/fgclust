@@ -1,6 +1,5 @@
 #include "kseq.h"
 
-#include <cassert>
 #include <iostream>
 #include <set>
 #include <sstream>
@@ -23,24 +22,35 @@ int main(int argc, char **argv) {
     kseq_destroy(kseq);
     fclose(fastafile);
     
+    std::vector<std::vector<int>> inner_to_outers(fastarecords.size(), std::vector<int>());
     std::string line;
     int dec = 1;
     for (size_t i = 0; i < fastarecords.size(); i++) {
         std::getline(std::cin, line);
         std::stringstream ss(line);
         int inner, outer, sim;
-        ss >> inner; //assert(inner > 0);
-        ss >> outer; //assert(outer > 0);
-        ss >> sim;
+        ss >> inner; //assert(inner > 0); representative--;
+        ss >> outer; //assert(outer > 0);  representated--;
+        //ss >> sim;
         if (0 == outer) {
             dec = 0;
         }
         inner -= dec;
         outer -= dec;
-        assert(inner >= 0);
-        assert(outer >= 0);
-        assert(sim > 0);
-        std::cout << fastarecords.at(inner).first << "\t" << fastarecords.at(outer).first << "\t" << sim << std::endl;
+        //assert(inner >= 0);
+        //assert(outer >= 0);
+        //assert(sim > 0);
+        inner_to_outers[inner].push_back(outer);
+    }
+
+    for (int i = 0; i < fastarecords.size(); i++) {
+        if (0 < inner_to_outers[i].size()) {
+            std::cout << ">" << fastarecords[i].first;
+            for (auto outer : inner_to_outers[i] ) {
+                std::cout << "," << fastarecords[outer].first;
+            }
+            std::cout << std::endl << fastarecords[i].second << std::endl;
+        }
     }
 }
 

@@ -1,5 +1,7 @@
 #include <algorithm>
 #include <iostream>
+#include <iterator>
+#include <random>
 #include <string>
 #include <vector>
 
@@ -20,7 +22,7 @@ public:
 Sequence::Sequence(const kseq_t *kseq) {
     this->name = std::string(kseq->name.s);
     this->seq = std::string(kseq->seq.s);
-    std::reverse(this->seq.begin(), this->seq.end());
+    //std::reverse(this->seq.begin(), this->seq.end());
     if (kseq->comment.l) {
         this->comment = std::string(kseq->comment.s);
     } else {
@@ -41,6 +43,14 @@ struct
 customLess;
 
 int main(int argc, char **argv) {
+    std::cerr << "GITCOMMIT = " << GITCOMMIT << std::endl;
+
+    bool israndom = false;
+    for (int i = 1; i < argc; i++) {
+        if (!strcmp("--israndom", argv[i])) {
+            israndom = true;
+        }
+    }
     kseq_t *kseq = kseq_init(fileno(stdin));
     std::vector<Sequence> seqs;
     while (kseq_read(kseq) >= 0)
@@ -50,10 +60,15 @@ int main(int argc, char **argv) {
         if (!(seqs.size() & (seqs.size() - 1))) { std::cerr << "sort : processed " << seqs.size() << " sequences." << std::endl; }
     }
     kseq_destroy(kseq);
-    std::sort(seqs.begin(), seqs.end(), customLess);
+    if (israndom) {
+        std::mt19937 g(7);
+        std::shuffle(seqs.begin(), seqs.end(), g);
+    } else {
+        std::sort(seqs.begin(), seqs.end(), customLess);
+    }
     for (auto seq : seqs)
     {
-        std::reverse(seq.seq.begin(), seq.seq.end());
+        //std::reverse(seq.seq.begin(), seq.seq.end());
         std::cout << ">" << seq.name << " " << seq.comment << std::endl;
         std::cout << seq.seq << std::endl;
     }
