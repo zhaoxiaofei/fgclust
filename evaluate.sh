@@ -33,12 +33,12 @@ function resetfile() {
 function run_mine_with_infastafile_seqid() {
     { time -p {
         echo "run_mine_with_infastafile_seqid($1, $2, $3, $4) began at $(date)"
-        if [ $4 -lt 20 ]; then flag="--alphasize_sim $4"; else flag=""; fi
-        date; cat "$1.faa"            | "${ROOTDIR}"/bin/fastaseqs-to-distmatrix.out --sim-perc $3 $flag > "$2-$3.distmatrix"
-        date; cat "$2-$3.distmatrix"  | "${ROOTDIR}"/bin/linsetcover.out                                 > "$2-$3.ordsetcover"
-        date; cat "$2-$3.ordsetcover" | "${ROOTDIR}"/bin/setcover-ords-to-hdrs.out $1.faa                > "$2-$3.hdrsetcover-clu.tsv"
+        date; cat "$1.faa"            | "${ROOTDIR}"/bin/fastaseqs-to-distmatrix.out --sim-perc $3 > "$2-$3.distmatrix"
+        date; cat "$2-$3.distmatrix"  | "${ROOTDIR}"/bin/linsetcover.out                           > "$2-$3.ordsetcover"
+        date; cat "$2-$3.ordsetcover" | "${ROOTDIR}"/bin/setcover-ords-to-hdrs.out $1.faa          > "$2-$3.hdrsetcover-clu.tsv"
         echo "run_mine_with_infastafile_seqid($1, $2, $3) ended at $(date)"
     } } 2>&1 | tee "$2-$3.mine.time"
+    echo true
 }
 
 function run_quaclust_with_infastafile_seqid() {
@@ -51,10 +51,11 @@ function run_quaclust_with_infastafile_seqid() {
         set +e
         date; timeout $4 "${ROOTDIR}"/benchmark/bin/mmseqs cluster "$1.mmseqs-db" "$2-$3.quaclust-clu" "$2-$3.quaclust-tmpdir" --min-seq-id 0.$3
         resetfile "$2-$3.quaclust-clu.tsv"
-        if [ "${ISTIMEOUT}" == true ] ; then quaclust_timeout=true; return 0 ; fi
+        if "${ISTIMEOUT}"; then echo false; return 0 ; fi
         date; "${ROOTDIR}"/benchmark/bin/mmseqs createtsv             "$1.mmseqs-db" "$1.mmseqs-db"       "$2-$3.quaclust-clu" "$2-$3.quaclust-clu.tsv"
         echo "run_mmseqsclust_with_infastafile_seqid($1, $2, $3) ended at $(date)"
     } } 2>&1 | tee "$2-$3.quaclust.time"
+    echo true
 }
 
 function run_linclust_with_infastafile_seqid() {
@@ -68,6 +69,7 @@ function run_linclust_with_infastafile_seqid() {
         date; "${ROOTDIR}"/benchmark/bin/mmseqs createtsv        "$1.mmseqs-db" "$1.mmseqs-db" "$2-$3.linclust-clu" "$2-$3.linclust-clu.tsv"
         echo "run_linclust_with_infastafile_seqid($1, $2, $3) ended at $(date)"
     } } 2>&1 | tee "$2-$3.linclust.time"
+    echo true
 }
 
 function run_kclust_with_infastafile_seqid() {
@@ -76,17 +78,14 @@ function run_kclust_with_infastafile_seqid() {
         set +e
         date; timeout $4 "${ROOTDIR}"/benchmark/bin/kClust -i "$1.faa" -d "$2-$3.kclust" -s $(python -c "print(round(-0.68506329113924050632 + 0.06025316455696202531*$3, 2))")
         resetfile "$2-$3.kclust-clu.tsv"
-        if [ "${ISTIMEOUT}" == true ] ; then kclust_timeout=true; return 0 ; fi
+        if "${ISTIMEOUT}"; then echo false; return 0 ; fi
         date; cat "$2-$3.kclust/clusters.dmp" | tail -n +2 | awk '{print $2"\t"$1"\t"1}' | "${ROOTDIR}"/bin/setcover-ords-to-hdrs.out "$1.faa" > "$2-$3.kclust-clu.tsv"
         echo "run_kclust_with_infastafile_seqid($1, $2, $3) ended at $(date)"
     } } 2>&1 | tee "$2-$3.kclust.time"
+    echo true
 }
 
 function run_cdhit_with_infastafile_seqid() {
-    if [ "${cdhit_timeout}" == true ]; then
-        echo "run_cdhit_with_infastafile_seqid($1, $2, $3) already timed out in previous iteration."; 
-        return 0;
-    fi
     cdhitwordsize=5
     if [ $SIM -lt 70 ] ; then cdhitwordsize=4; fi
     if [ $SIM -lt 60 ] ; then cdhitwordsize=3; fi
@@ -95,10 +94,11 @@ function run_cdhit_with_infastafile_seqid() {
         set +e
         date; timeout $4 "${ROOTDIR}"/benchmark/bin/cd-hit -i "$1.faa" -o "$2_cdhit-M0-T0-d0-s80-c$3-n$cdhitwordsize.faa" -M 0 -T 0 -d 0 -s 0.8 -c 0.$3 -n $cdhitwordsize
         resetfile "$2-$3.cdhit-clu.tsv"
-        if [ "${ISTIMEOUT}" == true ] ; then cdhit_timeout=true; return 0 ; fi
+        if "${ISTIMEOUT}"; then echo false; return 0 ; fi
         date; cat "$2_cdhit-M0-T0-d0-s80-c$3-n$cdhitwordsize.faa.clstr" | "${ROOTDIR}"/benchmark/src/clstr-to-clu-tsv.py > "$2-$3.cdhit-clu.tsv"
         echo "run_cdhit_with_infastafile_seqid($1, $2, $3) ended at $(date)"
     } } 2>&1 | tee "$2-$3.cdhit.time" 
+    echo true
 }
 
 function run_minenuc_with_infastafile_seqid() {
@@ -191,23 +191,21 @@ for SIM in $(echo $CSVSIM | sed "s/,/ /g"); do
         if [[ "${PROG}" == *"kclust"* ]];   then clu_tsv_to_tms "${OUTDIR}/pdbent-seqres_shuf-${SIM}.kclust-clu.tsv"      ; fi 
     ) 200> "${OUTDIR}/pdbent-seqres_shuf_memtable.flockfile"
 
-    # cat "${OUTDIR}/pdbent-seqres_shuf-$1.hdrsetcover-clu.tms" | grep "^tmscore" | awk '{print substr($2, 0, 4)}' | sort | uniq -c | awk '{print $2"\t"$1}'
-    
     ## run uniprot
 
-    timelimit=$((3600*50))
-    cdhit_timeout=false
-    quaclust_timeout=false
-    kclust_timeout=false
+    timelim=$((3600*50))
+    if [[ "${PROG}" == *"mine"* ]]    ; then minenext=true    ; else minenext=false    ; fi 
+    if [[ "${PROG}" == *"linclust"* ]]; then linclustnext=true; else linclustnext=false; fi 
+    if [[ "${PROG}" == *"quaclust"* ]]; then quaclustnext=true; else quaclustnext=false; fi 
+    if [[ "${PROG}" == *"cdhit"* ]]   ; then cdhitnext=true   ; else cdhitnext=false   ; fi 
+    if [[ "${PROG}" == *"kclust"* ]]  ; then kclustnext=true  ; else kclustnext=false  ; fi 
     #for uniref in down32x-uniref100-2017-01 down16x-uniref100-2017-01 down8x-uniref100-2017-01 down4x-uniref100-2017-01 down2x-uniref100-2017-01 uniref100-2017-01; do
-    for uniref in uniref100-02 uniref100-12 uniref100-2011-01 uniref100-2014-01 uniref100-2017-01; do
-        
-        if [[ "${PROG}" == *"mine"* ]];     then run_mine_with_infastafile_seqid     "${INPREF}/${uniref}_shuf" "${OUTDIR}/${uniref}_shuf" $SIM $timelimit; fi
-        if [[ "${PROG}" == *"linclust"* ]]; then run_linclust_with_infastafile_seqid "${INPREF}/${uniref}_shuf" "${OUTDIR}/${uniref}_shuf" $SIM $timelimit; fi
-        if [[ "${PROG}" == *"quaclust"* ]]; then run_quaclust_with_infastafile_seqid "${INPREF}/${uniref}_shuf" "${OUTDIR}/${uniref}_shuf" $SIM $timelimit; fi
-        if [[ "${PROG}" == *"cdhit"* ]];    then run_cdhit_with_infastafile_seqid    "${INPREF}/${uniref}_shuf" "${OUTDIR}/${uniref}_shuf" $SIM $timelimit; fi
-        if [[ "${PROG}" == *"kclust"* ]];   then run_kclust_with_infastafile_seqid   "${INPREF}/${uniref}_shuf" "${OUTDIR}/${uniref}_shuf" $SIM $timelimit; fi
-        #timelimit=$(($timelimit*2))
+    for uniref in uniref100-02 uniref100-12 uniref100-2011-01 uniref100-2014-01 uniref100-2017-01; do    
+        if $minenext    ; then minenext=$(    run_mine_with_infastafile_seqid     "${INPREF}/${uniref}_shuf" "${OUTDIR}/${uniref}_shuf" $SIM $timelim | tail -n1); fi
+        if $linclustnext; then linclustnext=$(run_linclust_with_infastafile_seqid "${INPREF}/${uniref}_shuf" "${OUTDIR}/${uniref}_shuf" $SIM $timelim | tail -n1); fi
+        if $quaclustnext; then quaclustnext=$(run_quaclust_with_infastafile_seqid "${INPREF}/${uniref}_shuf" "${OUTDIR}/${uniref}_shuf" $SIM $timelim | tail -n1); fi
+        if $cdhitnext;    then cdhitnext=$(   run_cdhit_with_infastafile_seqid    "${INPREF}/${uniref}_shuf" "${OUTDIR}/${uniref}_shuf" $SIM $timelim | tail -n1); fi
+        if $kclustnext;   then kclustnext=$(  run_kclust_with_infastafile_seqid   "${INPREF}/${uniref}_shuf" "${OUTDIR}/${uniref}_shuf" $SIM $timelim | tail -n1); fi
     done
 done
 
