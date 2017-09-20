@@ -1,5 +1,5 @@
 CXX=g++
-CXXFLAGS=-O3 -I lib -DGITCOMMIT=\"$(shell git rev-parse HEAD)\" -DCXXVERSION="\"$(shell $(CXX) --version | head -n1)\""
+CXXFLAGS=-O3 -static-libstdc++ -I lib -DGITCOMMIT=\"$(shell git rev-parse HEAD)\" -DCXXVERSION="\"$(shell $(CXX) --version | head -n1)\""
 
 all: bin/len-revname-sort.out bin/fastaseqs-to-distmatrix.out bin/linsetcover.out bin/setcover-ords-to-hdrs.out bin/setcover-ords-to-fasta.out
 
