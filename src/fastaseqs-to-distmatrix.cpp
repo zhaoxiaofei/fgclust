@@ -123,6 +123,12 @@ int calc_vecnorm(int a, int b) {
 }
 
 void PARAMS_init(const int argc, const char *const *const argv) {
+    for (int i = 0; i < 256; i++) {
+        for (int j = 0; j < 3; j++) {
+            ALPHA_TYPE_TO_CHAR_TO_REDUCED[j][i] = (char)i;
+        }
+    }
+    
     for (int i = 1; i < argc; i += 2) {
         if (!strcmp("--sim-perc", argv[i])) {
             SIM_PERC = atoi(argv[i+1]);
@@ -143,12 +149,6 @@ void PARAMS_init(const int argc, const char *const *const argv) {
         }
     }
     
-    for (int i = 0; i < 256; i++) {
-        for (int j = 0; j < 3; j++) {
-            ALPHA_TYPE_TO_CHAR_TO_REDUCED[j][i] = (char)i;
-        }
-    }
-    
     COV_SRC_MAX = (150 - SIM_PERC) / 20;
     COV_SNK_MAX = (150 - SIM_PERC) / 5;
 
@@ -161,7 +161,19 @@ void PARAMS_init(const int argc, const char *const *const argv) {
 
     if (IS_INPUT_NUC) {
         SIGN_LENGTH = (SIM_PERC + 900) / (200 - SIM_PERC);
-    } else {
+    }
+    
+    for (int i = 1; i < argc; i += 2) {
+        if (!strcmp("--cov-src-max", argv[i])) {
+            COV_SRC_MAX = atoi(argv[i+1]);
+        } else if (!strcmp("--cov-snk-max", argv[i])) {
+            COV_SNK_MAX = atoi(argv[i+1]);
+        } else {
+            show_usage(argc, argv);
+        }
+    }
+
+    if (!IS_INPUT_NUC) {
         for (int t = 0; t < 3; t++) {
             if (10 == ALPHA_TYPE_TO_SIZE[t]) {
                 alphareduce("DENQ", t);
