@@ -378,7 +378,7 @@ Thus, the sensitivity of Linclust significantly decreases as the size of the inp
 Thus, only FgClust can scale to future releases of UniRef100 in terms of both sensitivity and runtime.
 The sensitivity of FgClust on UniRef100 
 %at low sequence-similarity cut-off for clustering 
-is mostly improved by the use of Murphy10 to reduce protein alphabet and the use of clique-aware all-versus-all search (data not shown), especially at low sequence-similarity cutoff for clustering.
+is mostly improved by the use of Murphy10 to reduce amino-acid alphabet and the use of clique-aware all-versus-all search (data not shown), especially at low sequence-similarity cutoff for clustering.
 The runtime of FgClust on UniRef100 is mostly improved by the use of min-hash values instead of short words as filter and the use of edit-similarity instead of alignment statistics as cutoff (data not shown).
 
 Linclust selects only one centroid sequence per k-mer and lets the centroid recruit sequences sharing the same k-mer.
@@ -386,7 +386,7 @@ Sequences that fails to be recruited by the centroid remain as singletons.
 Thus, Linclust is not sufficiently sensitive.
 FgClust is significantly faster than MMSeqs2 especially at any clustering cutoff of high sequence similarity.
 FgClust is significantly more scalable than CD-HIT and kClust. 
-In fact, CD-HIT is characterized by slow and super-linear runtime especially at 50\% similarity cutoff.
+In fact, CD-HIT is characterized by slow and super-linear runtime especially at 50\% sequence-identity cutoff.
 CD-HIT compares each query input sequence with each target input sequence that shares at least one k-mer with the query input sequence.
 kClust compares each query input sequence with each target input sequence that has at least one k-mer similar to any k-mer in the query input sequence.
 The probability that two sequences possess similar k-mers by random chance is relatively constant and thus does not depend on the number of input sequences.
@@ -754,7 +754,7 @@ Thus, FgClust is significantly more specific than other algorithms in terms of e
 Moreover, FgClust at 50\% similarity cutoff generates the fewest number of clusters with the highest average cluster size.
 Thus, FgClust is more sensitive than other algorithms in terms of experimentally determined protein structures.
 Thus, FgClust can improve the protein-structure prediction based on homology-modeling, the structural classification of proteins, etc.
-The sensitivity of FgClust on PDB structures is mostly improved by the use of Murphy10 to reduce protein alphabet (data not shown).
+The sensitivity of FgClust on PDB structures is mostly improved by the use of Murphy10 to reduce amino-acid alphabet (data not shown).
 The specificity of FgClust on PDB structures is mostly improved by the use of 25 residues to normalize edit-similarity (data not shown).
 
 \subsection{Evaluation on protein families in Pfam}
@@ -892,7 +892,7 @@ However, the number of corrupted clusters can reveal the characteristics of diff
 Thus, FgClust is significantly more sensitive at the same specificity and significantly more specific at the same sensitivity.
 Thus, FgClust achieves the best sensitivity-specificity trade-off.
 FgClust can improve protein-function prediction based on homology modeling, functional classification of proteins, the construction of Hidden Markov Models (HMMs) for protein families, etc.
-The sensitivity of FgClust on Pfam-A-seed is mostly improved by the use of Murphy10 to reduce protein alphabet (data not shown).
+The sensitivity of FgClust on Pfam-A-seed is mostly improved by the use of Murphy10 to reduce amino-acid alphabet (data not shown).
 The specificity of FgClust on Pfam-A-seed is mostly improved by the use of 25 residues to normalized edit-similarity (data not shown). 
 
 At low sequence-similarity cutoff for clustering,
