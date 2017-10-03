@@ -12,6 +12,14 @@ KSEQ_INIT(int, read)
 int main(int argc, char **argv) {
     std::cerr << "GITCOMMIT = " << GITCOMMIT << std::endl;
     std::cerr << "CXXVERSION = " << CXXVERSION << std::endl;
+    int is_out_fa_hdr_in_csv = false;
+    for (int i = 1; i + 1 < argc; i++) {
+        if (!strcmp("--is-output-fasta-header-in-csv", argv[i])) {
+            is_out_fa_hdr_in_csv = atoi(argv[i+1]);
+        } else {
+            abort();
+        }
+    }
 
     std::vector<std::pair<std::string, std::string>> fastarecords;
     
@@ -43,8 +51,10 @@ int main(int argc, char **argv) {
     for (int i = 0; i < fastarecords.size(); i++) {
         if (0 < inner_to_outers[i].size()) {
             std::cout << ">" << fastarecords[i].first;
-            for (auto outer : inner_to_outers[i] ) {
-                std::cout << "," << fastarecords[outer].first;
+            if (is_out_fa_hdr_in_csv) {
+                for (auto outer : inner_to_outers[i] ) {
+                    std::cout << "," << fastarecords[outer].first;
+                }
             }
             std::cout << std::endl << fastarecords[i].second << std::endl;
         }
