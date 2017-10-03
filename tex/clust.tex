@@ -32,7 +32,7 @@ We developed FgClust, a novel multi-threaded algorithm for clustering biological
 FgClust uses clique-aware all-versus-all search instead of greedy incremental update, min-hash values instead of short words, and the length of non-centroid sequence minus infix Levenshtein distance instead of sequence identity.
 We evaluated FgClust, Linclust, MMSeqs2, CD-HIT, and kClust by using
 five versions of UniRef100 released from July 2004 to Jan 2017, 
-the PDB structures accessed on Jan 1\textsuperscript{st} 2017, and Pfam-A-seed 31.0.
+the PDB structures deposited exclusively before January 2\textsuperscript{nd} 2017, and Pfam-A-seed 31.0.
 We evaluated FgClust, VSEARCH, and CD-HIT-EST by using Rfam 12.3.
 Our evaluations show that FgClust always achieves the fastest runtime except Linclust and the best sensitivity-specificity trade-off without any exception.
 Linclust is approximately two times faster but generates up to more than 130\% more clusters than FgClust.
@@ -324,7 +324,7 @@ MMSeqs2 commit 91644c75 \citep{steinegger2017mmseqs2},
 CD-HIT version 4.6 \citep{fu2012cd},
 and kClust version 1.0 \citep{hauser2013kclust} on
 five versions of UniRef100 released from July 2004 to January 2017 \citep{suzek2014uniref},
-the experimentally determined structures in PDB deposited exclusively before January 2nd 2017 \citep{berman2006protein},
+the experimentally determined structures in PDB deposited exclusively before January 2\textsuperscript{nd} 2017 \citep{berman2006protein},
 and Pfam-A-seed release 31.0 \cite{finn2016pfam}.
 Moreover, we evaluate FgClust commit c6b57aa0, VSEARCH v2.3.4\_linux\_x86\_64 \citep{rognes2016vsearch}, and CD-HIT-EST version 4.6 \citep{fu2012cd} on Rfam-seed release 12.3 \citep{nawrocki2014rfam}.
 In our evaluation, we excluded the clustering algorithm UCLUST, excluded the database of gene ontology (GO), and partially excluded the metrics of canonical  specificity (i.e. either the percentage of clusters that are not corrupted or average consistency of each cluster).
@@ -697,7 +697,7 @@ Because of the quadratic runtime of CD-HIT at 50\% sequence-identity, CD-HIT wil
 \begin{table}[t]%[!htbp]
 	\centering
 	\caption{
-		The sequences of \SI{49686} monomeric proteins in PDB accessed in January 1st 2017 are given as input to each program \citep{berman2006protein}. 
+		The sequences of \SI{49686} monomeric proteins in PDB deposited exclusively before January 2\textsuperscript{nd} 2017 are given as input to each program \citep{berman2006protein}. 
 		Each program is run with each similarity cutoff to generate each set of clusters.
 		The template-modeling (TM) score between each representative cluster centroid and each sequence covered by the centroid is tabulated. A centroid trivially covers itself with a TM score of 1.
 		%For each set of clusters, the number of sequences characterized by intra-cluster template-modeling (TM) scores inclusively below each threshold is tabulated.
@@ -740,7 +740,7 @@ Because of the quadratic runtime of CD-HIT at 50\% sequence-identity, CD-HIT wil
 \end{table}
 
 We evaluated the sensitivity and specificity of FgClust by using alignments of experimentally determined protein structures to measure specificity.
-We downloaded all monomeric proteins with experimentally determined structures deposited into PDB exclusively before January 2nd 2017 \citep{berman2006protein}.
+We downloaded all monomeric proteins with experimentally determined structures deposited into PDB exclusively before January 2\textsuperscript{nd} 2017 \citep{berman2006protein}.
 The sequence of each protein is extracted.
 If an extracted sequence has at least 11 non-ambiguous amino acids and at least 90\% amino acids of the extracted sequence are non-ambiguous, then the extracted sequence is kept.
 From these kept sequences, every sequence-clustering algorithm generates a set of clusters.
