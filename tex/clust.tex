@@ -16,6 +16,8 @@
 %\bibliographystyle{IEEEtranN}
 \usepackage{pgfplots}
 
+\usepackage[nolists,nomarkers]{endfloat}
+
 \setcounter{secnumdepth}{6}
 
 \title{FgClust, a fast and scalable algorithm for generating high-quality clusters of biological sequences}
@@ -28,7 +30,9 @@
 \begin{abstract}
 We developed FgClust, a novel multi-threaded algorithm for clustering biological sequences.
 FgClust uses clique-aware all-versus-all search instead of greedy incremental update, min-hash values instead of short words, and the length of non-centroid sequence minus infix Levenshtein distance instead of sequence identity.
-We evaluated FgClust, Linclust, MMSeqs2, CD-HIT, and kClust by using the PDB structures accessed on Jan 1\textsuperscript{st} 2017, five versions of UniRef100 released from July 2004 to Jan 2017, and Pfam-A-seed 31.0.
+We evaluated FgClust, Linclust, MMSeqs2, CD-HIT, and kClust by using
+five versions of UniRef100 released from July 2004 to Jan 2017, 
+the PDB structures deposited exclusively before January 2\textsuperscript{nd} 2017, and Pfam-A-seed 31.0.
 We evaluated FgClust, VSEARCH, and CD-HIT-EST by using Rfam 12.3.
 Our evaluations show that FgClust always achieves the fastest runtime except Linclust and the best sensitivity-specificity trade-off without any exception.
 Linclust is approximately two times faster but generates up to more than 130\% more clusters than FgClust.
@@ -47,65 +51,81 @@ Sequence clustering is a common step in Bioinformatics pipelines to reduce seque
 %A cluster containing multiple sequences can be represented by one representative sequence. 
 %Thus, clustering can lower the redundancy in a sequence database.
 
-A more sensitive clustering algorithm is more likely to partition sequences with similar biological properties into the same cluster.
-A more specific clustering algorithm is more likely to partition sequences with different biological properties into different clusters.
+%A more sensitive/specific clustering algorithms is more likely to partition sequences with similar/different biological properties into same/different clusters, respectively.
+%A more specific clustering algorithm is more likely to partition sequences with different biological properties into different clusters.
+The reliability of a clustering algorithm is measured by its sensitivity and specificity.
 A more sensitive clustering algorithm generates fewer clusters of higher average cluster size.
 A more specific clustering algorithm generates clusters such that sequences in the same cluster typically share more biological properties.
-A clustering algorithm, characterized by either better sensitivity at the same specificity or better specificity at the same sensitivity, achieves better sensitivity-specificity trade-off and generates higher-quality clusters.
+A clustering algorithm, characterized by either better sensitivity at the same specificity or better specificity at the same sensitivity, achieves better sensitivity-specificity trade-off.
+This better trade-off results in higher-quality clusters, and vice versa.
+%Higher-quality clusters are characterized by better sensitivity-specificity trade-off.
+%A clustering algorithm, characterized by either better sensitivity at the same specificity or better specificity at the same sensitivity, achieves better sensitivity-specificity trade-off and generates higher-quality clusters.
 Higher-quality clusters reduce both manual-curation efforts and errors in the downstream analysis of clusters.
 
+Cluster quality depends on specificity that needs to be evaluated with some biological properties.
+Two of the most important biological properties are three-dimensional structure and biological function.
+The PDB database contains experimentally determined three-dimensional protein structures \cite{berman2006protein}.
+The Pfam-A-seed and Rfam-seed datasets are manually checked protein and RNA families, respectively, such that sequences in the same family perform similar biological functions \citep{finn2016pfam,nawrocki2014rfam}.
+Thus, we used PDB protein structures, Pfam-A-seed families, and Rfam-seed families for evaluating specificity and cluster quality.
+
+Numerous computational techniques have been explored to improve runtime and/or cluster quality.
 If two sequences do not share a certain percentage of short words (i.e. k-mers) in common, then the sequence identity between these two sequences is likely to fall below a certain specified threshold.
-CD-HIT assumes that these two sequences are in different clusters and skips the alignment between these two sequences.
+CD-HIT assumes that these two sequences are in different clusters and skips the alignment between these two sequences \citep{li2002tolerating}.
 This skipping significantly improves runtime without significantly sacrificing sensitivity.
 Given multiple targets ordered by decreasing percentage of short words shared with a query, if the sequence identity between the query and each of the first few targets is less than a threshold, then the sequence identity between the query and each of the remaining targets is also likely to be less than a threshold.
-UCLUST, which is part of USEARCH, assumes that the remaining targets cannot be clustered with the query and skips the remaining targets.
+UCLUST, which is part of USEARCH, assumes that the remaining targets cannot be clustered with the query and skips the remaining targets \citep{edgar2010search}.
+This skipping significantly improves runtime without significantly sacrificing sensitivity.
 Two different short words that are similar according to a substitution matrix can still be considered as matching to each other.
 The sequence profile of a cluster is more sensitive than the centroid of the cluster for integrating sequences into the cluster.
-kClust uses similarity-based short-word match and sequence profile to improve sensitivity without significant sacrificing specificity and runtime.
-kClust, MMSeqs, and MMSeqs2 all use similar ideas.
+kClust uses similarity-based short-word match and sequence profile to improve sensitivity without significant sacrificing specificity and runtime \citep{hauser2013kclust}.
+kClust, MMSeqs, and MMSeqs2 all use similar ideas \citep{hauser2013kclust,hauser2016mmseqs,steinegger2017mmseqs2}.
 
 %Compared with CD-HIT, USEARCH, MMSeqs2, and kClust, FgClust improved both cluster quality and runtime.
 %Thus, FgClust is useful.
 
 The functionally important substring of a sequence is conserved through evolution.
 Thus, the same conserved k-mers are usually shared by sequences in the same family.
-Linclust attempts to find sequence family from such conserved k-mers.
+Linclust attempts to find sequence family from such conserved k-mers \citep{steinegger2017linclust}.
 More specifically, 
 	Linclust indexes k-mers in input sequences, 
 	selects only one centroid sequence per k-mer,
-	and then aligns each input sequence to only a constant number of centroid sequences.
+	and then aligns each input sequence to only a constant number of centroid sequences \citep{steinegger2017linclust}.
 Thus, the worse-case runtime of Linclust scales linearly with the number of input sequences.
 However, k-mer match does not always imply biological relevance.
 For example, k-mer match can occur by chance.
 Thus, 
-	even if the centroid of a k-mer is not biological relevant to the non-centroid sequences of the k-mer, 
+	even if the centroid sequence of a k-mer is not biological relevant to the non-centroid sequences of the k-mer, 
 	some of the non-centroid sequences can still be biologically relevant to each other.
-Suppose that the k-mer length is fixed.
+Suppose that k-mer length is fixed.
 Suppose that the number of input sequences increases linearly,
 Then, 
 	the number of k-mer matches per input sequence increases linearly.
 However,
-	the average cluster size increases sub-linearly.
+	the average cluster size increases sub-linearly \citep[Fig. 3]{suzek2014uniref}.
 Thus, the number of biologically relevant k-mer matches per input sequence increases sub-linearly.
-Thus, the sensitivity of Linclust decreases as the number of input sequences increases.
+Thus, the sensitivity of Linclust decreases as the number of input sequences increases (\cref{fig:uniref}).
 
 %Clustering at a sequence-identity cutoff between 50\% and 90\% is a common and important task.
 %Clusters of high quality reduces manual-curation efforts and error in the downstream analysis of clusters.
 %Fast clustering speed allows for frequent updates of clusters on big datasets.
 %Thus, generation of high-quality clusters at reasonable speed is important.
 
-CD-HIT and UCLUST   
-         generate  low-quality    clusters at high   speed and in quadratic runtime,
-kClust   generates medium-quality clusters at low    speed and in quadratic runtime.
-MMSeqs   generates medium-quality clusters at high   speed and in quadratic runtime.
-MMSeqs2  generates medium-quality clusters at low    speed and in linear    runtime.
-Linclust generates low-quality    clusters at high   speed and in linear    runtime.
-So far, 
-	no algorithm can
-         generate  high-quality   clusters at high   speed and in linear time.
+%CD-HIT and UCLUST   
+%         generate  low-quality    clusters at high   speed and in quadratic runtime,
+%kClust   generates medium-quality clusters at low    speed and in quadratic runtime.
+%MMSeqs   generates medium-quality clusters at high   speed and in quadratic runtime.
+%MMSeqs2  generates medium-quality clusters at low    speed and in linear    runtime.
+%Linclust generates low-quality    clusters at high   speed and in linear    runtime.
+%So far, 
+%	no algorithm can
+%         generate  high-quality   clusters at high   speed and in linear time.
 
-To address some of the deficiencies, we developed a novel sequence-clustering algorithm named FgClust.
-FgClust is enhanced by novel heuristics and algorithmic techniques that result in linear runtime without sacrificing sensitivity, specificity, or cluster quality. Our main algorithmic novelties are the use of (1) clique-aware all-versus-all search instead of greedy incremental update, (2) min-hash values instead of short words, and (3) Levenshtein distance instead of a sequence alignment score (e.g., from a pairwise Smith-Waterman alignment). Moreover, we improved existing techniques, such as greedy set cover \cite{steinegger2017mmseqs2} and pruning of sorted hit candidates \cite{edgar2010search}, and combined these improved techniques with our algorithmic novelties.
+%generate  high-quality   clusters at high   speed and in linear time
+So far, no algorithm can generate high-quality clusters in linear time at reasonable speed.
+To address some of the deficiencies,  we developed a novel sequence-clustering algorithm named FgClust.
+FgClust is enhanced by novel heuristics and algorithmic techniques that result in linear runtime with improved cluster quality.
+%without sacrificing sensitivity, specificity, or cluster quality. 
+Our main algorithmic novelties are the use of (1) clique-aware all-versus-all search instead of greedy incremental update, (2) min-hash values instead of short words, and (3) Levenshtein distance instead of a sequence alignment score (e.g., from a pairwise Smith-Waterman alignment). Moreover, we improved existing techniques, such as greedy set cover \cite{steinegger2017mmseqs2} and pruning of sorted hit candidates \cite{edgar2010search}, and combined these improved techniques with our algorithmic novelties.
 
 %We developed FgClust, a novel sequence-clustering algorithm.
 %FgClust is publicly available at \url{https://bitbucket.org/fusiongenomicscorp/pubclu}.
@@ -294,126 +314,58 @@ FgClust uses the library implemented by \citet{vsovsic2017edlib} to compute edit
 Similar to the local-aligner Lambda \citep{hauswedell2014lambda}, FgClust uses the Murphy10 amino-acid alphabet reduction suggested by \citet{murphy2000simplified} to improve sensitivity-runtime trade-off.
 Similar to MMSeqs2 \citep{steinegger2017mmseqs2}, FgClust uses OpenMP to perform sequence search on multiple queries in parallel \citep{dagum1998openmp}.
 
-\section{Evaluation on biological databases}
+\section{Results and Discussion}
 
-We evaluated every relevant state-of-the-arts clustering algorithm on every relevant gold-standard biological database.
-Only the memory-limited 32-bit version of UCLUST is free and UCLUST is not open source \citep{edgar2010search}.
-Thus, we omitted UCLUST in our evaluation.
-Only very few sequences from the UniRef100-2017-01 dataset are annotated with experimental gene-ontology (GO) evidence.   
-Such annotated sequences generate approximately only 100 non-singleton clusters at 50\% similarity cutoff for clustering.
+We evaluated every applicable state-of-the-arts clustering algorithm on every relevant gold-standard biological database using meaningful metrics and reproducible and bias-free procedures.
+More specifically,
+we evaluated FgClust commit c6b57aa0, 
+Linclust commit 91644c75 \citep{steinegger2017linclust}, 
+MMSeqs2 commit 91644c75 \citep{steinegger2017mmseqs2}, 
+CD-HIT version 4.6 \citep{fu2012cd},
+and kClust version 1.0 \citep{hauser2013kclust} on
+five versions of UniRef100 released from July 2004 to January 2017 \citep{suzek2014uniref},
+the experimentally determined structures in PDB deposited exclusively before January 2\textsuperscript{nd} 2017 \citep{berman2006protein},
+and Pfam-A-seed release 31.0 \cite{finn2016pfam}.
+Moreover, we evaluate FgClust commit c6b57aa0, VSEARCH v2.3.4\_linux\_x86\_64 \citep{rognes2016vsearch}, and CD-HIT-EST version 4.6 \citep{fu2012cd} on Rfam-seed release 12.3 \citep{nawrocki2014rfam}.
+In our evaluation, we excluded the clustering algorithm UCLUST, excluded the database of gene ontology (GO), and partially excluded the metrics of canonical  specificity (i.e. either the percentage of clusters that are not corrupted or average consistency of each cluster).
+In the next four paragraphs, we justified our exclusions and explained how we made our evaluation results both reproducible and bias-free.
+
+UCLUST is applicable for both nucleotide and protein databases \citep{edgar2010search}.
+However, only the memory-limited 32-bit version of UCLUST is free and UCLUST is not open source \citep{edgar2010search}.
+Thus, we omitted UCLUST in our evaluation for both nucleotide and protein databases.
+
+Gene-ontology (GO) terms with experimental evidence can be used for evaluating protein-function prediction \citep{radivojac2013large}.
+However, very few sequences from the UniRef100-2017-01 dataset are annotated with experimental GO evidence \citep{suzek2014uniref}.
+In fact, such annotated sequences generate approximately only 100 non-singleton clusters at 50\% sequence-similarity cutoff for clustering (data not shown).
 Thus, evaluation with experimental GO evidence is too noisy to be reliable.
-Thus, we omitted concordance with experimental GO evidence in our evaluation criteria.
+Thus, we omitted concordance with experimental GO evidence in our evaluation metrics.
 
-Canonical clustering sensitivity is measured with the number of clusters.
-Canonical clustering specificity is measured with either the number of corrupted clusters or the average consistency of each cluster.
+Canonical clustering sensitivity is the average number of sequences in each cluster.
+Canonical clustering specificity is either the percentage of clusters that are not corrupted \citep{hauser2013kclust} or the average consistency of each cluster \citep{hauser2016mmseqs,steinegger2017mmseqs2,steinegger2017linclust}.
 By definition, all singletons (i.e. clusters containing one sequence per cluster) are not corrupted and are characterized by the highest consistency.
 However, if a large number of input sequences are clustered into one large cluster and a large number of singletons, then the resulting clusters achieve both high canonical sensitivity and high canonical specificity.
 For example, \SI{1000000} sequences can be partitioned into \SI{1000} clusters such that one cluster contains \SI{999001} sequences and \SI{999} clusters contain one sequence per cluster.
 Then, 
 	the canonical sensitivity is high because only \SI{1000} clusters are generated out of \SI{1000000} sequences, 
 	and the canonical specificity is high because only the cluster containing \SI{999001} sequences is corrupted and/or not characterized by the highest consistency.
-Thus, we measured clustering specificity with the average biological relevance between each input sequence and the representative centroid that covers this input sequence. 
+Thus, canonical specificity is not normalized against the input and is thus not meaningful for measuring specificity.
+Thus, we measured specificity with the average biological relevance between each input sequence and the representative centroid that covers this input sequence.
+Biological relevance can be structural similarity and/or functional similarity.  
 Still, we included canonical specificity in our results when applicable.
 
 Before any evaluation, we shuffled, by using a random-number generator with the same seed, the sequences in each biological database.
-Thus, our evaluation results were both deterministically and yet pseudo-randomly generated to be both reproducible and yet unaffected by the order of sequences in a database.
-All evaluations are done on a ``CentOS release 6.6'' server that runs on ``Intel(R) Xeon(R) CPU E5-2660 0 @ 2.20GHz'' with 16 cores and 32 threads.
+Thus, our evaluation results were both deterministically and yet pseudo-randomly generated to be both reproducible and yet unaffected by the order of sequences in database.
+Moreover, all evaluations are done on a ``CentOS release 6.6'' server that runs on ``Intel(R) Xeon(R) CPU E5-2660 0 @ 2.20GHz'' with 16 cores and 32 threads.
+Thus, our evaluation results are both reproducible and bias-free.
 
-\subsection{Evaluation on protein databases}
+\subsection{Evaluation on five releases of protein sequences in UniRef100}
 
-We compared FgClust commit c6b57aa0 with CD-HIT version 4.6 \citep{fu2012cd}, Linclust commit 91644c75 \citep{steinegger2017linclust}, MMSeqs2 commit 91644c75 \citep{steinegger2017mmseqs2}, and kClust version 1.0 \citep{hauser2013kclust}.
-%kClust always has the worst sensitivity-specificity trade-off and is too time-consuming to be practical (data not shown). 
-%Thus, the results of evaluation on kClust are not shown.
-
-\begin{table}[t]%[!htbp]
-	\centering
-	\caption{
-		The sequences of \SI{49686} monomeric proteins in PDB accessed in January 1st 2017 are given as input to each program \citep{berman2006protein}. 
-		Each program is run with each similarity cutoff to generate each set of clusters.
-		The template-modeling (TM) score between each representative cluster centroid and each sequence covered by the centroid is tabulated. A centroid trivially covers itself with a TM score of 1.
-		%For each set of clusters, the number of sequences characterized by intra-cluster template-modeling (TM) scores inclusively below each threshold is tabulated.
-		%The intra-cluster TM score of a cluster is the lowest TM score between the representative sequence in the cluster as template and each represented sequence in the cluster.
-		%A cluster with an intra-cluster TM-score of less than 0.5 contains at least one outlier in terms of three-dimensional structure and is thus of bad quality 
-		If the TM score is less than 0.5, then the centroid and covered sequence are significantly different in protein structure
-		\cite{xu2010significant}.
-		%FgClust generates the least number of bad-quality clusters.
-		The runtime of each program is too short to measure wall-clock time and scalability.
-	}
-	\begin{tabular}{l c c c c c c c c c}
-		\toprule
-		Program & similarity  & number of & 
-		\multicolumn{7}{c}{TM scores of centroids modeling covered sequences} \\
-		        & cutoff      & clusters  &
-		\(\le\) 0.3 & \(\le\) 0.4 & \(\le\) 0.5 
-		& \(\le\) 0.6 & \(\le\) 0.7 & \(\le\) 0.8 & \(\le\) 0.9 \\
-		\midrule
-		
-		FgClust   & 50\% & 14784 &  88 & 248 & {\bfseries 547} & 1149 & 2150 & 3855 & 8227 \\
-		Linclust  & 50\% & 17381 & 166 & 390 & 708 & 1160 & 1854 & 3010 & 5831 \\
-		MMSeqs2   & 50\% & 15160 & 226 & 515 & 938 & 1790 & 2862 & 4445 & 8651 \\
-		CD-HIT    & 50\% & 15658 & 266 & 574 & 981 & 1697 & 2628 & 3961 & 7305 \\
-		kClust    & 50\% & 16108 & 181 & 423 & 809 & 1404 & 2179 & 3505 & 6884 \\ 
-		\noalign{\vskip 2mm} 
-		FgClust   & 70\% & 17538 &  47 & 141 & {\bfseries 340} & 676  & 1285 & 2311 & 4387 \\
-		Linclust  & 70\% & 18207 & 174 & 402 & 674 & 1083 & 1702 & 2709 & 4912 \\
-		MMSeqs2   & 70\% & 17158 & 236 & 506 & 826 & 1355 & 2107 & 3209 & 5600 \\
-		CD-HIT    & 70\% & 17610 & 242 & 464 & 751 & 1265 & 1956 & 2998 & 5308 \\
-		kClust    & 70\% & 17682 & 187 & 405 & 695 & 1188 & 1811 & 2837 & 5244 \\
-		\noalign{\vskip 2mm} 
-		FgClust   & 90\% & 19993 &  17 & 66  & {\bfseries 169} & 346  & 736  & 1359 & 2975 \\
-		Linclust  & 90\% & 19552 & 125 & 284 & 507 & 872  & 1378 & 2149 & 3834 \\
-		MMSeqs2   & 90\% & 18783 & 219 & 426 & 734 & 1143 & 1810 & 2717 & 4669 \\
-		CD-HIT    & 90\% & 19124 & 189 & 364 & 586 & 940  & 1485 & 2300 & 4041 \\
-		kClust    & 90\% & 19707 & 141 & 315 & 513 & 848  & 1306 & 2128 & 3800 \\
-		
-%		
-%		FgClust & 50 & 4 & 60 & 143 & 283 & 565 & 1020 & 1639 & 2606 & 14784 \\
-%		FgClust & 70 & 3 & 29 & 83 & 181 & 380 & 714 & 1208 & 1991 & 17538 \\
-%		FgClust & 90 & 2 & 9 & 31 & 90 & 197 & 401 & 739 & 1420 & 19993 \\
-%
-%		Linclust & 50 & 28 & 108 & 232 & 380 & 617 & 975 & 1490 & 2298 & 17381 \\
-%		Linclust & 70 & 28 & 110 & 225 & 360 & 577 & 907 & 1382 & 2123 & 18207 \\
-%		Linclust & 90 & 20 & 85 & 177 & 302 & 479 & 763 & 1175 & 1889 & 19552 \\
-%	
-%		MMSeqs2 & 50 & 32 & 132 & 263 & 424 & 701 & 1113 & 1654 & 2499 & 15160 \\
-%		MMSeqs2 & 70 & 32 & 127 & 251 & 391 & 629 & 995 & 1475 & 2236 & 17158 \\
-%		MMSeqs2 & 90 & 35 & 111 & 217 & 358 & 549 & 826 & 1252 & 1962 & 18783 \\
-%		
-%		CD-HIT & 50 & 44 & 139 & 281 & 438 & 695 & 1114 & 1634 & 2440 & 15658 \\
-%		CD-HIT & 70 & 41 & 129 & 247 & 380 & 592 & 923 & 1398 & 2121 & 17610 \\
-%		CD-HIT & 90 & 33 & 115 & 226 & 344 & 517 & 782 & 1171 & 1852 & 19124 \\
-%		
-%		kClust & 50 & 29 & 114 & 250 & 397 & 628 & 1017 & 1530 & 2351 & 16108 \\
-%		kClust & 70 & 29 & 113 & 228 & 366 & 560 & 881 & 1335 & 2063 & 17682 \\
-%		kClust & 90 & 28 & 97 & 194 & 307 & 471 & 725 & 1083 & 1732 & 19707 \\
-		\bottomrule
-	\end{tabular}
-	\label{table:pdb}
-\end{table}
-
-We assessed the sensitivity and specificity of FgClust by using experimentally verified data.
-We downloaded all monomeric proteins with experimentally determined structures deposited into PDB exclusively before January 2nd 2017 \citep{berman2006protein}.
-The sequence of each protein is extracted.
-If an extracted sequence has at least 11 non-ambiguous amino acids and at least 90\% amino acids of the extracted sequence are non-ambiguous, then the extracted sequence is kept.
-From these kept sequences, every sequence-clustering algorithm generates a set of clusters.
-Within each cluster, the template-modeling (TM) score between the representative sequence and each represented sequence is computed by TM-Align developed by \citet{zhang2005tm}.
-%The lowest such TM score within each cluster is extracted and referred to as intra-cluster TM score.
-%The number of such intra-cluster TM scores below each threshold is shown in \cref{table:pdb}.
-The distribution of such TM scores is shown in \cref{table:pdb}.
-The lower such TM scores are, the less specific the clustering algorithm is.
-\Cref{table:pdb} shows that FgClust generates the fewest number of clusters with low TM scores.
-Usually, two proteins are in the same fold if and only if these two proteins share a TM-score of at least 0.5 \citep{xu2010significant}, where a protein fold is defined by the arrangement of the secondary structure elements relative to each other in space.
-\Cref{table:pdb} shows that other algorithms produce about 50\% more clusters with intra-cluster TM scores of less than 0.5 than FgClust.
-Thus, FgClust is significantly more specific than other algorithms in terms of experimentally observed protein structures.
-Moreover, FgClust at 50\% similarity cutoff generates the fewest number of clusters with the highest average cluster size.
-Thus, FgClust is more sensitive than other algorithms in terms of experimentally observed protein structures.
-
-We assessed the sensitivity and runtime of FgClust.
-We downloaded the five versions of UniRef100 \citep{suzek2007uniref} shown in \cref{fig:uniref}.
-Unlike NR, all previous versions of UniRef100 are available for download.
-Unlike UniProtKB, the number of protein sequences in UniRef100 as a function of version release date is monotonically increasing.
-Thus, we used UniRef100 instead of NR and UniProtKB in this assessment.
-From each version of UniRef100, we extracted protein sequences.
+We evaluated the sensitivity, scalability, and runtime of FgClust with several releases of a gold-standard protein sequence database.
+We downloaded the five releases of UniRef100 \citep{suzek2007uniref} shown in \cref{fig:uniref}.
+Unlike NR, all previous releases of UniRef100 are available for download.
+Unlike UniProtKB, the number of protein sequences in UniRef100 as a function of release date is monotonically increasing.
+Thus, we used UniRef100 instead of NR and UniProtKB in this evaluation.
+From each release of UniRef100, we extracted protein sequences.
 From these extracted sequences, each sequence-clustering algorithm generates a set of clusters.
 The number of clusters produced by each algorithm and the runtime of each algorithm are shown in \cref{fig:uniref}.
 A more sensitive clustering algorithm generates less number of clusters with larger average cluster size.
@@ -423,12 +375,18 @@ Moreover, \cref{fig:uniref} shows that FgClust is always faster than MMSeqs2, CD
 FgClust is slower but significantly more sensitive than Linclust.
 In fact, Linclust generates approximately 60\% and 130\% more clusters than FgClust at 50\% similarity cutoff on UniRef100-2.0 and UniRef100-2017-01, respectively.
 Thus, the sensitivity of Linclust significantly decreases as the size of the input database increases. 
-Linclust selects only one centroid per k-mer and lets the centroid recruit sequences sharing the same k-mer.
+Thus, only FgClust can scale to future releases of UniRef100 in terms of both sensitivity and runtime.
+The sensitivity of FgClust on UniRef100 
+%at low sequence-similarity cut-off for clustering 
+is mostly improved by the use of Murphy10 to reduce amino-acid alphabet and the use of clique-aware all-versus-all search (data not shown), especially at low sequence-similarity cutoff for clustering.
+The runtime of FgClust on UniRef100 is mostly improved by the use of min-hash values instead of short words as filter and the use of edit-similarity instead of alignment statistics as cutoff (data not shown).
+
+Linclust selects only one centroid sequence per k-mer and lets the centroid recruit sequences sharing the same k-mer.
 Sequences that fails to be recruited by the centroid remain as singletons.
 Thus, Linclust is not sufficiently sensitive.
 FgClust is significantly faster than MMSeqs2 especially at any clustering cutoff of high sequence similarity.
 FgClust is significantly more scalable than CD-HIT and kClust. 
-In fact, CD-HIT is characterized by slow and super-linear runtime especially at 50\% similarity cutoff.
+In fact, CD-HIT is characterized by slow and super-linear runtime especially at 50\% sequence-identity cutoff.
 CD-HIT compares each query input sequence with each target input sequence that shares at least one k-mer with the query input sequence.
 kClust compares each query input sequence with each target input sequence that has at least one k-mer similar to any k-mer in the query input sequence.
 The probability that two sequences possess similar k-mers by random chance is relatively constant and thus does not depend on the number of input sequences.
@@ -438,7 +396,11 @@ Longer k-mer significantly reduces the probability that two sequences share the 
 Thus, longer k-mer implies that more input sequences are required to trigger the quadratic runtime of CD-HIT.
 Indeed, \cref{fig:uniref} shows that the runtime of CD-HIT with five million sequences as input is roughly quadratic at 50\% sequence-identity cutoff but still roughly linear at 70\% or more sequence-identity cutoff.
 FgClust and MMSeqs2 use longer k-mers for larger number of input sequences to maintain linear expected runtime with respect to the number of input sequences.
-%Thus, only FgClust is useful in practice at 50\% intra-cluster similarity.
+
+Currently, in each month, UniProt uses CD-HIT to cluster UniRef100 at 90\% sequence-identity cutoff into UniRef90, and then a distributed version of CD-HIT to cluster UniRef90 at 50\% sequence-identity cutoff into UniRef50 \citep{suzek2014uniref}.
+Because of the quadratic runtime of CD-HIT at 50\% sequence-identity, CD-HIT will likely be unable to cope with the monthly release of UniRef50 in the future.
+\Cref{fig:uniref} suggests that FgClust is the best candidate for generating UniRef50 reasonably fast because such generated UniRef50 contains less representative sequences.
+
 
 \begin{figure}%[!htbp]
 	\centering
@@ -449,7 +411,7 @@ FgClust and MMSeqs2 use longer k-mers for larger number of input sequences to ma
 		mark options={solid},
 		ymax=7,%xmax=1.1e8,
 		%ymode=log,
-		xlabel=Number of sequences,
+		xlabel=Number of released sequences ~~~~,
 		ylabel={Average cluster size (i.e. sensitivity)},
 		legend columns=4,
 		transpose legend,
@@ -577,9 +539,9 @@ FgClust and MMSeqs2 use longer k-mers for larger number of input sequences to ma
 		width=0.475\textwidth,height=0.555\textwidth,
 		mark options={solid},
 		%xmode=log,ymode=log,
-		ymax=3600*50/1.5,%xmax=1.1e8,
-		xlabel=Number of sequences,
-		ylabel=Wall-clock runtime in seconds,
+		ymax=50/1.5,%xmax=1.1e8,
+		xlabel=Number of released sequences ~~~~,
+		ylabel=Wall-clock runtime in hours,
 		legend columns=4,
 		transpose legend, 
 		legend entries={FgClust~~,
@@ -600,252 +562,341 @@ FgClust and MMSeqs2 use longer k-mers for larger number of input sequences to ma
 		\addlegendimage{only marks,mark=x}
 		
 		\addplot[color=Red,mark=square] coordinates {
-			( 1306318,      216.03)
-			( 4910948,      923.48)
-			(11659891,      2554.06)
-			(33613081,      7305.12)
-			(94756963,      19434.67)
+			( 1306318,      216.03 / 3600)
+			( 4910948,      923.48 / 3600)
+			(11659891,      2554.06 / 3600)
+			(33613081,      7305.12 / 3600)
+			(94756963,      19434.67 / 3600)
 		};
 		\addplot[color=Red,mark=o] coordinates {
-			( 1306318,      164.24)
-			( 4910948,      712.02)
-			(11659891,      2151.47)
-			(33613081,      6858.06)
-			(94756963,      15651.55)
+			( 1306318,      164.24 / 3600)
+			( 4910948,      712.02 / 3600)
+			(11659891,      2151.47 / 3600)
+			(33613081,      6858.06 / 3600)
+			(94756963,      15651.55 / 3600)
 		};
 		\addplot[color=Red,mark=x] coordinates {
-			( 1306318,      105.10)
-			( 4910948,      446.33)
-			(11659891,      1578.28)
-			(33613081,      4595.46)
-			(94756963,      12873.48)
+			( 1306318,      105.10 / 3600)
+			( 4910948,      446.33 / 3600)
+			(11659891,      1578.28 / 3600)
+			(33613081,      4595.46 / 3600)
+			(94756963,      12873.48 / 3600)
 		};
 	
 		\addplot[dashed,color=Orange,mark=square] coordinates {
-			( 1306318,      63.24)
-			( 4910948,      259.20)
-			(11659891,      600.11)
-			(33613081,      1859.28)
-			(94756963,      6444.66)
+			( 1306318,      63.24 / 3600)
+			( 4910948,      259.20 / 3600)
+			(11659891,      600.11 / 3600)
+			(33613081,      1859.28 / 3600)
+			(94756963,      6444.66 / 3600)
 		}; %linclust 50
 		\addplot[dashed,color=Orange,mark=o] coordinates {
-			( 1306318,      66.58)
-			( 4910948,      278.11)
-			(11659891,      652.31)
-			(33613081,      2013.65)
-			(94756963,      6639.85)
+			( 1306318,      66.58 / 3600)
+			( 4910948,      278.11 / 3600)
+			(11659891,      652.31 / 3600)
+			(33613081,      2013.65 / 3600)
+			(94756963,      6639.85 / 3600)
 		};
 		\addplot[dashed,color=Orange,mark=x] coordinates {
-			( 1306318,      73.96)
-			( 4910948,      334.20)
-			(11659891,      744.64)
-			(33613081,      2270.75)
-			(94756963,      6698.25)
+			( 1306318,      73.96 / 3600)
+			( 4910948,      334.20 / 3600)
+			(11659891,      744.64 / 3600)
+			(33613081,      2270.75 / 3600)
+			(94756963,      6698.25 / 3600)
 		};
 		
 		\addplot[dotted,color=Green,mark=square] coordinates {
-			( 1306318,      603.10)
-			( 4910948,      2898.67)
-			(11659891,      8230.45)
-			(33613081,      26272.73)
-			(94756963,      77837.47)
+			( 1306318,      603.10 / 3600)
+			( 4910948,      2898.67 / 3600)
+			(11659891,      8230.45 / 3600)
+			(33613081,      26272.73 / 3600)
+			(94756963,      77837.47 / 3600)
 		};
 		\addplot[dotted,color=Green,mark=o] coordinates {
-			( 1306318,      737.74)
-			( 4910948,      4098.65)
-			(11659891,      11068.39)
-			(33613081,      35445.09)
-			(94756963,      99781.83)
+			( 1306318,      737.74 / 3600)
+			( 4910948,      4098.65 / 3600)
+			(11659891,      11068.39 / 3600)
+			(33613081,      35445.09 / 3600)
+			(94756963,      99781.83 / 3600)
 		};
 		\addplot[dotted,color=Green,mark=x] coordinates {
-			( 1306318,      905.05)
-			( 4910948,      6154.68)
-			(11659891,      18524.44)
-			(33613081,      77145.61)
+			( 1306318,      905.05 / 3600)
+			( 4910948,      6154.68 / 3600)
+			(11659891,      18524.44 / 3600)
+			(33613081,      77145.61 / 3600)
 			%(94756963,timeout)
 		};
 		
 		\addplot[dash dot,color=Blue,mark=square] coordinates {
-			( 1306318,      5766.21)
-			( 4910948,      75911.85)
+			( 1306318,      5766.21 / 3600)
+			( 4910948,      75911.85 / 3600)
 			%(11659891,timeout)
 			%(33613081,timeout)
 			%(94756963,timeout)
 		};
 		\addplot[dash dot,color=Blue,mark=o] coordinates {
-			( 1306318,      264.31)
-			( 4910948,      929.93)
-			(11659891,      2062.60)
-			(33613081,      7563.33)
-			(94756963,      28834.18)
+			( 1306318,      264.31 / 3600)
+			( 4910948,      929.93 / 3600)
+			(11659891,      2062.60 / 3600)
+			(33613081,      7563.33 / 3600)
+			(94756963,      28834.18 / 3600)
 		};
 		\addplot[dash dot,color=Blue,mark=x] coordinates {
-			( 1306318,      311.15)
-			( 4910948,      955.40)
-			(11659891,      2315.58)
-			(33613081,      9395.35)
-			(94756963,      43880.61)
+			( 1306318,      311.15 / 3600)
+			( 4910948,      955.40 / 3600)
+			(11659891,      2315.58 / 3600)
+			(33613081,      9395.35 / 3600)
+			(94756963,      43880.61 / 3600)
 		};
 	
 		\addplot[dash dot dot,color=Magenta,mark=square] coordinates {
-			( 1303982 , 4378.45 )
-			( 4908596 , 32820.26 )
+			( 1303982 , 4378.45 / 3600 )
+			( 4908596 , 32820.26 / 3600 )
 		};
 		\addplot[dash dot dot,color=Magenta,mark=o] coordinates {
-			( 1303982 , 2447.86 )
-			( 4908596 , 19014.50 )
-			( 11656604 , 75912.68 )
+			( 1303982 , 2447.86 / 3600 )
+			( 4908596 , 19014.50 / 3600 )
+			( 11656604 , 75912.68 / 3600 )
 		};
 		\addplot[dash dot dot,color=Magenta,mark=x] coordinates {
-			( 1303982 , 2597.88 )
-			( 4908596 , 16724.53 )
-			( 11656604 , 75284.21 )
+			( 1303982 , 2597.88 / 3600 )
+			( 4908596 , 16724.53 / 3600 )
+			( 11656604 , 75284.21 / 3600 )
 		};
 		\end{axis}
 		\end{tikzpicture}
 	\end{tabular}
 	\caption{
-		UniRef100-2.0, 
+		%This figure shows the impact of database growth on sensitivity and runtime.
+		The UniRef100 database released
+		\SI{1306318}{},
+		\SI{4910948}{}, 
+		\SI{11659891}{}, 
+		\SI{33613081}{}, and 
+		\SI{94756963}{} sequences
+		in July 2004,
+		July 2017,
+		January 2011,
+		January 2014, and
+		January 2017,
+		respectively \citep{suzek2007uniref}.
+		These five releases are referred to as UniRef100-2.0,
 		UniRef100-12.0,
 		UniRef100-2011-01, 
-		UniRef100-2014-01, and 
-		UniRef100-2017-01 
-		are five versions of the UniRef100 database and capture the growth of UniRef100 from July 2004 to January 2017 \citep{suzek2007uniref}.
-		These five versions have \SI{1306318}{}, \SI{4910948}{}, \SI{11659891}{}, \SI{33613081}{}, and \SI{94756963}{} sequences, respectively \citep{suzek2007uniref}.
-		We ran each program on each UniRef100 version with each similarity cutoff to generate each set of clusters.
-		Cluster quality is not assessed due to the lack of ground truth. 
-		Each program times out after running for \SI{180000}{} seconds.
+		UniRef100-2014-01, and
+		UniRef100-2017-01, respectively \citep{suzek2007uniref}.
+		We ran each program on each release with each similarity cutoff to generate each set of clusters.
+		Cluster quality is not evaluated due to the lack of ground truth. 
+		Each program times out after running for \SI{50}{} hours.
 		\label{fig:uniref}
 	}
 \end{figure}
 
+\subsection{Evaluation on protein structures in PDB}
+
+\begin{table}[t]%[!htbp]
+	\centering
+	\caption{
+		The sequences of \SI{49686} monomeric proteins in PDB deposited exclusively before January 2\textsuperscript{nd} 2017 are given as input to each program \citep{berman2006protein}. 
+		Each program is run with each similarity cutoff to generate each set of clusters.
+		The template-modeling (TM) score between each representative cluster centroid and each sequence covered by the centroid is tabulated. A centroid trivially covers itself with a TM score of 1.
+		%For each set of clusters, the number of sequences characterized by intra-cluster template-modeling (TM) scores inclusively below each threshold is tabulated.
+		%The intra-cluster TM score of a cluster is the lowest TM score between the representative sequence in the cluster as template and each represented sequence in the cluster.
+		%A cluster with an intra-cluster TM-score of less than 0.5 contains at least one outlier in terms of three-dimensional structure and is thus of bad quality 
+		If the TM score is less than 0.5, then the centroid and covered sequence are significantly different in protein structure
+		\cite{xu2010significant}.
+		%FgClust generates the least number of bad-quality clusters.
+		The wall-clock runtime of each program is too short to measure scalability.
+	}
+	\begin{tabular}{l c c c c c c c c c}
+		\toprule
+		Program & similarity  & number of & 
+		\multicolumn{7}{c}{TM scores of centroids modeling covered sequences} \\
+		& cutoff      & clusters  &
+		\(\le\) 0.3 & \(\le\) 0.4 & \(\le\) 0.5 
+		& \(\le\) 0.6 & \(\le\) 0.7 & \(\le\) 0.8 & \(\le\) 0.9 \\
+		\midrule
+		
+		FgClust   & 50\% & 14784 &  88 & 248 & {\bfseries 547} & 1149 & 2150 & 3855 & 8227 \\
+		Linclust  & 50\% & 17381 & 166 & 390 & 708 & 1160 & 1854 & 3010 & 5831 \\
+		MMSeqs2   & 50\% & 15160 & 226 & 515 & 938 & 1790 & 2862 & 4445 & 8651 \\
+		CD-HIT    & 50\% & 15658 & 266 & 574 & 981 & 1697 & 2628 & 3961 & 7305 \\
+		kClust    & 50\% & 16108 & 181 & 423 & 809 & 1404 & 2179 & 3505 & 6884 \\ 
+		\noalign{\vskip 2mm} 
+		FgClust   & 70\% & 17538 &  47 & 141 & {\bfseries 340} & 676  & 1285 & 2311 & 4387 \\
+		Linclust  & 70\% & 18207 & 174 & 402 & 674 & 1083 & 1702 & 2709 & 4912 \\
+		MMSeqs2   & 70\% & 17158 & 236 & 506 & 826 & 1355 & 2107 & 3209 & 5600 \\
+		CD-HIT    & 70\% & 17610 & 242 & 464 & 751 & 1265 & 1956 & 2998 & 5308 \\
+		kClust    & 70\% & 17682 & 187 & 405 & 695 & 1188 & 1811 & 2837 & 5244 \\
+		\noalign{\vskip 2mm} 
+		FgClust   & 90\% & 19993 &  17 & 66  & {\bfseries 169} & 346  & 736  & 1359 & 2975 \\
+		Linclust  & 90\% & 19552 & 125 & 284 & 507 & 872  & 1378 & 2149 & 3834 \\
+		MMSeqs2   & 90\% & 18783 & 219 & 426 & 734 & 1143 & 1810 & 2717 & 4669 \\
+		CD-HIT    & 90\% & 19124 & 189 & 364 & 586 & 940  & 1485 & 2300 & 4041 \\
+		kClust    & 90\% & 19707 & 141 & 315 & 513 & 848  & 1306 & 2128 & 3800 \\
+		\bottomrule
+	\end{tabular}
+	\label{table:pdb}
+\end{table}
+
+We evaluated the sensitivity and specificity of FgClust by using alignments of experimentally determined protein structures to measure specificity.
+We downloaded all monomeric proteins with experimentally determined structures deposited into PDB exclusively before January 2\textsuperscript{nd} 2017 \citep{berman2006protein}.
+The sequence of each protein is extracted.
+If an extracted sequence has at least 11 non-ambiguous amino acids and at least 90\% amino acids of the extracted sequence are non-ambiguous, then the extracted sequence is kept.
+From these kept sequences, every sequence-clustering algorithm generates a set of clusters.
+Within each cluster, the template-modeling (TM) score between the representative sequence and each represented sequence is computed by TM-Align developed by \citet{zhang2005tm}.
+The distribution of such TM scores is shown in \cref{table:pdb}.
+The lower such TM scores are, the less specific the clustering algorithm is.
+\Cref{table:pdb} shows that FgClust generates the fewest number of clusters with low TM scores.
+Usually, two proteins are in the same fold if and only if these two proteins share a TM-score of at least 0.5 \citep{xu2010significant}, where a protein fold is defined by the arrangement of the secondary structure elements relative to each other in space.
+\Cref{table:pdb} shows that other algorithms produce about 50\% more clusters with intra-cluster TM scores of less than 0.5 than FgClust.
+Thus, FgClust is significantly more specific than other algorithms in terms of experimentally determined protein structures.
+Moreover, FgClust at 50\% similarity cutoff generates the fewest number of clusters with the highest average cluster size.
+Thus, FgClust is more sensitive than other algorithms in terms of experimentally determined protein structures.
+Thus, FgClust can improve the protein-structure prediction based on homology-modeling, the structural classification of proteins, etc.
+The sensitivity of FgClust on PDB structures is mostly improved by the use of Murphy10 to reduce amino-acid alphabet (data not shown).
+The specificity of FgClust on PDB structures is mostly improved by the use of 25 residues to normalize edit-similarity (data not shown).
+
+\subsection{Evaluation on protein families in Pfam}
+
 \begin{figure}%[!htbp]
 	\centering
-		\begin{tabular}{c c}
-			\begin{tikzpicture}
-			\begin{axis}[very thick,grid=both,
-			mark options={solid},
-			width=0.475\textwidth,
-			height=0.385\textwidth,
-			ymax=2000,
-			xlabel=Number of clusters,
-			ylabel=Number of corrupted clusters]
-			\addplot[color=Red,mark=square] coordinates {
-				(365172, 956)
-				(516422, 738)
-				(755086, 510)
-				(1066591, 248)
-				(1282334, 71)
-			};
-			\addlegendentry{FgClust}
-			\addplot[dashed,color=Orange,mark=square] coordinates {	
-				(682422, 819)
-				(806160, 726)
-				(982978, 572)
-				(1199664, 401)
-				(1281061, 188)
-			};
-			\addlegendentry{Linclust}
-			\addplot[dotted,color=Green,mark=square] coordinates {
-				(389286, 962)
-				(592144, 878)
-				(843097, 670)
-				(1128443, 462)
-				(1253416, 260)
-			};
-			\addlegendentry{MMSeqs2}
-			\addplot[dash dot,color=Blue,mark=square] coordinates {
-				(471396, 1894)
-				(713570, 936)
-				(976870, 558)
-				(1252062, 317)
-				(1284604, 135)
-			};
-			\addlegendentry{CD-HIT}
-			\addplot[dash dot dot,color=Magenta,mark=square] coordinates {
-				(504834,944)
-				(697636,794)
-				(947935,578)
-				(1221908,331)
-				(1283087,141)
-			};
+	\begin{tabular}{c c}
+		\begin{tikzpicture}
+		\begin{axis}[very thick,grid=both,
+		mark options={solid},
+		width=0.475\textwidth,
+		height=0.385\textwidth,
+		ymax=2000,
+		xlabel=Number of clusters,
+		ylabel=Number of corrupted clusters]
+		\addplot[color=Red,mark=square] coordinates {
+			(365172, 956)
+			(516422, 738)
+			(755086, 510)
+			(1066591, 248)
+			(1282334, 71)
+		};
+		\addlegendentry{FgClust}
+		\addplot[dashed,color=Orange,mark=square] coordinates {	
+			(682422, 819)
+			(806160, 726)
+			(982978, 572)
+			(1199664, 401)
+			(1281061, 188)
+		};
+		\addlegendentry{Linclust}
+		\addplot[dotted,color=Green,mark=square] coordinates {
+			(389286, 962)
+			(592144, 878)
+			(843097, 670)
+			(1128443, 462)
+			(1253416, 260)
+		};
+		\addlegendentry{MMSeqs2}
+		\addplot[dash dot,color=Blue,mark=square] coordinates {
+			(471396, 1894)
+			(713570, 936)
+			(976870, 558)
+			(1252062, 317)
+			(1284604, 135)
+		};
+		\addlegendentry{CD-HIT}
+		\addplot[dash dot dot,color=Magenta,mark=square] coordinates {
+			(504834,944)
+			(697636,794)
+			(947935,578)
+			(1221908,331)
+			(1283087,141)
+		};
 		``  \addlegendentry{kClust}
-			\end{axis}
-			\draw[->,very thick](2,1.5)--(0.5,0.5)node
-			[midway,below,sloped]{better};
-			\end{tikzpicture}
-			&
-			\begin{tikzpicture}
-			\begin{axis}[very thick,grid=both,
-			mark options={solid},
-			width=0.475\textwidth,
-			height=0.385\textwidth,
-			ymax=5000,
-			xlabel=Number of clusters,
-			ylabel=Number of corrupted members]
-			\addplot[color=Red,mark=square] coordinates {
-				(365172, 1642)
-				(516422, 1177)
-				(755086, 688)
-				(1066591, 282)
-				(1282334, 77)
-			};
-			\addlegendentry{FgClust}
-			\addplot[dashed,color=Orange,mark=square] coordinates {
-				(682422, 1501)
-				(806160, 1111)
-				(982978, 749)
-				(1199664, 445)
-				(1281061, 193)
-			};
-			\addlegendentry{Linclust}
-			\addplot[dotted,color=Green,mark=square] coordinates {
-				(389286, 2429)
-				(592144, 1602)
-				(843097, 1037)
-				(1128443, 561)
-				(1253416, 294)
-			};
-			\addlegendentry{MMSeqs2}
-			\addplot[dash dot,color=Blue,mark=square] coordinates {
-				(471396, 4126)
-				(713570, 1549)
-				(976870, 705)
-				(1252062, 342)
-				(1284604, 139)
-			};
-			\addlegendentry{CD-HIT}
-			\addplot[dash dot dot,color=Magenta,mark=square] coordinates {
-				(504834,2230)
-				(697636,1452)
-				(947935,804)
-				(1221908,379)
-				(1283087,149)
-			};
-			\addlegendentry{kClust}
-			\end{axis}
-			\draw[->,very thick](2,1.5)--(0.5,0.5)node
-			[midway,below,sloped]{better};
-			\end{tikzpicture}
-		\end{tabular}
-	\caption{Results of clustering Pfam-A-seed version 31.0 \citep{finn2016pfam}.
+		\end{axis}
+		\draw[->,very thick](2,1.5)--(0.5,0.5)node
+		[midway,below,sloped]{better};
+		\end{tikzpicture}
+		&
+		\begin{tikzpicture}
+		\begin{axis}[very thick,grid=both,
+		mark options={solid},
+		width=0.475\textwidth,
+		height=0.385\textwidth,
+		ymax=5000,
+		xlabel=Number of clusters,
+		ylabel=Number of corrupted members]
+		\addplot[color=Red,mark=square] coordinates {
+			(365172, 1642)
+			(516422, 1177)
+			(755086, 688)
+			(1066591, 282)
+			(1282334, 77)
+		};
+		\addlegendentry{FgClust}
+		\addplot[dashed,color=Orange,mark=square] coordinates {
+			(682422, 1501)
+			(806160, 1111)
+			(982978, 749)
+			(1199664, 445)
+			(1281061, 193)
+		};
+		\addlegendentry{Linclust}
+		\addplot[dotted,color=Green,mark=square] coordinates {
+			(389286, 2429)
+			(592144, 1602)
+			(843097, 1037)
+			(1128443, 561)
+			(1253416, 294)
+		};
+		\addlegendentry{MMSeqs2}
+		\addplot[dash dot,color=Blue,mark=square] coordinates {
+			(471396, 4126)
+			(713570, 1549)
+			(976870, 705)
+			(1252062, 342)
+			(1284604, 139)
+		};
+		\addlegendentry{CD-HIT}
+		\addplot[dash dot dot,color=Magenta,mark=square] coordinates {
+			(504834,2230)
+			(697636,1452)
+			(947935,804)
+			(1221908,379)
+			(1283087,149)
+		};
+		\addlegendentry{kClust}
+		\end{axis}
+		\draw[->,very thick](2,1.5)--(0.5,0.5)node
+		[midway,below,sloped]{better};
+		\end{tikzpicture}
+	\end{tabular}
+	\caption{Results of clustering Pfam-A-seed release 31.0 \citep{finn2016pfam}.
 		On each plotted curve, the five marks from top left to bottom right correspond to the five sequence-similarity cutoffs of 50\%, 60\%, 70\%, 80\%, and 90\%, respectively.
 		A cluster is corrupted if and only if at least one member in the cluster is corrupted.
 		A cluster member is corrupted if and only if the member belongs to a Pfam family that the representative of the cluster does not belong to.
-		The runtime of each program is too short to measure wall-clock time and scalability.
+		The wall-clock runtime of each program is too short to measure scalability.
 		\label{fig:pfam}
 	}
 \end{figure}
-We assessed the sensitivity and specificity of FgClust by using manually curated data.
-We downloaded the manually curated seed A dataset from Pfam version 31.0 \citep{finn2016pfam}.
+
+Pfam provides gold-standard classification of functional protein domains \citep{finn2016pfam}.
+Thus, we evaluated the sensitivity and specificity of clustering algorithms using Pfam.
+We downloaded the manually checked seed A dataset from Pfam release 31.0 \citep{finn2016pfam}.
 We ran each clustering algorithm on this dataset.
 A corrupted cluster contains at least two sequences that belong to two different Pfam families.
 A corrupted cluster member belongs to a Pfam family that the representative of this cluster does not belong to.
 A more sensitive clustering algorithm generates fewer clusters.
-A more specific clustering algorithm generates fewer corrupted clusters and fewer corrupted cluster members.
-\Cref{fig:pfam} shows that FgClust generates much fewer number of corrupted clusters and cluster members given the same number of clusters generated.
+A more specific clustering algorithm generates fewer corrupted cluster members.
+As previously mentioned, 
+the number of corrupted clusters is not normalized against the input and is thus not meaningful for measuring specificity.
+However, the number of corrupted clusters can reveal the characteristics of different clustering algorithms and is thus still included.
+\Cref{fig:pfam} shows that FgClust generates much fewer clusters given the same number of corrupted clusters and much fewer corrupted cluster members given the same number of clusters.
+Thus, FgClust is significantly more sensitive at the same specificity and significantly more specific at the same sensitivity.
 Thus, FgClust achieves the best sensitivity-specificity trade-off.
-CD-HIT has the worst sensitivity-specificity trade-off at low sequence identity presumably because inferring biological relevance from only low sequence identity is highly error-prone.
+FgClust can improve protein-function prediction based on homology modeling, functional classification of proteins, the construction of Hidden Markov Models (HMMs) for protein families, etc.
+The sensitivity of FgClust on Pfam-A-seed is mostly improved by the use of Murphy10 to reduce amino-acid alphabet (data not shown).
+The specificity of FgClust on Pfam-A-seed is mostly improved by the use of 25 residues to normalized edit-similarity (data not shown). 
+
+At low sequence-similarity cutoff for clustering,
+CD-HIT has the worst sensitivity-specificity trade-off presumably because inferring biological relevance from only low sequence identity is highly error-prone.
 FgClust normalizes edit-similarity with respect to sequence length.
 Linclust, MMSeqs2, and kClust use e-value in addition of sequence identity.
 Thus, FgClust, Linclust, MMSeqs2, and kClust do not suffer from such drop in sensitivity-specificity trade-off at low sequence similarity.
@@ -853,7 +904,7 @@ Linclust, MMSeqs2, and kClust use iterative, profile-based clustering strategy a
 A false-positive merging step corrupts only one cluster but can corrupt multiple cluster members.
 Thus, Linclust, MMSeqs2, and kClust generate high numbers of corrupted cluster members compared with the numbers of corrupted clusters.
 
-\subsection{Evaluation on nucleotide databases}
+\subsection{Evaluation on RNA families in Rfam}
 
 \begin{figure}%[!htbp]
 	\centering
@@ -926,21 +977,27 @@ ylabel=Number of corrupted members]
 [midway,below,sloped]{better};
 \end{tikzpicture}
 \end{tabular}
-\caption{Results of clustering Rfam-seed version 12.3 \citep{nawrocki2014rfam}.
+\caption{Results of clustering Rfam-seed release 12.3 \citep{nawrocki2014rfam}.
 	On each plotted curve, the four marks from left to right correspond to the four sequence-similarity cutoffs of 60\%, 70\%, 80\%, and 90\%, respectively. CD-HIT-EST does not run with any sequence-similarity cutoff of less than 80\%.
 	A cluster is corrupted if and only if at least one member in the cluster is corrupted.
 	A cluster member is corrupted if and only if the member belongs to an Rfam family that the representative of the cluster does not belong to.
-	The runtime of each program is too short to measure wall-clock time and scalability.
+	The wall-clock runtime of each program is too short to measure scalability.
 	\label{fig:rfam}
 }
 \end{figure}
-We assessed the sensitivity and specificity of FgClust by using manually curated nucleotide data. 
-We downloaded the seed dataset from Rfam version 12.3 \citep{nawrocki2014rfam}.
-We ran FgClust commit 93c3a6d9, VSEARCH v2.3.4\_linux\_x86\_64 \citep{rognes2016vsearch}, and CD-HIT-EST version 4.6 \citep{fu2012cd} on this dataset.
-Evaluation criteria on Rfam and Pfam are similar.
-\Cref{fig:rfam} shows that FgClust generates much fewer clusters given the same number of corrupted clusters and much fewer corrupted clusters given the same number of clusters.
-Thus, FgClust is significantly more sensitive at the same specificity and significantly more specific at the same sensitivity.
-Thus, FgClust performs the best for the Rfam dataset.
+
+Rfam provides gold-standard classification of non-coding RNA sequences \citep{nawrocki2014rfam}.
+Thus, we evaluated the sensitivity and specificity of clustering algorithms using Rfam. 
+We downloaded the manually checked seed dataset from Rfam release 12.3 \citep{nawrocki2014rfam}.
+%We ran FgClust commit 93c3a6d9, VSEARCH v2.3.4\_linux\_x86\_64 \citep{rognes2016vsearch}, and CD-HIT-EST version 4.6 \citep{fu2012cd} on this dataset.
+Evaluation metrics for Pfam and Rfam are similar.
+\Cref{fig:rfam} shows that FgClust generates much fewer clusters given the same number of corrupted cluster members and much fewer corrupted cluster members given the same number of clusters.
+%Thus, FgClust is significantly more sensitive at the same specificity and significantly more specific at the same sensitivity.
+Thus, FgClust achieves the best sensitivity-specificity trade-off.
+FgClust can improve RNA-function prediction based on homology modeling, functional classification of RNAs, the construction of HMMs for RNA families etc.
+% improvement
+The sensitivity of FgClust on Rfam-seed is mostly improved by the use of edit-similarity instead of sequence identity as cutoff (data not shown).
+The specificity of FgClust on Rfam-seed is mostly improved by the use of edit-similarity instead of sequence identity as cutoff and the use of 25 residues to normalized edit-similarity (data not shown). 
 
 \section{Conclusion}
 
@@ -950,15 +1007,19 @@ We observed that greedy incremental update may not select the optimal centroid d
 Thus, FgClust detects sufficient number of sequence pairs such that, in each pair, the first can represent the second.
 Then, FgClust uses greedy set cover to cluster all sequences based on such pairings.
 We observed that there are too many short words in a protein sequence.
-Thus, FgClust uses min-hash values instead of short words.
+Thus, FgClust uses min-hash values instead of short words as filter.
 We observed that sequence identity is not sufficiently correlated with biological relevance and requires the time-consuming computation of alignment.
 Thus, FgClust uses edit-similarity instead of sequence identity.
 %Edit-similarity is defined as one minus the following: 
 %	number of single-character edits to change a member sequence into a substring of the centroid sequence, divided by the length of the member sequence.
 
-In the future, we will construct a Hidden Markov Model (HMM) for each cluster generated by FgClust and assess the quality of such HMMs.
-Moreover, we will apply the techniques used in FgClust to other problems, such as metagenomic-sequence classification, chimera detection, and detection of conserved protein domains.
+FgClust generates clusters of the highest quality. 
+Thus, FgClust reduces manual-curation efforts and errors in the downstream analysis of clusters.
+Moreover, FgClust is fast and scalable.
+Thus, FgClust is and still will be able to handle the sequences released by UniProt and/or by metagenomic studies.
 
+In the future, we will construct an HMM for each cluster generated by FgClust and evaluate the quality of such HMMs.
+Moreover, we will apply the techniques used in FgClust to other problems, such as metagenomic-sequence classification and chimera detection.%, and detection of conserved protein domains.
 
 \bibliographystyle{plainnat}
 %\bibliographystyle{unsrtnat}
