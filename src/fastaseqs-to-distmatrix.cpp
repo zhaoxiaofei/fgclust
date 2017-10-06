@@ -20,6 +20,24 @@
 #include <time.h> 
 #include <unistd.h>
 
+void *xmalloc(size_t size) {
+    void *ret = malloc(size);
+    if (NULL == ret) {
+        fprintf(stderr, "malloc failed!\n");
+        abort();
+    }
+    return ret;
+}
+
+void *xrealloc(void *ptr, size_t size) {
+    void *ret = realloc(ptr, size);
+    if (NULL == ret) {
+        fprintf(stderr, "realloc failed!\n");
+        abort();
+    }
+    return ret;
+}
+
 #define MIN(a, b) (((a) < (b) ? (a) : (b)))
 #define MAX(a, b) (((a) > (b) ? (a) : (b)))
 #define SQUARE(a) ((a)*(a))
@@ -41,12 +59,12 @@ uint64_t SEED_POWER = 0;
 uint64_t SIGN_POWER = 0; 
 char ALPHA_TYPE_TO_CHAR_TO_REDUCED[3][256]; // derived from ALPHA_TYPE_TO_SIZE
 
-// variables that are initialzed from command line args
+// variables that are initialized from command line args
 
-uint64_t BATCH_SIZE = 15999;
+uint64_t BATCH_SIZE = 256; // 15999;
 uint64_t RESIDUE_CNT_TO_SEED_CNT_RATIO = 40;
 
-bool IS_INPUT_NUC = false;
+bool IS_INPUT_NUC = false; // guessed
 int ALPHA_TYPE_TO_SIZE[] = {10, 10, 10};
 int SIM_PERC = 90;
 int SIM_BASE = 25;
@@ -122,74 +140,6 @@ int calc_vecnorm(int a, int b) {
     return (int)ceil(sqrt(a * a + b * b));
 }
 
-void PARAMS_init(const int argc, const char *const *const argv) {
-    for (int i = 0; i < 256; i++) {
-        for (int j = 0; j < 3; j++) {
-            ALPHA_TYPE_TO_CHAR_TO_REDUCED[j][i] = (char)i;
-        }
-    }
-    
-    for (int i = 1; i < argc; i += 2) {
-        if (!strcmp("--sim-perc", argv[i])) {
-            SIM_PERC = atoi(argv[i+1]);
-        } else if (!strcmp("--sim-base", argv[i])) {
-            SIM_BASE = atoi(argv[i+1]);
-        } else if (!strcmp("--is-input-nuc", argv[i])) {
-            IS_INPUT_NUC = atoi(argv[i+1]);
-        } 
-        
-        else if (!strcmp("--dbentry-filt-occ-min", argv[i])) {
-            DBENTRY_FILT_OCC_MIN = atoi(argv[i+1]);
-        } else if (!strcmp("--sign-shared-cnt-min", argv[i])) {
-            SIGN_SHARED_CNT_MIN = atoi(argv[i+1]);
-        } else if (!strcmp("--batch-size", argv[i])) {
-            BATCH_SIZE = atoi(argv[i+1]);
-        } else {
-            show_usage(argc, argv);
-        }
-    }
-    
-    COV_SRC_MAX = (150 - SIM_PERC) / 20;
-    COV_SNK_MAX = (150 - SIM_PERC) / 5;
-
-    SIGN_LENGTH = (SIM_PERC + 360) / (150 - SIM_PERC);
-    SIGN_SHARED_CNT_MIN = MAX(1, SIM_PERC / 10 - 4); 
-    
-    ATTEMPT_INI = 100 - SIM_PERC;
-    ATTEMPT_INC = 100 - SIM_PERC;
-    ATTEMPT_MAX = 110 - SIM_PERC;
-
-    if (IS_INPUT_NUC) {
-        SIGN_LENGTH = (SIM_PERC + 900) / (200 - SIM_PERC);
-    }
-    
-    for (int i = 1; i < argc; i += 2) {
-        if (!strcmp("--cov-src-max", argv[i])) {
-            COV_SRC_MAX = atoi(argv[i+1]);
-        } else if (!strcmp("--cov-snk-max", argv[i])) {
-            COV_SNK_MAX = atoi(argv[i+1]);
-        } else {
-            show_usage(argc, argv);
-        }
-    }
-
-    if (!IS_INPUT_NUC) {
-        for (int t = 0; t < 3; t++) {
-            if (10 == ALPHA_TYPE_TO_SIZE[t]) {
-                alphareduce("DENQ", t);
-                alphareduce("FWY", t);
-                alphareduce("ILMV", t);
-                alphareduce("KR", t);
-                alphareduce("ST", t);
-            }
-            if (15 == ALPHA_TYPE_TO_SIZE[t]) {
-                alphareduce("FY", t);
-                alphareduce("ILMV", t);
-                alphareduce("KR", t);
-            }
-        }
-    }
-}
 
 void hash_sign_INIT() {
     int i;
@@ -312,14 +262,14 @@ void seed_add(uint64_t hash, uint32_t seqidx) {
     if (seed->size && seed->seqidxs[seed->size-1] == seqidx) { return; }
     if (seed->size == seed->bufsize) {
         seed->bufsize = MAX(seed->bufsize * 2, seed->bufsize + 1);
-        seed->seqidxs = (uint32_t*) realloc(seed->seqidxs, seed->bufsize * sizeof(uint32_t));
+        seed->seqidxs = (uint32_t*) xrealloc(seed->seqidxs, seed->bufsize * sizeof(uint32_t));
     }
     seed->seqidxs[seed->size] = seqidx;
     seed->size++;
 }
 
 void seq_arrlist_init() {
-    seq_arrlist.data = (seq_t*) malloc(4 * sizeof(seq_t));
+    seq_arrlist.data = (seq_t*) xmalloc(4 * sizeof(seq_t));
     seq_arrlist.bufsize = 4;
     seq_arrlist.size = 0;
 }
@@ -327,16 +277,105 @@ void seq_arrlist_init() {
 void seq_arrlist_add(const kseq_t *kseq) {
     if (seq_arrlist.size == seq_arrlist.bufsize) {
         seq_arrlist.bufsize *= 2;
-        seq_arrlist.data = (seq_t*)realloc(seq_arrlist.data, seq_arrlist.bufsize * sizeof(seq_t));
+        seq_arrlist.data = (seq_t*)xrealloc(seq_arrlist.data, seq_arrlist.bufsize * sizeof(seq_t));
     }
-    seq_arrlist.data[seq_arrlist.size].name = (char*)malloc(kseq->name.l + 1);
-    seq_arrlist.data[seq_arrlist.size].seq = (char*)malloc(kseq->seq.l + 1);
+    seq_arrlist.data[seq_arrlist.size].name = (char*)xmalloc(kseq->name.l + 1);
+    seq_arrlist.data[seq_arrlist.size].seq = (char*)xmalloc(kseq->seq.l + 1);
     strcpy(seq_arrlist.data[seq_arrlist.size].name, kseq->name.s);
-    for (size_t i = 0; i <= kseq->seq.l; i++) { seq_arrlist.data[seq_arrlist.size].seq[i] = ALPHA_TYPE_TO_CHAR_TO_REDUCED[2][kseq->seq.s[i]]; }
+    // for (size_t i = 0; i <= kseq->seq.l; i++) { seq_arrlist.data[seq_arrlist.size].seq[i] = ALPHA_TYPE_TO_CHAR_TO_REDUCED[2][kseq->seq.s[i]]; }
     assert( seq_arrlist.data[seq_arrlist.size].seq[kseq->seq.l] == '\0' );
     seq_arrlist.data[seq_arrlist.size].seqlen = kseq->seq.l;
     seq_arrlist.data[seq_arrlist.size].coveredcnt = 0;
     seq_arrlist.size++;
+}
+
+void PARAMS_init(const int argc, const char *const *const argv) {
+    int nb_cnt = 0;
+    int aa_cnt = 0;
+    for (int i = 0; i < MIN(seq_arrlist.size, 100); i++) {
+        for (int j = 0; j < seq_arrlist.data[i].seqlen; j++) {
+            if (strchr("ACGTU", seq_arrlist.data[i].seq[j])) {
+                nb_cnt++;
+            } else {
+                aa_cnt++;
+            }
+        }
+    }
+    if (aa_cnt * 4 > nb_cnt) {
+        IS_INPUT_NUC = false;
+    } else {
+        IS_INPUT_NUC = true;
+    }
+    
+    for (int i = 0; i < 256; i++) {
+        for (int j = 0; j < 3; j++) {
+            ALPHA_TYPE_TO_CHAR_TO_REDUCED[j][i] = (char)i;
+        }
+    }
+    std::vector<bool> are_args_parsed(argc+1);
+    std:fill(are_args_parsed.begin(), are_args_parsed.end(), true);
+    
+    for (int i = 1; i < argc; i += 2) {
+        if (!strcmp("--sim-perc", argv[i])) {
+            SIM_PERC = atoi(argv[i+1]);
+        } else if (!strcmp("--sim-base", argv[i])) {
+            SIM_BASE = atoi(argv[i+1]);
+        } else if (!strcmp("--is-input-nuc", argv[i])) {
+            IS_INPUT_NUC = atoi(argv[i+1]);
+        } 
+        
+        else if (!strcmp("--dbentry-filt-occ-min", argv[i])) {
+            DBENTRY_FILT_OCC_MIN = atoi(argv[i+1]);
+        } else if (!strcmp("--sign-shared-cnt-min", argv[i])) {
+            SIGN_SHARED_CNT_MIN = atoi(argv[i+1]);
+        } else if (!strcmp("--batch-size", argv[i])) {
+            BATCH_SIZE = atoi(argv[i+1]);
+        } else {
+            are_args_parsed[i] = false;
+            are_args_parsed[i+1] = false;
+        }
+    }
+    
+    COV_SRC_MAX = (150 - SIM_PERC) / 20;
+    COV_SNK_MAX = (150 - SIM_PERC) / 5;
+
+    SIGN_LENGTH = (SIM_PERC + 360) / (150 - SIM_PERC);
+    SIGN_SHARED_CNT_MIN = MAX(1, SIM_PERC / 10 - 4); 
+    
+    ATTEMPT_INI = 100 - SIM_PERC;
+    ATTEMPT_INC = 100 - SIM_PERC;
+    ATTEMPT_MAX = 110 - SIM_PERC;
+
+    if (IS_INPUT_NUC) {
+        SIGN_LENGTH = (SIM_PERC + 900) / (200 - SIM_PERC);
+    }
+    
+    for (int i = 1; i < argc; i += 2) {
+        if (!strcmp("--cov-src-max", argv[i])) {
+            COV_SRC_MAX = atoi(argv[i+1]);
+        } else if (!strcmp("--cov-snk-max", argv[i])) {
+            COV_SNK_MAX = atoi(argv[i+1]);
+        } else if (!are_args_parsed[i]) {
+            show_usage(argc, argv);
+        }
+    }
+
+    if (!IS_INPUT_NUC) {
+        for (int t = 0; t < 3; t++) {
+            if (10 == ALPHA_TYPE_TO_SIZE[t]) {
+                alphareduce("DENQ", t);
+                alphareduce("FWY", t);
+                alphareduce("ILMV", t);
+                alphareduce("KR", t);
+                alphareduce("ST", t);
+            }
+            if (15 == ALPHA_TYPE_TO_SIZE[t]) {
+                alphareduce("FY", t);
+                alphareduce("ILMV", t);
+                alphareduce("KR", t);
+            }
+        }
+    }
 }
 
 void seq_longword_init(seq_t *const seq_ptr, int idx) {
@@ -412,16 +451,15 @@ int main(const int argc, const char *const *const argv) {
 
     std::cerr << "GITCOMMIT = " << GITCOMMIT << std::endl;
     std::cerr << "CXXVERSION = " << CXXVERSION << std::endl;
-    PARAMS_init(argc, argv);
+        
     std::set<int> printthresholds;
-    for (int i = 0; i < 190; i++) {
+    for (int i = 0; i < 300; i++) {
         double thres = (double)((i+1)*(BATCH_SIZE+1)) * pow(1.05, (double)i);
         if (thres * 1.01 < (double)(INT_MAX)) { printthresholds.insert((int)thres); }
     }
 
     seq_arrlist_init();
     
-    showparams();
     kseq_t *kseq = kseq_init(fileno(stdin));
     int i = 0;
     time(&begtime);
@@ -434,6 +472,9 @@ int main(const int argc, const char *const *const argv) {
     }
     kseq_destroy(kseq);
     
+    PARAMS_init(argc, argv);
+    showparams();
+
     // reinitialize some vars
     uint64_t num_residues = 0;
     for (int i = 0 ; i < seq_arrlist.size; i++) {
@@ -472,7 +513,7 @@ int main(const int argc, const char *const *const argv) {
 
     hash_sign_INIT();
 
-    seeds = (seed_t*) malloc(DBENTRY_CNT * sizeof(seed_t));
+    seeds = (seed_t*) xmalloc(DBENTRY_CNT * sizeof(seed_t));
     memset(seeds, 0, DBENTRY_CNT * sizeof(seed_t));
     
     time(&begtime);
@@ -487,6 +528,9 @@ int main(const int argc, const char *const *const argv) {
     #pragma omp parallel for schedule(dynamic, 9999*10)
     for (int i = 0 ; i < seq_arrlist.size; i++) {
         seq_signatures_init(&seq_arrlist.data[i]);
+        for (int j = 0; j < seq_arrlist.data[i].seqlen; j++) {
+            seq_arrlist.data[i].seq[j] = ALPHA_TYPE_TO_CHAR_TO_REDUCED[2][seq_arrlist.data[i].seq[j]];
+        }
     }
     
     int seedsize_histogram[1000+1];
@@ -604,6 +648,11 @@ int main(const int argc, const char *const *const argv) {
             }
             printf("\n");
             coveredarr[i-iter].clear();
+        }
+        assert(coveredarr.size() == BATCH_SIZE);
+        for (int i = 0; i < 2; i++) {
+            BATCH_SIZE++;
+            coveredarr.push_back(std::vector<std::pair<uint32_t, uint8_t>>(0));
         }
     }
 }
