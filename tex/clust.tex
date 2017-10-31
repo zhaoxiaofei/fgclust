@@ -24,20 +24,18 @@
 
 \setcounter{secnumdepth}{6}
 
-\pdfinfo{
-	/Author (XiaoFei Zhao)
-	/Title  ()
-	/CreationDate ()
-	/Subject (git commit: \gitHash{})
-	/Keywords ()
-}
-
 \title{FgClust, a fast and scalable algorithm for generating high-quality clusters of biological sequences}
 %\author{XiaoFei Zhao, Shing Hei Zhan}
 \author[1]{XiaoFei Zhao\thanks{xzhao@fusiongenomics.com ;  cndfeifei@gmail.com}}
-\author[1]{Shing Hei Zhan\thanks{szhan@fusiongenomics.com ; TODO:PERSONAL-EMAIL-ADDRESS}}
+\author[1]{Shing Hei Zhan\thanks{szhan@fusiongenomics.com ; shing.zhan@gmail.com}}
 
-\affil[1]{Fusion Genomics Inc.}
+\affil[1]{Fusion Genomics Corporation 
+}
+
+\hypersetup{pdfinfo={
+Title={git commit \gitHash},
+Author={XiaoFei Zhao}
+}}
 
 \begin{document}
 
@@ -47,14 +45,14 @@
 We developed FgClust, a novel multi-threaded algorithm for clustering biological sequences.
 FgClust uses clique-aware all-versus-all search instead of greedy incremental update, min-hash values instead of short words, and the length of non-centroid sequence minus infix Levenshtein distance instead of sequence identity.
 We evaluated FgClust, Linclust, MMSeqs2, CD-HIT, and kClust by using
-five versions of UniRef100 released from July 2004 to Jan 2017, 
-the PDB structures deposited exclusively before January 2\textsuperscript{nd} 2017, and Pfam-A-seed 31.0.
+five versions of UniRef100 released between July 2004 and January 2017, 
+the protein structures deposited into PDB exclusively before January 2\textsuperscript{nd} 2017, and Pfam-A-seed 31.0.
 We evaluated FgClust, VSEARCH, and CD-HIT-EST by using Rfam 12.3.
 Our evaluations show that FgClust always achieves the fastest runtime except Linclust and the best sensitivity-specificity trade-off without any exception.
 Linclust is approximately two times faster but generates up to more than 130\% more clusters than FgClust.
 The observed runtime of FgClust increases linearly with input size.
 In one day, FgClust can cluster hundreds of millions of proteins, such as the ones in each expected release of UniProt in the next few years, into tens of millions of high-quality clusters.
-FgClust is publicly available at \url{https://bitbucket.org/fusiongenomicscorp/pubclu}.
+FgClust is publicly available at \url{https://github.com/zhaoxiaofei/fgclust}.
 \end{abstract}
 
 \clearpage{}
@@ -104,16 +102,16 @@ kClust, MMSeqs, and MMSeqs2 all use similar ideas \citep{hauser2013kclust,hauser
 %Thus, FgClust is useful.
 
 Functionally important sequences (or substrings thereof) tend to be evolutionarily conserved.
-Thus, the same conserved k-mers are usually shared by sequences in the same family.
+Consequently, the same conserved k-mers are usually shared by sequences in the same family.
 Linclust attempts to find sequence family from such conserved k-mers \citep{steinegger2017linclust}.
 More specifically, 
 	Linclust indexes k-mers in input sequences, 
 	selects only one centre sequence per k-mer,
-	and then aligns each input sequence to only a constant number of centre sequences \citep{steinegger2017linclust}.
-Thus, the worst-case runtime of Linclust scales linearly with the number of input sequences.
+	and then aligns each input sequence to only a constant number of centre sequences that share at least one k-mer with the input sequence \citep{steinegger2017linclust}.
+In this way, the worst-case runtime of Linclust scales linearly with the number of input sequences.
 However, k-mer match does not always imply biological similarity.
 In fact, a k-mer match may occur by chance.
-Thus,
+Therefore,
 	even if the centre sequence of a k-mer is not biological similar to the non-centre sequences of the k-mer, 
 	some of the non-centre sequences can still be biologically similar to each other.
 Suppose that k-mer length is fixed and that the number of input sequences increases linearly.
@@ -161,7 +159,7 @@ Our main algorithmic novelties are the use of (1) clique-aware all-versus-all se
 %Our algorithmic novelties include the use of clique-aware all-versus-all search instead of greedy incremental update, the use of min-hash values instead of short words, and the use of Levenshtein distance instead of sequence alignment.
 %Moreover, we improved existing techniques, such as greedy set cover \cite{steinegger2017mmseqs2} and pruning of sorted hit candidates \cite{edgar2010search}, and combined these improved techniques with our algorithmic novelties.
 
-Here, we demonstrated that FgClust can cluster hundreds of millions of sequences in one day on a typical server and produce biologically faithful sequence clusters. In benchmark experiments, we found that FgClust outperforms almost all published methods (Linclust, MMSeqs2, CD-HIT, kClust, and VSEARCH). FgClust always achieves better sensitivity without compromising specificity and better specificity without compromising sensitivity. In terms of runtime, FgClust exceeds all the other methods except Linclust, which finishes approximately twice as fast as FgClust in the benchmark data sets. Importantly, however, FgClust generates fewer sequence clusters of higher quality than Linclust and the other methods. Overall, FgClust is a novel sequence clustering method that offers outstanding scalability while putting emphasis on sequence cluster quality. FgClust is publicly available at https://bitbucket.org/fusiongenomicscorp/pubclu.
+Here, we demonstrated that FgClust can cluster hundreds of millions of sequences in one day on a typical server and produce biologically faithful sequence clusters. In benchmark experiments, we found that FgClust outperforms almost all published methods (Linclust, MMSeqs2, CD-HIT, kClust, and VSEARCH). FgClust always achieves better sensitivity without compromising specificity and better specificity without compromising sensitivity. In terms of runtime, FgClust exceeds all the other methods except Linclust, which finishes approximately twice as fast as FgClust in the benchmark data sets. Importantly, however, FgClust generates fewer sequence clusters of higher quality than Linclust and the other methods. Overall, FgClust is a novel sequence clustering method that offers outstanding scalability while putting emphasis on sequence cluster quality. FgClust is publicly available at \url{https://github.com/zhaoxiaofei/fgclust}.
 
 \section{Approach}
 
@@ -172,7 +170,7 @@ Here, we demonstrated that FgClust can cluster hundreds of millions of sequences
 	\SetKwFunction{buildindex}{build-sequence-index}
 	\SetKwProg{myproc}{Subroutine}{}{}
 	
-	\myproc(\tcp*[f]{(\cref{para:edsim} second paragraph)}){\cancover\((s_1, s_2):\)}{
+	\myproc(\tcp*[f]{(\cref{para:edsim} second paragraph)}){\cancover\((s_1, s_2,\textnormal{percsim}):\)}{
 		Compute the number \(d\) of single-character edits to make \(s_2\) a substring of \(s_1\).\;
 		Let \(l_1\) and \(l_2\) be the lengths of \(s_1\) and \(s_2\), respectively. \;
 		\KwRet \(4/5 \le l_1 / l_2 \le 5/4\)
@@ -188,7 +186,7 @@ Here, we demonstrated that FgClust can cluster hundreds of millions of sequences
 				Pick 10 pairs with the highest number of min-hash values shared by the pair.\;
 				Initialize the number of true hits to zero.\;
 				\For{each pair \((s_1, s_2)\) in these 10 pairs}{
-					\lIf{\cancover\((s_1, s_2)\)}{
+					\If{\cancover\((s_1, s_2, \textnormal{percsim})\)}{
 						Increment the number of true hits by one.%.\;
 					}
 				}
@@ -223,7 +221,7 @@ Here, we demonstrated that FgClust can cluster hundreds of millions of sequences
 				\For{each sequence \(s_2\) in \(S_2\) such that \(s_1\) and \(s_2\) share enough min-hash values}{
 					\If(\tcp*[f]{(\cref{subsec:clique-aware})})
 					{\(s_2\) is covered less than \((150-\textnormal{percsim})/5\) times}{
-						\uIf{\cancover\((s_1, s_2)\)}{
+						\uIf{\cancover\((s_1, s_2,\textnormal{percsim})\)}{
 							Let \(s_1\) cover \(s_2\).\;
 							Increase \(n\) by \((110-\textnormal{percsim})\) and max out \(n\) at \((120-\textnormal{percsim})\).\;
 						}\uElse{
@@ -247,7 +245,7 @@ Here, we demonstrated that FgClust can cluster hundreds of millions of sequences
 \Citet{li2001clustering} introduced the notion of greedy incremental update.
 Greedy incremental update involves visiting each sequence (typically in order of decreasing sequence length) and then either forming a new cluster with each visited sequence or assigning it to an existing cluster. Thus, any unvisited sequence that can be ``covered'' by an already visited sequence cannot become a centroid. 
 In the context of clustering, a sequence is said to cover another sequence if it is within a certain distance from the other sequences. The issue is that an unvisited sequence can be a better centroid than the already visited sequence. 
-Therefore, such premature determination of centroid can result in more clusters of worse quality.
+Therefore, such premature determination of centroids can result in clusters of suboptimal or even poor quality.
 
 %Greedy incremental update iterates through each sequence, usually in descending order by sequence length, and each iterated sequence either forms a new cluster or is covered by an existing cluster.
 %Thus, any not-yet iterated sequence that can be covered by an already iterated sequence cannot be a centroid.
@@ -261,7 +259,7 @@ First, we attempt to perform an exhaustive all-versus-all sequence similarity se
 %In such graph, a vertex represents a sequence, and an edge from a first vertex to a second vertex means that the first sequence can represent and cover the second sequence.
 In practice, however, such a graph is usually characterized by larger cliques as the number of input sequences increases.
 Therefore, exhaustive determination of pairwise similarity between different sequences in the same clique results in slow and super-linear runtime.
-Indeed, each sequence in a large clique can be represented by a large number of other sequences and is thus overrepresented.
+Indeed, each sequence in a large clique can be represented by a large number of other sequences and thus is overrepresented.
 However, we observed that a few sub-sampled sequences in a clique can usually cover all sequences covered by the clique.
 %However, we observed that only very few sub-sampled sequences in a clique are usually sufficient to represent all sequences represented by any sequence in the clique.
 In order to achieve fast and linear runtime, FgClust prunes away any search where the query or target is an overrepresented sequence.
@@ -293,18 +291,18 @@ The computation of a pairwise alignment is time-consuming, with a quadratic runt
 %Usually, the BLOSUM62 matrix with an affine gap penalty is used to compute such alignment.
 %However, such computation of alignment is time-consuming.
 Moreover, sequence identity ignores deletions in the longer sequence.
-Because deletions are ignored, sequence identity can overestimate the biological similarity between two sequences.
+Because some deletions are ignored, sequence identity can overestimate the biological similarity between two sequences.
 Sequence alignment maximizes the alignment score instead of the number of matches.
 Therefore, the biological similarity implied by the number of matches can actually be lower than the biological similarity implied by alignment score.
 Therefore, sequence identity can underestimate the biological similarity between two sequences.
-Instead of using sequence identity, we used edit-similarity in FgClust.
+Instead of sequence identity, we used edit-similarity in FgClust.
 The edit-similarity between a query and a target is defined as follows: 
 	the length of the target minus the minimum number of single-character edits required such that the edited target is a substring of the query.
 	%, divided by the length of the target.
 Then, the edit-similarity \(s\) is normalized to \(\sqrt{ s^2-(\min(c,s))^2}/L\), where \(c\) is a constant and \(L\) is the length of the target sequence.
 \(c\) has a default value of 25, which is the minimum length of protein domains \citep[page 8]{niazi2016biosimilars}.
 Edit-similarity takes less time to compute than sequence identity \citep{vsovsic2017edlib}.
-Moreover, edit-similarity is more correlated with biological similarity (here, measured in terms of three-dimensional protein structure and biological function) than sequence identity, as shown in \cref{table:pdb,fig:pfam,fig:rfam}.
+Moreover, edit-similarity is more correlated with biological similarity (here, measured in terms of three-dimensional protein structure and biological function) than sequence identity, as shown in \cref{table:pdb,fig:pfam}.
 Therefore, the use of edit-similarity instead of sequence identity improves sensitivity, specificity, and runtime.
 \label{para:edsim}
 
@@ -314,11 +312,11 @@ In addition to the aforementioned techniques, we developed variants of several t
 %In fact, \cref{fig:uniref} shows that Linclust generates approximately 130\% more clusters than FgClust on UniRef100-2017-01.
 %FgClust achieves linear expected runtime without any significant loss in sensitivity.
 The first involves the use of long words, or k-mers (typically 8 to 12 letters long) that are represented by hash values.
-Given a query sequence, FgClust searches only each input sequence that shares at least one informative long word with the query sequence.
-A long word is a k-mer and is represented by its hash value.
-To achieve linear expected runtime without significantly sacrificing sensitivity, FgClust uses longer long words for larger input size (i.e, the number of input sequences), and ignores long words that are both abundant and uninformative.
-A long word is uninformative if and only if two uniformly, randomly, and independently sampled sequences that share this long word do not usually share sufficiently high edit-similarity.
-Thus, two sequences sharing only uninformative and abundant long words will be ignored in a sequence search, thereby improving runtime.
+Given a query sequence, FgClust searches only each input sequence that shares at least one \textit{informative} long word with the query sequence.
+%A long word is a k-mer and is represented by its hash value.
+To achieve linear expected runtime without significantly sacrificing sensitivity, FgClust uses longer long words for larger input size (i.e, the number of input sequences), and ignores long words that are both abundant and \textit{uninformative}.
+A long word is \textit{uninformative} if and only if two uniformly, randomly, and independently sampled sequences that share this long word do not usually share sufficiently high edit-similarity.
+Thus, two sequences sharing only \textit{uninformative} and abundant long words will be ignored in a sequence search, thereby improving runtime.
 
 The second technique involves the use of a reduced alphabet. 
 In a reduced alphabet, two or more amino acids with similar biochemical properties can be represented by one amino acid.
@@ -326,16 +324,17 @@ In a reduced alphabet, two or more amino acids with similar biochemical properti
 FgClust computes long words, min-hash values, and edit-similarities in a reduced alphabet, thereby leading to a better trade-off between sensitivity and runtime.
 Specifically, FgClust uses the Murphy10 amino-acid alphabet reduction \citep{murphy2000simplified}.
 
-Finally, FgClust only searches up to a maximum number of attempts.
+Finally, FgClust only searches up to a maximum number of consecutive failed attempts.
+%Finally, for each query sequence, FgClust searches only the target candidates that are likely to be clustered with the query sequence. 
 FgClust sorts target candidates by decreasing number of min-hash values shared between the query and each target candidate.
 As it goes through the list of targets, FgClust keeps track of the number of remaining attempts.
-Each true-positive target candidate increases the number of remaining attempts, whereas each false-positive target candidate decreases the number of remaining attempts.
-The number of remaining attempts is capped at a certain value.
+Each true-positive target candidate increases the number of remaining attempts up to a certain upper limit, whereas each false-positive target candidate decreases the number of remaining attempts.
+%The number of remaining attempts is capped at a certain value.
 Similar to the pruning strategy used by \citet{edgar2010search}, the search terminates when the number of remaining attempts becomes negative.
 This heuristic-based termination criterion leads to improved runtime.
 
-Biologically similar sequences are not supposed to differ by sequence length.
-Thus, UniRef90 and Uniref50 databases, which were constructed using CD-HIT, required a minimum sequence length overlap of 80\% \citep{suzek2014uniref}.
+Biologically similar sequences are supposed to have approximately equal sequence lengths.
+Thus, UniRef90 and UniRef50 databases, which were constructed using CD-HIT, required a minimum sequence length overlap of 80\% in each cluster \citep{suzek2014uniref}.
 Similarly, FgClust requires the length of a query sequence to be between \(80\%\) and \(125\%\) of the length of a target sequence for the query sequence to possibly represent the target sequence. 
 
 \subsection{Implementation details}
@@ -349,7 +348,7 @@ FgClust uses OpenMP to perform sequence search on multiple queries in parallel \
 
 \section{Results and Discussion}
 
-We evaluated FgClust and compared its performance to five state-of-the-arts clustering methods on several gold-standard biological databases.
+We evaluated FgClust and compared its performance to five state-of-the-art clustering methods on several gold-standard biological databases.
 % using meaningful metrics and reproducible and bias-free procedures.
 For protein clustering,
 we evaluated FgClust (commit 3a063dc0),
@@ -368,17 +367,17 @@ VSEARCH v2.3.4\_linux\_x86\_64 \citep{rognes2016vsearch}, and CD-HIT-EST version
 In our evaluations, we made several exclusions.
 First, we did not include UCLUST \citep{edgar2010search}, which can perform protein and nucleotide sequence clustering, because only the memory-limited 32-bit version of UCLUST is free and the software is not open source.
 Second, we did not use gene ontology (GO).
-%excluded the database of gene ontology (GO), and partially excluded the metrics of canonical  specificity (i.e. either the percentage of clusters that are not corrupted or average consistency of each cluster).
+%excluded the database of gene ontology (GO), and partially excluded the metrics of canonical  specificity (i.e., either the percentage of clusters that are not corrupted or average consistency of each cluster).
 %In the next four paragraphs, we justified our exclusions and explained how we made our evaluation results both reproducible and bias-free.
 %UCLUST is applicable for both nucleotide and protein databases \citep{edgar2010search}.
 %However, only the memory-limited 32-bit version of UCLUST is free and UCLUST is not open source \citep{edgar2010search}.
 %Thus, we omitted UCLUST in our evaluation for both nucleotide and protein databases.
-Gene-ontology (GO) terms with experimental evidence can be used for evaluating protein-function prediction \citep{radivojac2013large}.
+GO terms with experimental evidence can be used for evaluating protein-function prediction \citep{radivojac2013large}.
 However, very few sequences from the UniRef100-2017-01 dataset are annotated with experimental GO evidence \citep{suzek2014uniref}.
 In fact, such annotated sequences generate approximately only 100 non-singleton clusters at 50\% sequence-similarity cutoff for clustering (data not shown).
 Therefore, evaluation using experimental GO evidence may be too noisy to be reliable.
 Thus, we omitted GO term similarity in our evaluation metrics.
-Finally, we partially excluded the metrics of canonical specificity (i.e., either the percentage of clusters that are not corrupted or average consistency of each cluster).
+Finally, we excluded the metrics of canonical specificity (i.e., either the percentage of clusters that are not corrupted or average consistency of each cluster).
 %Canonical clustering sensitivity is the average number of sequences in each cluster.
 %Canonical clustering specificity is either the percentage of clusters that are not corrupted \citep{hauser2013kclust} or the average consistency of each cluster \citep{hauser2016mmseqs,steinegger2017mmseqs2,steinegger2017linclust}.
 %By definition, all singletons (i.e., clusters that contain only one sequence per cluster) are not corrupted and are characterized by the highest consistency.
@@ -389,10 +388,10 @@ Finally, we partially excluded the metrics of canonical specificity (i.e., eithe
 %	and the canonical specificity is high because only the cluster containing \SI{999001} sequences is corrupted and/or not characterized by the highest consistency.
 %Hence, canonical specificity is not normalized against the input and is therefore not meaningful for measuring specificity.
 The reason is that canonical specificity is not normalized against the input and is therefore not meaningful for measuring specificity (more detail in \cref{sec:appendix:canonical-specificity}).
-Instead, we measured specificity with the average biological similarity between each input sequence and the representative centroid that covers the input sequence.
+Instead, we measured specificity using the average biological similarity between each input sequence and the representative centroid that covers the input sequence.
 In this study, we used structural and/or functional similarity as a proxy of biological similarity. %We nonetheless
 %Biological similarity can be structural similarity and/or functional similarity. 
-Nonetheless, we included canonical specificity in \cref{sec:appendix:canonical-specificity}.
+We nonetheless included canonical specificity in \cref{sec:appendix:canonical-specificity}.
 
 Before any evaluation, we shuffled the sequences in each biological database by using a random-number generator with the same seed.
 Thus, our evaluation results were both deterministically and yet pseudo-randomly generated to be both reproducible and unaffected by the order of sequences in database (i.e., bias-free).
@@ -409,6 +408,7 @@ We downloaded the five releases of UniRef100 \citep{suzek2007uniref} listed in \
 From each release of UniRef100, we extracted the protein sequences.
 From these extracted sequences, each sequence-clustering algorithm was used to generate a set of clusters.
 The number of clusters produced by each algorithm and the runtime of each algorithm were recorded (\cref{fig:uniref}).
+
 A more sensitive clustering algorithm generates fewer clusters of larger average cluster size.
 %\Cref{fig:uniref} shows that 
 FgClust generates the fewest clusters with the largest average cluster size (\cref{fig:uniref}), indicating that FgClust is the most sensitive method.
@@ -422,9 +422,15 @@ The improved sensitivity of FgClust on UniRef100
 results from the use of the Murphy10 reduced alphabet and clique-aware all-versus-all search (data not shown), especially at low sequence-similarity cutoffs (e.g., 50\%).
 The runtime improvement of FgClust on UniRef100 can be explained by the use of min-hash values instead of short words as filter and edit-similarity instead of alignment statistics as cutoff (data not shown).
 
-Linclust selects only one centroid sequence per k-mer and lets the centroid recruit sequences sharing the same k-mer.
-Sequences that fail to be recruited by the centroid remain as singletons.
+Linclust 
+	selects only one centre sequence per k-mer, 
+	selects certain k-mers in each input sequence, 
+	and then tries to cluster the input sequence with any of the centre sequences corresponding to these k-mers.
+Input sequences that cannot be clustered with any such centre sequence remain as singletons.
 Thus, Linclust is not sufficiently sensitive.
+As suggested by \citet{steinegger2017linclust},
+we increased the number of k-mers selected in each input sequence to 80 in an attempt to improve the sensitivity of Linclust.
+However, this attempt resulted in virtually the same average cluster sizes for Linclust to the point that \cref{fig:uniref} would remain visually unchanged. Hence, the sensitivity of Linclust remains practically unchanged.
 FgClust is significantly faster than MMSeqs2 especially at any high sequence similarity cutoff.
 FgClust is significantly more scalable than CD-HIT and kClust. 
 In fact, CD-HIT is characterized by slow and super-linear runtime, particularly at 50\% sequence-identity cutoff.
@@ -710,24 +716,31 @@ Our results suggest that FgClust is the best candidate for generating UniRef50 r
 	\end{tabular}
 	\caption{
 		%This figure shows the impact of database growth on sensitivity and runtime.
-		The UniRef100 database released
+		UniProt released
 		\SI{1306318}{},
 		\SI{4910948}{}, 
 		\SI{11659891}{}, 
 		\SI{33613081}{}, and 
-		\SI{94756963}{} sequences
-		in July 2004,
+		\SI{94756963}{} 
+		sequences into 
+		UniRef100-2.0,
+		UniRef100-12.0,
+		UniRef100-2011-01, 
+		UniRef100-2014-01, and
+		UniRef100-2017-01
+		in 
+		July 2004,
 		July 2017,
 		January 2011,
 		January 2014, and
 		January 2017,
 		respectively \citep{suzek2007uniref}.
-		These five releases are referred to as UniRef100-2.0,
-		UniRef100-12.0,
-		UniRef100-2011-01, 
-		UniRef100-2014-01, and
-		UniRef100-2017-01, respectively \citep{suzek2007uniref}.
-		We ran each program on each release with each similarity cutoff to generate each set of clusters.
+%		These five releases are referred to as UniRef100-2.0,
+%		UniRef100-12.0,
+%		UniRef100-2011-01, 
+%		UniRef100-2014-01, and
+%		UniRef100-2017-01, respectively \citep{suzek2007uniref}.
+		We ran each program on each release of the UniRef100 database with each similarity cutoff to generate each set of clusters.
 		Cluster quality is not evaluated due to the lack of ground truth. 
 		Each program times out after running for \SI{50}{} hours.
 		\label{fig:uniref}
@@ -744,8 +757,8 @@ Our results suggest that FgClust is the best candidate for generating UniRef50 r
 		The template-modeling (TM) score between each representative cluster centroid and each sequence covered by the centroid is tabulated. A centroid trivially covers itself with a TM score of 1.
 		%For each set of clusters, the number of sequences characterized by intra-cluster template-modeling (TM) scores inclusively below each threshold is tabulated.
 		%The intra-cluster TM score of a cluster is the lowest TM score between the representative sequence in the cluster as template and each represented sequence in the cluster.
-		%A cluster with an intra-cluster TM-score of less than 0.5 contains at least one outlier in terms of three-dimensional structure and is thus of bad quality 
-		If the TM score is less than 0.5, then the centroid and covered sequence are significantly different in protein structure
+		%A cluster with an intra-cluster TM-score of at most 0.5 contains at least one outlier in terms of three-dimensional structure and thus is of bad quality 
+		If the TM score is at most 0.5, then the centroid and covered sequence are usually significantly different in protein structure
 		\cite{xu2010significant}.
 		%FgClust generates the least number of bad-quality clusters.
 		The wall-clock runtime of each program is too short to measure scalability.
@@ -786,20 +799,20 @@ We downloaded all monomeric proteins with experimentally determined structures d
 The sequence of each protein is extracted.
 If an extracted sequence has at least 11 non-ambiguous amino acids and at least 90\% amino acids of the extracted sequence are non-ambiguous, then the extracted sequence is kept.
 From these kept sequences, each sequence-clustering algorithm was used to generate a set of clusters.
-Within each cluster, the template-modeling (TM) score between the representative sequence and each represented sequence is computed by TM-Align developed by \citet{zhang2005tm}.
+Within each cluster, the template-modeling (TM) score between the representative sequence and each represented sequence is computed by TM-Align \citep{zhang2005tm}.
 %The distribution of such TM scores is shown in \cref{table:pdb}.
 A lower TM score means a lower specificity achieved by a clustering algorithm.
 %The lower such TM scores are, the less specific the clustering algorithm is.
-FgClust generates the fewest number of sequences with low TM scores (i.e., less than 0.5) to their centroids (\cref{table:pdb}).
-Usually, two proteins are in the same fold if and only if these two proteins share a TM-score of at least 0.5 \citep{xu2010significant}, where a protein fold is defined by the arrangement of the secondary structure elements relative to each other in space.
+FgClust generates the fewest number of sequences with low TM scores (i.e., at most 0.5) to their centroids (\cref{table:pdb}).
+Usually, two proteins are in the same fold if and only if these two proteins share a TM-score of more than 0.5 \citep{xu2010significant}, where a protein fold is defined by the arrangement of the secondary structure elements relative to each other in space.
 %\Cref{table:pdb} shows 
-%We found that other algorithms produce about 50\% more clusters with intra-cluster TM scores of less than 0.5 than FgClust.
+%We found that other algorithms produce about 50\% more clusters with intra-cluster TM scores of at most 0.5 than FgClust.
 %We found that FgClust generated clusters such that the least number of sequences.
 As a result, FgClust is significantly more specific than other algorithms in terms of experimentally determined protein structures.
 Furthermore, FgClust at 50\% similarity cutoff generates the fewest clusters with the highest average cluster size.
 Therefore, FgClust is significantly more specific and sensitive than other algorithms in terms of protein structural similarity.
 %Thus, FgClust can improve the protein-structure prediction based on homology-modeling, the structural classification of proteins, etc.
-The better specificity and sensitivity of FgClust on PDB structures is attributed to the use of Murphy10 to reduce amino-acid alphabet and 25 residues to normalize edit-similarity, respectively (data not shown).
+The better specificity and sensitivity of FgClust on PDB structures are attributed to the use of Murphy10 to reduce amino-acid alphabet and 25 residues to normalize edit-similarity, respectively (data not shown).
 
 \subsection{Evaluation on protein families in Pfam}
 
@@ -910,14 +923,17 @@ For this evaluation, we applied each clustering algorithm on
 %We downloaded 
 the manually checked seed A dataset from Pfam release 31.0 \citep{finn2016pfam}.
 %We ran each clustering algorithm on this dataset.
-We assessed the quality of the clusters in terms of the number of corrupted clusters and the number of corrupted sequences contained by a cluster.
-We consider a cluster to be corrupted if it contains at least two sequences that belong to two different Pfam families.
-Also, we regard a sequence, or a member of a cluster, to be corrupted if it belongs to a Pfam family that the representative of the cluster does not belong to.
+We assessed the quality of the clusters in terms of 
+%the number of corrupted clusters and 
+the number of corrupted sequences contained by a cluster.
+%We consider a cluster to be corrupted if it contains at least two sequences that belong to two different Pfam families.
+%Also, we
+We regard a sequence, or a member of a cluster, to be corrupted if it belongs to a Pfam family that the representative of the cluster does not belong to.
 %A corrupted cluster member belongs to a Pfam family that the representative of this cluster does not belong to.
 A more sensitive clustering algorithm generates fewer clusters, whereas a more specific clustering algorithm generates fewer corrupted cluster members.
 As previously mentioned, 
-the number of corrupted clusters is not normalized against the input and is therefore not meaningful for measuring specificity.
-However, the number of corrupted clusters can reveal the characteristics of different clustering algorithms and is therefore still included.
+the number of corrupted clusters (a corrupted cluster contains sequences belonging to different families) is not normalized against the input and is therefore not meaningful for measuring specificity.
+However, the number of corrupted clusters can reveal the characteristics of different clustering algorithms and is therefore still shown in \cref{fig:pfam-appendix}.
 We found that FgClust generates much fewer clusters given the same number of corrupted clusters and much fewer corrupted cluster members given the same number of clusters (\cref{fig:pfam}).
 The result shows that FgClust is significantly more sensitive at the same specificity and significantly more specific at the same sensitivity.
 Therefore, FgClust achieves the best sensitivity-specificity trade-off.
@@ -932,7 +948,7 @@ Linclust, MMSeqs2, and kClust use e-value in addition to sequence identity.
 As a result, FgClust, Linclust, MMSeqs2, and kClust do not suffer from a drop in sensitivity-specificity trade-off at a low sequence similarity.
 Linclust, MMSeqs2, and kClust use iterative, profile-based clustering strategy and can thus merge similar clusters into one single cluster.
 A false-positive merging step corrupts only one cluster, but it can corrupt multiple cluster members.
-Thus, Linclust, MMSeqs2, and kClust generate high numbers of corrupted cluster members compared with the numbers of corrupted clusters.
+Thus, Linclust, MMSeqs2, and kClust generate high numbers of corrupted cluster members compared with the numbers of corrupted clusters (\cref{fig:pfam,fig:pfam-appendix}).
 
 \subsection{Evaluation on RNA families in Rfam}
 
@@ -943,26 +959,26 @@ In this study, we utilized the manually checked seed dataset from Rfam release 1
 %We ran FgClust commit 93c3a6d9, VSEARCH v2.3.4\_linux\_x86\_64 \citep{rognes2016vsearch}, and CD-HIT-EST version 4.6 \citep{fu2012cd} on this dataset.
 Evaluation metrics for Pfam and Rfam are similar.
 %\Cref{fig:rfam} shows 
-In our experiments, we found that FgClust generates much fewer clusters given the same number of corrupted cluster members and much fewer corrupted cluster members given the same number of clusters \cref{fig:rfam}.
+In our experiments, we found that FgClust generates much fewer clusters given the same number of corrupted cluster members and much fewer corrupted cluster members given the same number of clusters (\cref{fig:rfam}).
 %Thus, FgClust is significantly more sensitive at the same specificity and significantly more specific at the same sensitivity.
 This result indicates that FgClust achieves the best overall sensitivity-specificity trade-off.
 %FgClust can improve RNA-function prediction based on homology modeling, functional classification of RNAs, the construction of HMMs for RNA families etc.
 % improvement
-Additionally,
-the sensitivity and specificity of FgClust on Rfam-seed is mostly improved by the use of edit-similarity instead of sequence identity as the cutoff (data not shown).
-The specificity of FgClust on Rfam-seed also is improved by the use of 25 residues to normalized edit-similarity (data not shown).
+%Additionally, the 
+The sensitivity and specificity of FgClust on Rfam-seed is mostly improved by the use of edit-similarity instead of sequence identity as the cutoff (data not shown).
+The specificity of FgClust on Rfam-seed is also improved by the use of 25 residues to normalized edit-similarity (data not shown).
 
 \section{Conclusion}
 
 We developed FgClust, a novel algorithm for clustering biological sequences.
-FgClust is more sensitive, more specific, and faster than other state-of-the-arts clustering algorithms, except that Linclust is two times faster but also generates up to more than 130\% more clusters than FgClust.
+FgClust is more sensitive, more specific, and faster than other state-of-the-art clustering algorithms, except that Linclust is two times faster but also generates up to more than 130\% more clusters than FgClust.
 We observed that greedy incremental update may not select the optimal centroid during each incremental update.
-Thus, FgClust detects a sufficient number of sequence pairs such that, in each pair, the first can represent the second.
+Accordingly, FgClust detects a sufficient number of sequence pairs such that, in each pair, the first can represent the second.
 Then, FgClust uses greedy set cover to cluster all sequences based on such pairings.
-We observed that there are too many short words in a protein sequence.
-Thus, FgClust uses min-hash values instead of short words as filter.
+We observed that there are too many short words in a typical biological sequence.
+Accordingly, FgClust uses min-hash values instead of short words as filter.
 We observed that sequence identity is not sufficiently correlated with biological similarity and requires the time-consuming computation of alignment.
-Thus, FgClust uses edit-similarity instead of sequence identity.
+Accordingly, FgClust uses edit-similarity instead of sequence identity.
 %Edit-similarity is defined as one minus the following: 
 %	number of single-character edits to change a member sequence into a substring of the centroid sequence, divided by the length of the member sequence.
 
@@ -970,10 +986,10 @@ FgClust generates clusters of the highest quality.
 Consequently, FgClust reduces manual-curation efforts and errors in the downstream analysis of clusters.
 For example, FgClust provides better homology modeling, which can improve the prediction of protein structures, protein functions, and RNA functions.
 Moreover, FgClust is fast and scalable.
-Consequently, FgClust is and still will be able to handle the large volume of sequences released by UniProt and/or by metagenomic studies.
+FgClust will be able to handle the large volume of sequences released by UniProt and metagenomic studies.
 
-In the future, we will construct an HMM for each cluster generated by FgClust and evaluate the quality of such HMMs.
-Moreover, we will apply the techniques used in FgClust to other problems, such as metagenomic-sequence classification and chimera detection.%, and detection of conserved protein domains.
+In the future, we will construct a Hidden Markov Model (HMM) for each cluster generated by FgClust and evaluate the quality of such HMMs.
+Moreover, we will apply the techniques used in FgClust to other problems, such as metagenomics-sequence classification and chimera detection.%, and detection of conserved protein domains.
 
 \bibliographystyle{plainnat}
 %\bibliographystyle{unsrtnat}
@@ -1007,8 +1023,8 @@ As a result, canonical specificity is not normalized against the input and is th
 		%Each program is run with each similarity cutoff to generate each set of clusters.
 		The intra-cluster TM score of a cluster is the lowest TM score between the representative sequence in the cluster as template and each represented sequence in the cluster.
 		For each set of clusters, the number of sequences characterized by intra-cluster template-modeling (TM) scores inclusively below each threshold is tabulated.
-		%A cluster with an intra-cluster TM-score of less than 0.5 contains at least one outlier in terms of three-dimensional structure and is thus of bad quality 
-		%If the TM score is less than 0.5, then the centroid and covered sequence are significantly different in protein structure
+		%A cluster with an intra-cluster TM-score of at most 0.5 contains at least one outlier in terms of three-dimensional structure and thus is of bad quality 
+		%If the TM score is at most 0.5, then the centroid and covered sequence are significantly different in protein structure
 		%\cite{xu2010significant}.
 		%FgClust generates the least number of bad-quality clusters.
 		%The wall-clock runtime of each program is too short to measure scalability.
@@ -1016,7 +1032,7 @@ As a result, canonical specificity is not normalized against the input and is th
 	\begin{tabular}{l c c c c c c c c c c}
 		\toprule
 		Program & similarity & 
-		\multicolumn{8}{c}{TM scores of centroids modeling covered sequences} \\
+		\multicolumn{8}{c}{intra-cluster TM scores} \\
 		& cutoff      & 0.2 &
 		\(\le\) 0.3 & \(\le\) 0.4 & \(\le\) 0.5 
 		& \(\le\) 0.6 & \(\le\) 0.7 & \(\le\) 0.8 & \(\le\) 0.9 & \(\le\) 1 \\
