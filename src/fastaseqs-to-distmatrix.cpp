@@ -283,7 +283,8 @@ void seq_arrlist_add(const kseq_t *kseq) {
     seq_arrlist.data[seq_arrlist.size].seq = (char*)xmalloc(kseq->seq.l + 1);
     strcpy(seq_arrlist.data[seq_arrlist.size].name, kseq->name.s);
     // for (size_t i = 0; i <= kseq->seq.l; i++) { seq_arrlist.data[seq_arrlist.size].seq[i] = ALPHA_TYPE_TO_CHAR_TO_REDUCED[2][kseq->seq.s[i]]; }
-    assert( seq_arrlist.data[seq_arrlist.size].seq[kseq->seq.l] == '\0' );
+    strcpy(seq_arrlist.data[seq_arrlist.size].seq, kseq->seq.s);
+    assert( seq_arrlist.data[seq_arrlist.size].seq[kseq->seq.l] == '\0' || !fprintf(stderr, "The string '%s' is not null-terminated\n", seq_arrlist.data[seq_arrlist.size].seq));
     seq_arrlist.data[seq_arrlist.size].seqlen = kseq->seq.l;
     seq_arrlist.data[seq_arrlist.size].coveredcnt = 0;
     seq_arrlist.size++;
@@ -577,7 +578,7 @@ int main(const int argc, const char *const *const argv) {
 
     time(&begtime);
 
-    for (int64_t iter = 0; iter < seq_arrlist.size; iter += BATCH_SIZE) {
+    for (int64_t iter = 0; iter < seq_arrlist.size;) {
         int itermax = MIN(iter+BATCH_SIZE, seq_arrlist.size);
 
         #pragma omp parallel for schedule(dynamic, 1)
@@ -650,6 +651,7 @@ int main(const int argc, const char *const *const argv) {
             coveredarr[i-iter].clear();
         }
         assert(coveredarr.size() == BATCH_SIZE);
+        iter += BATCH_SIZE;
         for (int i = 0; i < 2; i++) {
             BATCH_SIZE++;
             coveredarr.push_back(std::vector<std::pair<uint32_t, uint8_t>>(0));

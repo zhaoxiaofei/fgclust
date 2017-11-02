@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-
+set -evx
 if [ $# -lt 4 ]; then
     echo "Usage: $0 <input-fasta-file> <output-fasta-file> <output-cluster-file> <sequence-similarity>"
     echo "  input-fasta-file    : the input fasta file that contains either only nucleotide sequences or only protein sequences"
