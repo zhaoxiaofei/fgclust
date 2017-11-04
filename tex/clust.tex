@@ -995,7 +995,9 @@ Accordingly, FgClust uses edit-similarity instead of sequence identity.
 
 FgClust generates clusters of the highest quality. 
 Consequently, FgClust reduces manual-curation efforts and errors in the downstream analysis of clusters.
-For example, FgClust provides better homology modeling, which can improve the prediction of protein structures, protein functions, and RNA functions.
+For example, sequences in the same cluster can be assumed to be homologous to each other for homology modeling.
+Errors in homology modeling are reduced by the use of FgClust.
+This reduction in errors results in less manual examination of the errors and improves the prediction of structures and functions \citep{nayeem2006comparative}.
 Moreover, FgClust is fast and scalable.
 FgClust will be able to handle the large volume of sequences released by UniProt and metagenomic studies.
 
