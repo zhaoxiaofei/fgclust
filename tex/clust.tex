@@ -1,6 +1,10 @@
-\documentclass[11pt,letterpaper]{article}
-
-\usepackage{authblk}
+%\documentclass[11pt,letterpaper]{article}
+\documentclass[11pt,letterpaper]{llncs2e/llncs}
+%\usepackage{floatrow}
+%\DeclareFloatFont{normal}{\normalsize}
+%\floatsetup{font=normal}
+%\usepackage[normal]{caption}
+%\usepackage{authblk}
 \usepackage{indentfirst}
 \usepackage[margin=1in]{geometry}
 \usepackage{hyperref}
@@ -25,21 +29,35 @@
 \setcounter{secnumdepth}{6}
 
 \title{FgClust, a fast and scalable algorithm for generating high-quality clusters of biological sequences}
-%\author{XiaoFei Zhao, Shing Hei Zhan}
-\author[1]{XiaoFei Zhao\thanks{xzhao@fusiongenomics.com ;  cndfeifei@gmail.com}}
-\author[1]{Shing Hei Zhan\thanks{szhan@fusiongenomics.com ; shing.zhan@gmail.com}}
 
-\affil[1]{Fusion Genomics Corporation 
+\author{
+	XiaoFei Zhao
+	\inst{1}\thanks{Alternative email: \email{cndfeifei@gmail.com}}
+	\and
+	Shing Hei Zhan
+	\inst{2}\thanks{Alternative email: \email{shing.zhan@gmail.com}}
 }
+\institute{
+	Fusion Genomics Corporation,
+	\email{xzhao@fusiongenomics.com}
+	\and
+	Fusion Genomics Corporation,
+	\email{szhan@fusiongenomics.com}
+}
+%\author{XiaoFei Zhao, Shing Hei Zhan}
+%\author[1]{XiaoFei Zhao\thanks{xzhao@fusiongenomics.com ;  cndfeifei@gmail.com}}
+%\author[1]{Shing Hei Zhan\thanks{szhan@fusiongenomics.com ; shing.zhan@gmail.com}}
 
-\hypersetup{pdfinfo={
-Title={git commit \gitHash},
-Author={XiaoFei Zhao}
-}}
+%\affil[1]{Fusion Genomics Corporation}
+
+%\hypersetup{pdfinfo={
+%Title={git commit \gitHash},
+%Author={XiaoFei Zhao}
+%}}
 
 \begin{document}
 
-\maketitle
+\maketitle{}
 
 \begin{abstract}
 We developed FgClust, a novel multi-threaded algorithm for clustering biological sequences.
@@ -87,8 +105,8 @@ diagnosis of disease \citep{gniadecka2004melanoma}, and
 prediction of biological function \citep{berg2002protein}.
 Example applications of the study of biological function include
 increase in crop yield \citep{xu2011functions},
-therapy for diseases \citep{cowen2009harnessing,egen2002ctla}, and
-prevention of diseases \citep{kris2004bioactive}.
+therapy for disease \citep{cowen2009harnessing,egen2002ctla}, and
+prevention of disease \citep{kris2004bioactive}.
 %Biological function
 %Examples of biological function are photosynthesis, oxygen transport, and DNAand replication.
 The Protein Data Bank (PDB) database contains experimentally determined three-dimensional protein structures \cite{berman2006protein}.
@@ -255,7 +273,9 @@ Here, we demonstrated that FgClust can cluster hundreds of millions of sequences
 \label{subsec:clique-aware}
 \Citet{li2001clustering} introduced the notion of greedy incremental update.
 Greedy incremental update involves visiting each sequence (typically in order of decreasing sequence length) and then either forming a new cluster with each visited sequence or assigning it to an existing cluster. Thus, any unvisited sequence that can be ``covered'' by an already visited sequence cannot become a centroid. 
-In the context of clustering, a sequence is said to cover another sequence if it is within a certain distance from the other sequences. The issue is that an unvisited sequence can be a better centroid than the already visited sequence. 
+In the context of clustering, 
+	a sequence is said to cover another sequence if the distance from the covering sequence to the covered sequence is short according to a given distance function. 
+The issue is that an unvisited sequence can be a better centroid than the already visited sequence. 
 Therefore, such premature determination of centroids can result in clusters of suboptimal or even poor quality.
 
 %Greedy incremental update iterates through each sequence, usually in descending order by sequence length, and each iterated sequence either forms a new cluster or is covered by an existing cluster.
@@ -263,9 +283,9 @@ Therefore, such premature determination of centroids can result in clusters of s
 %However, a not-yet-iterated sequence can be a better centroid than the already iterated sequence.
 %Thus, such premature determination of centroid can result in more clusters of worse quality.
 
-Instead of greedy incremental update, we frame the sequence clustering problem as a dominating-set problem.
+Instead of greedy incremental update, we framed the sequence clustering problem as a dominating-set problem.
 The dominating-set problem can be solved in linear time by greedy set cover.
-First, we attempt to perform an exhaustive all-versus-all sequence similarity search to construct a directed graph, in which its vertices represent sequences and its edges indicate that one sequence (i.e., the initial vertex) covers another (i.e., the terminal vertex).
+First, we attempted to perform an exhaustive all-versus-all sequence similarity search to construct a directed graph, in which its vertices represent sequences and its edges indicate that one sequence (i.e., the initial vertex) covers another (i.e., the terminal vertex).
 %Instead, we can perform all-versus-all sequence-similarity search to construct a directed graph, and then solve the dominating-set problem on the resulting graph with greedy set cover.
 %In such graph, a vertex represents a sequence, and an edge from a first vertex to a second vertex means that the first sequence can represent and cover the second sequence.
 In practice, however, such a graph is usually characterized by larger cliques as the number of input sequences increases.
@@ -450,8 +470,8 @@ kClust compares each query input sequence with each target input sequence that h
 The probability that two sequences possess similar k-mers by random chance is relatively constant, and therefore does not depend on the number of input sequences.
 Consequently, as the number of input sequences increases linearly, the number of pairwise comparisons triggered by random chance increases quadratically.
 Thus, the runtime of CD-HIT and kClust is asymptotically quadratic with respect to input size.
-Longer k-mer significantly reduces the probability that two sequences share the same longer k-mer by random chance.
-Therefore, longer k-mer implies that more input sequences are required to trigger the quadratic runtime of CD-HIT.
+The use of longer k-mers significantly reduces the probability that two sequences share the same longer k-mer by random chance.
+Therefore, the use of longer k-mers implies that more input sequences are required to trigger the quadratic runtime of CD-HIT.
 Indeed, the runtime of CD-HIT with five million sequences as input is roughly quadratic at 50\% sequence-identity cutoff but still roughly linear at 70\% or more sequence-identity cutoff (\cref{fig:uniref}).
 FgClust and MMSeqs2 use longer k-mers for a larger number of input sequences to maintain a linear expected runtime with respect to the number of input sequences.
 
@@ -779,8 +799,8 @@ Our results suggest that FgClust is the best candidate for generating UniRef50 r
 		Program & similarity  & number of & 
 		\multicolumn{7}{c}{TM scores of centroids modeling covered sequences} \\
 		& cutoff      & clusters  &
-		\(\le\) 0.3 & \(\le\) 0.4 & \(\le\) 0.5 
-		& \(\le\) 0.6 & \(\le\) 0.7 & \(\le\) 0.8 & \(\le\) 0.9 \\
+		~\(\le\) 0.3~ & ~\(\le\) 0.4~ & ~\(\le\) 0.5~
+		& ~\(\le\) 0.6~ & ~\(\le\) 0.7~ & ~\(\le\) 0.8~ & ~\(\le\) 0.9~ \\
 		\midrule
 		
 		FgClust   & 50\% & 14784 &  88 & 248 & {\bfseries 547} & 1149 & 2150 & 3855 & 8227 \\
@@ -939,13 +959,13 @@ We assessed the quality of the clusters in terms of
 the number of corrupted sequences contained by a cluster.
 %We consider a cluster to be corrupted if it contains at least two sequences that belong to two different Pfam families.
 %Also, we
-We regard a sequence, or a member of a cluster, to be corrupted if it belongs to a Pfam family that the representative of the cluster does not belong to.
+We regarded a sequence, or a member of a cluster, to be corrupted if it belongs to a Pfam family that the representative of the cluster does not belong to.
 %A corrupted cluster member belongs to a Pfam family that the representative of this cluster does not belong to.
 A more sensitive clustering algorithm generates fewer clusters, whereas a more specific clustering algorithm generates fewer corrupted cluster members.
 As previously mentioned, 
 the number of corrupted clusters (a corrupted cluster contains sequences belonging to different families) is not normalized against the input and is therefore not meaningful for measuring specificity.
 However, the number of corrupted clusters can reveal the characteristics of different clustering algorithms and is therefore still shown in \cref{fig:pfam-appendix}.
-We found that FgClust generates much fewer clusters given the same number of corrupted clusters and much fewer corrupted cluster members given the same number of clusters (\cref{fig:pfam}).
+We found that FgClust generates much fewer clusters given the same number of corrupted cluster members and much fewer corrupted cluster members given the same number of clusters (\cref{fig:pfam}).
 The result shows that FgClust is significantly more sensitive at the same specificity and significantly more specific at the same sensitivity.
 Therefore, FgClust achieves the best sensitivity-specificity trade-off.
 %FgClust can improve protein-function prediction based on homology modeling, functional classification of proteins, the construction of Hidden Markov Models (HMMs) for protein families, etc.
@@ -1025,17 +1045,17 @@ the canonical sensitivity is high because only one thousand clusters are generat
 and the canonical specificity is high because only the cluster containing \SI{999001} sequences is corrupted and/or not characterized by the highest consistency.
 As a result, canonical specificity is not normalized against the input and is therefore not meaningful for measuring specificity.
 
-\pagebreak
+\clearpage{}
 
 \begin{table}[t]%[!htbp]
 	\centering
 	\caption{
 		Extension of \cref{table:pdb} to include canonical specificity.
-		In this case, canonical specificity is measured by intra-cluster TM score.
+		In this case, canonical specificity is measured by intra-cluster template-modeling (TM) score.
 		%The sequences of \SI{49686} monomeric proteins in PDB deposited exclusively before January 2\textsuperscript{nd} 2017 are given as input to each program \citep{berman2006protein}. 
 		%Each program is run with each similarity cutoff to generate each set of clusters.
 		The intra-cluster TM score of a cluster is the lowest TM score between the representative sequence in the cluster as template and each represented sequence in the cluster.
-		For each set of clusters, the number of sequences characterized by intra-cluster template-modeling (TM) scores inclusively below each threshold is tabulated.
+		For each set of clusters, the number of sequences characterized by intra-cluster TM scores inclusively below each threshold is tabulated.
 		%A cluster with an intra-cluster TM-score of at most 0.5 contains at least one outlier in terms of three-dimensional structure and thus is of bad quality 
 		%If the TM score is at most 0.5, then the centroid and covered sequence are significantly different in protein structure
 		%\cite{xu2010significant}.
@@ -1046,9 +1066,9 @@ As a result, canonical specificity is not normalized against the input and is th
 		\toprule
 		Program & similarity & 
 		\multicolumn{8}{c}{intra-cluster TM scores} \\
-		& cutoff      & 0.2 &
-		\(\le\) 0.3 & \(\le\) 0.4 & \(\le\) 0.5 
-		& \(\le\) 0.6 & \(\le\) 0.7 & \(\le\) 0.8 & \(\le\) 0.9 & \(\le\) 1 \\
+		& cutoff      & ~\(\le\)0.2~ &
+		~\(\le\)0.3~ & ~\(\le\)0.4~ & ~\(\le\)0.5~ 
+		& ~\(\le\)0.6~ & ~\(\le\)0.7~ & ~\(\le\)0.8~ & ~\(\le\)0.9~ & ~\(\le\)1~ \\
 		\midrule
 		
 		FgClust & 50 & 4 & 60 & 143 & 283 & 565 & 1020 & 1639 & 2606 & 14784 \\
