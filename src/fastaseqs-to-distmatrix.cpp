@@ -61,6 +61,8 @@ char ALPHA_TYPE_TO_CHAR_TO_REDUCED[3][256]; // derived from ALPHA_TYPE_TO_SIZE
 
 // variables that are initialized from command line args
 
+int LEN_PERC = 80;
+
 uint64_t BATCH_SIZE = 256; // 15999;
 uint64_t RESIDUE_CNT_TO_SEED_CNT_RATIO = 40;
 
@@ -96,6 +98,7 @@ int ATTEMPT_MAX = 0;
 
 
 void showparams() {
+    
     std::cerr << " BATCH_SIZE = " << BATCH_SIZE << std::endl;
 
     std::cerr << " RESIDUE_CNT_TO_SEED_CNT_RATIO = " << RESIDUE_CNT_TO_SEED_CNT_RATIO << std::endl;
@@ -104,10 +107,11 @@ void showparams() {
     std::cerr << " IS_INPUT_NUC = " << IS_INPUT_NUC         << std::endl;
     std::cerr << " SIM_PERC = " << (int)SIM_PERC << std::endl;
     std::cerr << " SIM_BASE = " << (int)SIM_BASE << std::endl;
-    
-    std::cerr << " SEED_LENGTH = " << SEED_LENGTH     << std::endl;
+    std::cerr << " LEN_PERC = " << (int)LEN_PERC << std::endl;
+
+    std::cerr << " SEED_LENGTH = " << SEED_LENGTH    << std::endl;
     std::cerr << " SEED_MAXGAP = " << SEED_MAXGAP    << std::endl;
-    std::cerr << " SIGN_LENGTH = " << SIGN_LENGTH     << std::endl;
+    std::cerr << " SIGN_LENGTH = " << SIGN_LENGTH    << std::endl;
     std::cerr << " SIGN_SHARED_CNT_MIN = " << SIGN_SHARED_CNT_MIN      << std::endl;
     std::cerr << " COV_SRC_MAX = " << COV_SRC_MAX  << std::endl;
     std::cerr << " COV_SNK_MAX = " << COV_SNK_MAX << std::endl;
@@ -125,7 +129,19 @@ void showparams() {
 void show_usage(const int argc, const char *const *const argv) {
     std::cerr << "Program : " << argv[0] << std::endl;
     std::cerr << "Command-line arguments:" << std::endl;
-    std::cerr << "--edsim\tA covers B if and only if (len(B) - edit-distance(A, B)) / len(B) >= edsim, where gaps at ends of B are not penalized." << SIM_PERC << std::endl;
+    std::cerr << "--sim_base\tA covers B if and only if (len(B) - edit-distance(A, B)) >= sim_perc * len(B) + sim_base," << SIM_PERC << std::endl;
+    std::cerr << "--sim_perc\t  where gaps at ends of B are not penalized."                                              << SIM_PERC << std::endl;
+    std::cerr << "--len_perc\tA covers B if and only if min(len(A) / len(B), len(B) / len(A)) >= len_perc."              << LEN_PERC << std::endl;
+    std::cerr << "--cov-snk-max\tmax number of times that the covered sequence can be covered."   << COV_SNK_MAX << std::endl;
+    std::cerr << "--cov-src-max\tmax number of times that the covering sequence can be coverered" << COV_SRC_MAX << std::endl;
+    std::cerr << "--attempt-ini\tinitial number of attempts"                            << ATTEMPT_INI << std::endl;
+    std::cerr << "--attempt-inc\tnumber of attempts incremented per true positive hits" << ATTEMPT_INC << std::endl;
+    std::cerr << "--attempt-max\tnumber of attempts capped at this maximum value"       << ATTEMPT_MAX << std::endl;
+    std::cerr << "--sign-length\tnumber of attempts capped " << SIGN_LENGTH << std::endl;
+    std::cerr << "--seed-length\tlength of an indexed seed" << SEED_LENGTH << std::endl;
+    std::cerr << "--seed-maxgap\tmax number of residues between consecutive seeds" << SEED_MAXGAP << std::endl;
+    std::cerr << "--seed-mincnt\tminimum number of seeds per sequence" << SEED_MINCNT << std::endl;
+
     exit(-1);
 }
 
@@ -207,7 +223,7 @@ seq_t; // 16+16*4 bytes +++
 
 static const int calc_perc_seq_sim_editdist(const seq_t *seq1, const seq_t *seq2) {
     
-    if (seq1->seqlen * 80 > seq2->seqlen * 100 || seq2->seqlen * 80 > seq1->seqlen * 100) { return 0; }
+    if (seq1->seqlen * LEN_PERC > seq2->seqlen * 100 || seq2->seqlen * LEN_PERC > seq1->seqlen * 100) { return 0; }
     int maxEditDist = seq1->seqlen - ceil(sqrt(SQUARE((double)SIM_BASE) + SQUARE((double)(seq1->seqlen * SIM_PERC) / 100.0)));
     if (maxEditDist < 0) { return 0; }
     
@@ -321,14 +337,12 @@ void PARAMS_init(const int argc, const char *const *const argv) {
             SIM_PERC = atoi(argv[i+1]);
         } else if (!strcmp("--sim-base", argv[i])) {
             SIM_BASE = atoi(argv[i+1]);
+        } else if (!strcmp("--len-perc", argv[i])) {
+            LEN_PERC = atoi(argv[i+1]);
         } else if (!strcmp("--is-input-nuc", argv[i])) {
             IS_INPUT_NUC = atoi(argv[i+1]);
-        } 
-        
-        else if (!strcmp("--dbentry-filt-occ-min", argv[i])) {
+        } else if (!strcmp("--dbentry-filt-occ-min", argv[i])) {
             DBENTRY_FILT_OCC_MIN = atoi(argv[i+1]);
-        } else if (!strcmp("--sign-shared-cnt-min", argv[i])) {
-            SIGN_SHARED_CNT_MIN = atoi(argv[i+1]);
         } else if (!strcmp("--batch-size", argv[i])) {
             BATCH_SIZE = atoi(argv[i+1]);
         } else {
@@ -352,14 +366,29 @@ void PARAMS_init(const int argc, const char *const *const argv) {
     }
     
     for (int i = 1; i < argc; i += 2) {
-        if (!strcmp("--cov-src-max", argv[i])) {
+        if        (!strcmp("--cov-src-max", argv[i])) {
             COV_SRC_MAX = atoi(argv[i+1]);
         } else if (!strcmp("--cov-snk-max", argv[i])) {
             COV_SNK_MAX = atoi(argv[i+1]);
+        } else if (!strcmp("--attempt-ini", argv[i])) {
+            ATTEMPT_INI = atoi(argv[i+1]);
+        } else if (!strcmp("--attempt-inc", argv[i])) {
+            ATTEMPT_INC = atoi(argv[i+1]);
+        } else if (!strcmp("--attempt-max", argv[i])) {
+            ATTEMPT_MAX = atoi(argv[i+1]);
+        } else if (!strcmp("--sign-shared-cnt-min", argv[i])) {
+            SIGN_SHARED_CNT_MIN = atoi(argv[i+1]);
+        } else if (!strcmp("--sign-length", argv[i])) {
+            SIGN_LENGTH = atoi(argv[i+1]);
+        } else if (!strcmp("--israndom", argv[i])) {
+            // pass
         } else if (!are_args_parsed[i]) {
-            show_usage(argc, argv);
-        }
+            if (strcmp("--seed-length", argv[i]) && strcmp("--seed-maxgap", argv[i]) && strcmp("--seed-mincnt", argv[i])) {
+                show_usage(argc, argv);
+            }
+        } 
     }
+    ATTEMPT_MAX = MAX(ATTEMPT_INI, ATTEMPT_MAX);
 
     if (!IS_INPUT_NUC) {
         for (int t = 0; t < 3; t++) {
@@ -505,9 +534,10 @@ int main(const int argc, const char *const *const argv) {
     SEED_MINCNT = MAX(SEED_MINCNT, 20);
 
     for (int i = 1; i < argc; i += 2) {
-        if (!strcmp("--kmer_size",     argv[i])) { SEED_LENGTH     = atoi(argv[i+1]); } 
-        if (!strcmp("--kmer_space",    argv[i])) { SEED_MAXGAP    = atoi(argv[i+1]); }
-        if (!strcmp("--min_num_kmers", argv[i])) { SEED_MINCNT = atoi(argv[i+1]); }
+        if (!strcmp("--seed-length", argv[i])) { SEED_LENGTH = atoi(argv[i+1]); } 
+        else if (!strcmp("--seed-maxgap", argv[i])) { SEED_MAXGAP = atoi(argv[i+1]); }
+        else if (!strcmp("--seed-mincnt", argv[i])) { SEED_MINCNT = atoi(argv[i+1]); }
+        
     }
 
     std::cerr << "After adjustment, (SEED_LENGTH, SEED_MAXGAP, SEED_MINCNT) = " << SEED_LENGTH << ", " << SEED_MAXGAP << "," << SEED_MINCNT << std::endl;
