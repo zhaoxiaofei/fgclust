@@ -128,20 +128,20 @@ void showparams() {
 
 void show_usage(const int argc, const char *const *const argv) {
     std::cerr << "Program : " << argv[0] << std::endl;
-    std::cerr << "Command-line arguments:" << std::endl;
-    std::cerr << "--sim_base\tA covers B if and only if (len(B) - edit-distance(A, B)) >= sim_perc * len(B) + sim_base," << SIM_PERC << std::endl;
-    std::cerr << "--sim_perc\t  where gaps at ends of B are not penalized."                                              << SIM_PERC << std::endl;
-    std::cerr << "--len_perc\tA covers B if and only if min(len(A) / len(B), len(B) / len(A)) >= len_perc."              << LEN_PERC << std::endl;
-    std::cerr << "--cov-snk-max\tmax number of times that the covered sequence can be covered."   << COV_SNK_MAX << std::endl;
-    std::cerr << "--cov-src-max\tmax number of times that the covering sequence can be coverered" << COV_SRC_MAX << std::endl;
-    std::cerr << "--attempt-ini\tinitial number of attempts"                            << ATTEMPT_INI << std::endl;
-    std::cerr << "--attempt-inc\tnumber of attempts incremented per true positive hits" << ATTEMPT_INC << std::endl;
-    std::cerr << "--attempt-max\tnumber of attempts capped at this maximum value"       << ATTEMPT_MAX << std::endl;
-    std::cerr << "--sign-length\tnumber of attempts capped " << SIGN_LENGTH << std::endl;
-    std::cerr << "--seed-length\tlength of an indexed seed" << SEED_LENGTH << std::endl;
-    std::cerr << "--seed-maxgap\tmax number of residues between consecutive seeds" << SEED_MAXGAP << std::endl;
-    std::cerr << "--seed-mincnt\tminimum number of seeds per sequence" << SEED_MINCNT << std::endl;
-
+    std::cerr << "Command-line arguments with [default-values]:" << std::endl;
+    std::cerr << "  --sim_base\t: A covers B only if (len(B) - edit-distance(A, B)) >= sim_perc * len(B) + sim_base [sim_base=" << SIM_BASE << "]" << std::endl;
+    std::cerr << "  --sim_perc\t:   where gaps at ends of B are not penalized. [sim_perc="                                      << SIM_PERC << "]" << std::endl;
+    std::cerr << "  --len_perc\t: A covers B only if min(len(A) / len(B), len(B) / len(A)) >= len_perc. ["                      << LEN_PERC << "]" << std::endl;
+    std::cerr << "  --cov-snk-max\t: max number of times that the covered sequence can be covered.["                            << COV_SNK_MAX << "]" << std::endl;
+    std::cerr << "  --cov-src-max\t: max number of times that the covering sequence can be coverered. ["                        << COV_SRC_MAX << "]" << std::endl;
+    std::cerr << "  --attempt-ini\t: initial number of attempts. ["                            << ATTEMPT_INI << "]" << std::endl;
+    std::cerr << "  --attempt-inc\t: number of attempts incremented per true positive hits. [" << ATTEMPT_INC << "]" << std::endl;
+    std::cerr << "  --attempt-max\t: number of attempts capped at this maximum value. ["       << ATTEMPT_MAX << "]" << std::endl;
+    std::cerr << "  --sign-length\t: length of k-mers for computing minhash values. ["         << SIGN_LENGTH << "]" << std::endl;
+    std::cerr << "  --seed-length\t: length of an indexed seed. ["                             << SEED_LENGTH << "]" << std::endl;
+    std::cerr << "  --seed-maxgap\t: max number of residues between consecutive seeds. ["      << SEED_MAXGAP << "]" << std::endl;
+    std::cerr << "  --seed-mincnt\t: minimum number of seeds per sequence.["                   << SEED_MINCNT << "]" << std::endl;
+    std::cerr << "Note: default value of 0 means dependence to other parameters or to the input." << std::endl;
     exit(-1);
 }
 
@@ -331,7 +331,7 @@ void PARAMS_init(const int argc, const char *const *const argv) {
     }
     std::vector<bool> are_args_parsed(argc+1);
     std:fill(are_args_parsed.begin(), are_args_parsed.end(), true);
-    
+
     for (int i = 1; i < argc; i += 2) {
         if (!strcmp("--sim-perc", argv[i])) {
             SIM_PERC = atoi(argv[i+1]);
@@ -477,6 +477,13 @@ void print_seedsize_histogram(int seedsize_histogram[], const char *name) {
 }
 
 int main(const int argc, const char *const *const argv) {
+    
+    for (int i = 1; i < argc; i++) {
+        if (!strcmp("--help", argv[i])) {
+            show_usage(argc, argv);
+        }
+    }
+    
     time_t begtime, endtime;
 
     std::cerr << "GITCOMMIT = " << GITCOMMIT << std::endl;
