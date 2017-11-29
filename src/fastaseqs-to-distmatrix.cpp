@@ -392,7 +392,7 @@ void PARAMS_init(const int argc, const char *const *const argv) {
         LEN_PERC = 0;
         SIM_BASE = 0;
         SIM_PERC = 90;
-        SIM_MODE = 2;
+        SIM_MODE = 1;
     }
     
     for (int i = 0; i < 256; i++) {
