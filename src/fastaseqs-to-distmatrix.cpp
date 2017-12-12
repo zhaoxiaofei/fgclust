@@ -99,6 +99,7 @@ int COV_SNK_MAX = 16;
 int SEED_LENGTH = 0; // can be overriden after determination of db size 
 int SEED_MAXGAP = 0; // can be overriden after determination of db size
 int SEED_MINCNT = 0; // can be overriden after determination of db size
+int SEED_MAXCNT = 0; // can be overriden
 
 int SIGN_LENGTH = 0;
 int SIGN_SHARED_PERC_MIN = 0; 
@@ -109,6 +110,8 @@ int ATTEMPT_INI = 50;
 int ATTEMPT_INC = 75;
 int ATTEMPT_MAX = 100;
 int ATTEMPT_MIN = -100;
+
+int ALN_MAX_LENSQR_MIL = 2*1000;
 
 void showparams() {
     
@@ -141,6 +144,8 @@ void showparams() {
     
     std::cerr << " DBENTRY_FILT_PAIR_TRUEHIT_MAX = " << DBENTRY_FILT_PAIR_TRUEHIT_MAX << std::endl;
     std::cerr << " DBENTRY_FILT_PAIR_ATTEMPT_CNT = " << DBENTRY_FILT_PAIR_ATTEMPT_CNT << std::endl;
+    
+    std::cerr << " ALN_MAX_LENSQR_MIL = " << ALN_MAX_LENSQR_MIL << std::endl;
 }
 
 void show_usage(const int argc, const char *const *const argv) {
@@ -162,8 +167,10 @@ void show_usage(const int argc, const char *const *const argv) {
     std::cerr << "  --seed-length\t: length of an indexed seed. ["                             << SEED_LENGTH << "]" << std::endl;
     std::cerr << "  --seed-maxgap\t: max number of residues between consecutive seeds. ["      << SEED_MAXGAP << "]" << std::endl;
     std::cerr << "  --seed-mincnt\t: minimum number of seeds per sequence.["                   << SEED_MINCNT << "]" << std::endl;
+    std::cerr << "  --seed-maxcnt\t: maximum number of seeds per sequence.["                   << SEED_MAXCNT << "]" << std::endl; 
     std::cerr << "  --sign-shared-perc-min\t: minimum number of signatures shared between query and target. ["       << SIGN_SHARED_PERC_MIN << "]" << std::endl;
-    std::cerr << "  --sign-shared-perc-zscore\t: z-score of shared signatures below which further sequence search is skipped [" << SIGN_SHARED_PERC_ZSCORE << "]" << std::endl;
+    std::cerr << "  --sign-shared-perc-zscore\t: z-score of shared signatures below which further sequence search is skipped. [" << SIGN_SHARED_PERC_ZSCORE << "]" << std::endl;
+    std::cerr << "  --aln-max-lensqr-mil\t: max (query-len*target-len) in million above which kmer-count estimates sequence similarity. [" << ALN_MAX_LENSQR_MIL << "]" << std::endl;
     std::cerr << "Note: default value of 0 means dependence to other parameters or to the input." << std::endl;
     exit(-1);
 }
@@ -280,7 +287,10 @@ static const int calc_perc_seq_my_editdist(const seq_t *seq1, const seq_t *seq2)
     return ret;
 }
 
-static const int calc_perc_seq_sim_editdist(const seq_t *seq1, const seq_t *seq2) {
+static const int calc_perc_seq_sim_editdist(const seq_t *seq1, const seq_t *seq2, int psigns) {
+    if (seq1->seqlen / 1000 * seq2->seqlen /1000 > ALN_MAX_LENSQR_MIL) {
+        return psigns;
+    }
     if (1 == SIM_MODE) {
         return calc_perc_seq_my_editdist(seq1, seq2);
     }
@@ -416,6 +426,8 @@ void PARAMS_init(const int argc, const char *const *const argv) {
             DBENTRY_FILT_OCC_MIN = atoi(argv[i+1]);
         } else if (!strcmp("--batch-size", argv[i])) {
             BATCH_SIZE = atoi(argv[i+1]);
+        } else if (!strcmp("--aln-max-lensqr-mil", argv[i])) {
+            ALN_MAX_LENSQR_MIL = atoi(argv[i+1]);
         } else {
             are_args_parsed[i] = false;
             are_args_parsed[i+1] = false;
@@ -488,7 +500,7 @@ void PARAMS_init(const int argc, const char *const *const argv) {
 
 void seq_longword_init(seq_t *const seq_ptr, int idx) {
     if ((int)seq_ptr->seqlen >= (int)SEED_LENGTH) {
-        int kmerspace = MAX(1, MIN(SEED_MAXGAP, seq_ptr->seqlen / SEED_MINCNT));
+        int kmerspace = MAX(MAX(1, seq_ptr->seqlen / SEED_MAXCNT), MIN(SEED_MAXGAP, seq_ptr->seqlen / SEED_MINCNT));
         uint64_t hash = hash_init(seq_ptr->seq);
         seed_add(hash, idx);
         for (int i = SEED_LENGTH; i < (int)seq_ptr->seqlen; i += 1) {
@@ -618,15 +630,15 @@ int main(const int argc, const char *const *const argv) {
     SEED_LENGTH = MIN(MAX(SEED_LENGTH, 7), 25);
     SEED_MAXGAP = MAX(SEED_MAXGAP, 1);
     SEED_MINCNT = MAX(SEED_MINCNT, 20);
-
+    SEED_MAXCNT = SEED_MINCNT * 30;
     for (int i = 1; i < argc; i += 2) {
         if (!strcmp("--seed-length", argv[i])) { SEED_LENGTH = atoi(argv[i+1]); } 
         else if (!strcmp("--seed-maxgap", argv[i])) { SEED_MAXGAP = atoi(argv[i+1]); }
         else if (!strcmp("--seed-mincnt", argv[i])) { SEED_MINCNT = atoi(argv[i+1]); }
-        
+        else if (!strcmp("--seed-maxcnt", argv[i])) { SEED_MAXCNT = atoi(argv[i+1]); } 
     }
 
-    std::cerr << "After adjustment, (SEED_LENGTH, SEED_MAXGAP, SEED_MINCNT) = " << SEED_LENGTH << ", " << SEED_MAXGAP << "," << SEED_MINCNT << std::endl;
+    std::cerr << "After adjustment, (SEED_LENGTH, SEED_MAXGAP, SEED_MINCNT, SEED_MAXCNT) = " << SEED_LENGTH << ", " << SEED_MAXGAP << "," << SEED_MINCNT << "," << SEED_MAXCNT << std::endl;
 
     hash_sign_INIT();
 
@@ -679,7 +691,7 @@ int main(const int argc, const char *const *const argv) {
                     const seq_t *seq1 = &seq_arrlist.data[seqidxpair.first];
                     const seq_t *seq2 = &seq_arrlist.data[seqidxpair.second];
                     if (seq1->seqlen * LEN_PERC <= seq2->seqlen * 100 && seq2->seqlen * LEN_PERC <= seq1->seqlen * 100) { 
-                        uint8_t sim = calc_perc_seq_sim_editdist(seq1, seq2);
+                        uint8_t sim = calc_perc_seq_sim_editdist(seq1, seq2, psigns);
                         if (sim >= SIM_PERC) { nhits++; }
                     }
                 }
@@ -775,7 +787,7 @@ int main(const int argc, const char *const *const argv) {
                             if (tot_attcnt > 0 
                                     // || seqlen_to_nsigns(seq_arrlist.data[coveredidx].seqlen) < 4
                                     ) {
-                                uint8_t sim = calc_perc_seq_sim_editdist(coveredseq, coveringseq);
+                                uint8_t sim = calc_perc_seq_sim_editdist(coveredseq, coveringseq, psigns);
                                 if (sim >= SIM_PERC) {
                                     coveredarr[i-iter].push_back(std::make_pair(coveredidx, sim));
                                     attempts += ATTEMPT_INC;
