@@ -26,14 +26,15 @@ SIM="$4"
 OUTDIR="${OUTFASTA}_tmpdir"
 
 mkdir -p "${OUTDIR}" || true
+cp "${BINROOT}/"*.out "${OUTDIR}"
 
 if [[ "$INFILE" == *.gz ]]; then catcmd=zcat; else catcmd=cat; fi
 
-$catcmd "${INFILE}"                 | "${BINROOT}/len-revname-sort.out"        "${@:5}"                     > "${OUTDIR}/shuf.fasta"
-cat     "${OUTDIR}/shuf.fasta"      | "${BINROOT}/fastaseqs-to-distmatrix.out" --sim-perc "${SIM}" "${@:5}" > "${OUTDIR}/distmatrix.tsv"
-cat     "${OUTDIR}/distmatrix.tsv"  | "${BINROOT}/linsetcover.out"                                          > "${OUTDIR}/ordsetcover.tsv"
-cat     "${OUTDIR}/ordsetcover.tsv" | "${BINROOT}/setcover-ords-to-hdrs.out"  "${OUTDIR}/shuf.fasta"        > "${OUTCLUST}"
-cat     "${OUTDIR}/ordsetcover.tsv" | "${BINROOT}/setcover-ords-to-fasta.out" "${OUTDIR}/shuf.fasta"        > "${OUTFASTA}"           
+$catcmd "${INFILE}"                 | "${OUTDIR}/len-revname-sort.out"        "${@:5}"                     > "${OUTDIR}/shuf.fasta"
+cat     "${OUTDIR}/shuf.fasta"      | "${OUTDIR}/fastaseqs-to-distmatrix.out" --sim-perc "${SIM}" "${@:5}" > "${OUTDIR}/distmatrix.tsv"
+cat     "${OUTDIR}/distmatrix.tsv"  | "${OUTDIR}/linsetcover.out"                                          > "${OUTDIR}/ordsetcover.tsv"
+cat     "${OUTDIR}/ordsetcover.tsv" | "${OUTDIR}/setcover-ords-to-hdrs.out"  "${OUTDIR}/shuf.fasta"        > "${OUTCLUST}"
+cat     "${OUTDIR}/ordsetcover.tsv" | "${OUTDIR}/setcover-ords-to-fasta.out" "${OUTDIR}/shuf.fasta"        > "${OUTFASTA}"           
 
 rm -r "${OUTDIR}"
 
