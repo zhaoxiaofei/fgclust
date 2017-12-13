@@ -111,7 +111,7 @@ int ATTEMPT_INC = 75;
 int ATTEMPT_MAX = 100;
 int ATTEMPT_MIN = -100;
 
-int ALN_MAX_LENSQR_MIL = 2*1000;
+int ALN_MAX_LENSQR_MIL = 100;
 
 void showparams() {
     
@@ -188,7 +188,7 @@ int calc_vecnorm(int a, int b) {
 
 int seqlen_to_nsigns(int seqlen) {
     int ret = (seqlen - SIGN_LENGTH + 1) / HASH_MIN_RATIO;
-    return MAX(ret, 1);
+    return MIN(MAX(ret, 1), 10*1000);
 }
 
 void hash_sign_INIT() {
@@ -288,7 +288,7 @@ static const int calc_perc_seq_my_editdist(const seq_t *seq1, const seq_t *seq2)
 }
 
 static const int calc_perc_seq_sim_editdist(const seq_t *seq1, const seq_t *seq2, int psigns) {
-    if (seq1->seqlen / 1000 * seq2->seqlen /1000 > ALN_MAX_LENSQR_MIL) {
+    if ((seq1->seqlen / 1000 + 1) * (seq2->seqlen / 1000 + 1) > ALN_MAX_LENSQR_MIL) {
         return psigns;
     }
     if (1 == SIM_MODE) {
