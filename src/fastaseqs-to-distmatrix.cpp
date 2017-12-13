@@ -112,6 +112,9 @@ int ATTEMPT_MAX = 100;
 int ATTEMPT_MIN = -100;
 
 int ALN_MAX_LENSQR_MIL = 100;
+int ALN_MAX_SEQLEN = 90000;
+
+int CMP_BINSIZE = 5000;
 
 void showparams() {
     
@@ -146,6 +149,9 @@ void showparams() {
     std::cerr << " DBENTRY_FILT_PAIR_ATTEMPT_CNT = " << DBENTRY_FILT_PAIR_ATTEMPT_CNT << std::endl;
     
     std::cerr << " ALN_MAX_LENSQR_MIL = " << ALN_MAX_LENSQR_MIL << std::endl;
+    std::cerr << " ALN_MAX_SEQLEN = " << ALN_MAX_SEQLEN << std::endl;
+
+    std::cerr << " CMP_BINSIZE = " << CMP_BINSIZE << std::endl;
 }
 
 void show_usage(const int argc, const char *const *const argv) {
@@ -171,6 +177,8 @@ void show_usage(const int argc, const char *const *const argv) {
     std::cerr << "  --sign-shared-perc-min\t: minimum number of signatures shared between query and target. ["       << SIGN_SHARED_PERC_MIN << "]" << std::endl;
     std::cerr << "  --sign-shared-perc-zscore\t: z-score of shared signatures below which further sequence search is skipped. [" << SIGN_SHARED_PERC_ZSCORE << "]" << std::endl;
     std::cerr << "  --aln-max-lensqr-mil\t: max (query-len*target-len) in million above which kmer-count estimates sequence similarity. [" << ALN_MAX_LENSQR_MIL << "]" << std::endl;
+    std::cerr << "  --aln-max-seqlen\t: max max(query-len, target-len) above which k-mers are binned to get their frequencies. [" << ALN_MAX_SEQLEN << "]" << std::endl;
+    std::cerr << "  --cmp-binsize\t: bin-size for computing k-mer frequencies. [" << CMP_BINSIZE << "]" << std::endl; 
     std::cerr << "Note: default value of 0 means dependence to other parameters or to the input." << std::endl;
     exit(-1);
 }
@@ -188,7 +196,7 @@ int calc_vecnorm(int a, int b) {
 
 int seqlen_to_nsigns(int seqlen) {
     int ret = (seqlen - SIGN_LENGTH + 1) / HASH_MIN_RATIO;
-    return MIN(MAX(ret, 1), 10*1000);
+    return MAX(ret, 1);
 }
 
 void hash_sign_INIT() {
@@ -252,6 +260,7 @@ typedef struct {
     uint32_t coveredcnt;
     uint32_t seqlen;
     uint16_t *signatures; // 11x less than seqlen
+    uint32_t *signscnt;
 }
 seq_t; // 16+16*4 bytes +++
 
@@ -300,12 +309,54 @@ static const int calc_perc_seq_sim_editdist(const seq_t *seq1, const seq_t *seq2
     abort();
 }
 
-int calc_n_shared_signatures(const seq_t *seq1, const seq_t *seq2) {
+int calc_n_shared_signatures(seq_t *seq1, seq_t *seq2) {
     int i = 0;
     int j = 0;
     int ret = 0;
     int nsignatures1 = seqlen_to_nsigns(seq1->seqlen);
     int nsignatures2 = seqlen_to_nsigns(seq2->seqlen);
+
+    if (seq1->seqlen > ALN_MAX_SEQLEN || seq2->seqlen > ALN_MAX_SEQLEN) {
+        if (seq1->seqlen <= ALN_MAX_SEQLEN) {
+            assert (NULL == seq1->signscnt);
+            seq1->signscnt == (uint32_t*) xcalloc(CMP_BINSIZE, sizeof(uint32_t));
+            for (int i = 0; i < nsignatures1; i++) {
+                seq1->signscnt[seq1->signatures[i]%CMP_BINSIZE]++;
+            }
+        }
+        if (seq2->seqlen <= ALN_MAX_SEQLEN) {
+            assert (NULL == seq2->signscnt);
+            seq2->signscnt == (uint32_t*) xcalloc(CMP_BINSIZE, sizeof(uint32_t));
+            for (int i = 0; i < nsignatures2; i++) {
+                seq2->signscnt[seq2->signatures[i]%CMP_BINSIZE]++;
+            }
+        }
+        
+        int sign1tot = 0;
+        int sign2tot = 0;
+        for (int i = 0; i < CMP_BINSIZE; i++) {
+            sign1tot += seq1->signscnt[i];
+            sign2tot += seq2->signscnt[i];
+        }
+        int64_t diff = 0;
+        for (int i = 0; i < CMP_BINSIZE; i++) {
+            diff += 100 * abs((int64_t)seq1->signscnt[i] - (int64_t)seq2->signscnt[i]) / MAX((int64_t)seq1->signscnt[i], (int64_t)seq2->signscnt[i]);
+        }
+        diff /= CMP_BINSIZE;
+        
+        if (seq1->seqlen <= ALN_MAX_SEQLEN) {
+            free(seq1->signscnt);
+            seq1->signscnt = NULL;
+        }
+        if (seq2->seqlen <= ALN_MAX_SEQLEN) {
+            free(seq2->signscnt);
+            seq2->signscnt = NULL;
+        }
+        return diff;
+    }
+    assert (NULL == seq1->signscnt);
+    assert (NULL == seq2->signscnt);
+
     while (i != nsignatures1 && j != nsignatures2) {
         if (seq1->signatures[i] == seq2->signatures[j]) {
             ret++; 
@@ -428,6 +479,10 @@ void PARAMS_init(const int argc, const char *const *const argv) {
             BATCH_SIZE = atoi(argv[i+1]);
         } else if (!strcmp("--aln-max-lensqr-mil", argv[i])) {
             ALN_MAX_LENSQR_MIL = atoi(argv[i+1]);
+        } else if (!strcmp("--aln-max-seqlen", argv[i])) {
+            ALN_MAX_SEQLEN = atoi(argv[i+1]);
+        } else if (!strcmp("--cmp-binsize", argv[i])) {
+            CMP_BINSIZE = atoi(argv[i+1]);
         } else {
             are_args_parsed[i] = false;
             are_args_parsed[i+1] = false;
@@ -512,7 +567,8 @@ void seq_longword_init(seq_t *const seq_ptr, int idx) {
 
 void seq_signatures_init(seq_t *const seq_ptr) {
     int nsigns = seqlen_to_nsigns(seq_ptr->seqlen);
-    seq_ptr->signatures = (uint16_t*) xcalloc(nsigns, sizeof(uint16_t));
+    seq_ptr->signatures = NULL;
+    seq_ptr->signscnt = NULL;
     if ((int)seq_ptr->seqlen >= (int)SIGN_LENGTH) {
         std::vector<uint64_t> signs;
         signs.reserve((int)seq_ptr->seqlen - (int)SIGN_LENGTH + 1);
@@ -532,12 +588,20 @@ void seq_signatures_init(seq_t *const seq_ptr) {
             if (nsigns == j) { break; }
         }
         std::sort(signatures.rbegin(), signatures.rend());
-        j = 0;
-        for (auto sign : signatures) {
-            seq_ptr->signatures[j] = sign;
-            j++;
+        if (seq_ptr->seqlen <= ALN_MAX_SEQLEN) {
+            seq_ptr->signatures = (uint16_t*) xcalloc(nsigns, sizeof(uint16_t));
+            int j = 0;
+            for (auto sign : signatures) {
+                seq_ptr->signatures[j] = sign;
+                j++;
+            }
+            assert(j <= nsigns);
+        } else {
+            seq_ptr->signscnt = (uint32_t*) xcalloc(CMP_BINSIZE, sizeof(uint32_t));
+            for (auto sign : signatures) {
+                seq_ptr->signscnt[sign%CMP_BINSIZE]++;
+            }
         }
-        assert(j <= nsigns);
     }
 }
 
