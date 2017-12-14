@@ -96,6 +96,9 @@ uint64_t DBENTRY_CNT = 0; // can be overriden after determination of db size
 int COV_SRC_MAX = 2;
 int COV_SNK_MAX = 16;
 
+int COV_SRC_SEQLEN_MAX = 0;
+int COV_SNK_SEQLEN_MAX = 0;
+
 int SEED_LENGTH = 0; // can be overriden after determination of db size 
 int SEED_MAXGAP = 0; // can be overriden after determination of db size
 int SEED_MINCNT = 0; // can be overriden after determination of db size
@@ -104,7 +107,7 @@ int SEED_MAXCNT = 0; // can be overriden
 int SIGN_LENGTH = 0;
 int SIGN_SHARED_PERC_MIN = 0; 
 int SIGN_SHARED_PERC_ZSCORE = 300;
-int HASH_MIN_RATIO = 8;
+int HASH_MIN_RATIO = 0;
 
 int ATTEMPT_INI = 50;
 int ATTEMPT_INC = 75;
@@ -136,6 +139,8 @@ void showparams() {
     std::cerr << " SIGN_SHARED_PERC_ZSCORE = " << SIGN_SHARED_PERC_ZSCORE      << std::endl;
     std::cerr << " COV_SRC_MAX = " << COV_SRC_MAX  << std::endl;
     std::cerr << " COV_SNK_MAX = " << COV_SNK_MAX << std::endl;
+    std::cerr << " COV_SRC_SEQLEN_MAX " << COV_SRC_SEQLEN_MAX << std::endl;
+    std::cerr << " COV_SNK_SEQLEN_MAX " << COV_SNK_SEQLEN_MAX << std::endl;
 
     std::cerr << " ATTEMPT_INI = " << ATTEMPT_INI << std::endl;
     std::cerr << " ATTEMPT_INC = " << ATTEMPT_INC << std::endl;
@@ -177,8 +182,11 @@ void show_usage(const int argc, const char *const *const argv) {
     std::cerr << "  --sign-shared-perc-min\t: minimum number of signatures shared between query and target. ["       << SIGN_SHARED_PERC_MIN << "]" << std::endl;
     std::cerr << "  --sign-shared-perc-zscore\t: z-score of shared signatures below which further sequence search is skipped. [" << SIGN_SHARED_PERC_ZSCORE << "]" << std::endl;
     std::cerr << "  --aln-max-lensqr-mil\t: max (query-len*target-len) in million above which kmer-count estimates sequence similarity. [" << ALN_MAX_LENSQR_MIL << "]" << std::endl;
-    std::cerr << "  --aln-max-seqlen\t: max max(query-len, target-len) above which k-mers are binned to get their frequencies. [" << ALN_MAX_SEQLEN << "]" << std::endl;
-    std::cerr << "  --cmp-binsize\t: bin-size for computing k-mer frequencies. [" << CMP_BINSIZE << "]" << std::endl; 
+    std::cerr << "  --cov-src-seqlen-max\t: max sequence length such that the sequence can cover and represent other sequences. [" << COV_SRC_SEQLEN_MAX << "]" << std::endl;
+    std::cerr << "  --cov-snk-seqlen-max\t: max sequence length such that the sequence can be covered and represented by other sequences. [" << COV_SNK_SEQLEN_MAX << "]" << std::endl;
+    std::cerr << "  --hash-min-ratio\t how many residues are required to prodced one hash value. [" << HASH_MIN_RATIO << "]" << std::endl;
+    //std::cerr << "  --aln-max-seqlen\t: max max(query-len, target-len) above which k-mers are binned to get their frequencies. [" << ALN_MAX_SEQLEN << "]" << std::endl;
+    //std::cerr << "  --cmp-binsize\t: bin-size for computing k-mer frequencies. [" << CMP_BINSIZE << "]" << std::endl; 
     std::cerr << "Note: default value of 0 means dependence to other parameters or to the input." << std::endl;
     exit(-1);
 }
@@ -254,12 +262,14 @@ typedef struct {
 }
 seed_t; // 16 bytes++
 
+typedef uint32_t sign_t;
+
 typedef struct {
     char *name;
     char *seq;
     uint32_t coveredcnt;
     uint32_t seqlen;
-    uint16_t *signatures; // 11x less than seqlen
+    sign_t *signatures; // 11x less than seqlen
     uint32_t *signscnt;
 }
 seq_t; // 16+16*4 bytes +++
@@ -309,6 +319,8 @@ static const int calc_perc_seq_sim_editdist(const seq_t *seq1, const seq_t *seq2
     abort();
 }
 
+#define USEALN 1
+
 int calc_n_shared_signatures(seq_t *seq1, seq_t *seq2) {
     int i = 0;
     int j = 0;
@@ -316,46 +328,53 @@ int calc_n_shared_signatures(seq_t *seq1, seq_t *seq2) {
     int nsignatures1 = seqlen_to_nsigns(seq1->seqlen);
     int nsignatures2 = seqlen_to_nsigns(seq2->seqlen);
 
+#if !USEALN
     if (seq1->seqlen > ALN_MAX_SEQLEN || seq2->seqlen > ALN_MAX_SEQLEN) {
+        uint32_t *signscnt1 = NULL;
         if (seq1->seqlen <= ALN_MAX_SEQLEN) {
             assert (NULL == seq1->signscnt);
-            seq1->signscnt == (uint32_t*) xcalloc(CMP_BINSIZE, sizeof(uint32_t));
+            assert (NULL != seq1->signatures);
+            signscnt1 = (uint32_t*) xcalloc(CMP_BINSIZE, sizeof(uint32_t));
             for (int i = 0; i < nsignatures1; i++) {
-                seq1->signscnt[seq1->signatures[i]%CMP_BINSIZE]++;
+                signscnt1[seq1->signatures[i]%CMP_BINSIZE]++;
             }
+        } else {
+            assert (NULL != seq1->signscnt);
+            signscnt1 = seq1->signscnt;
         }
+        uint32_t *signscnt2 = NULL;
         if (seq2->seqlen <= ALN_MAX_SEQLEN) {
             assert (NULL == seq2->signscnt);
-            seq2->signscnt == (uint32_t*) xcalloc(CMP_BINSIZE, sizeof(uint32_t));
+            assert (NULL != seq2->signatures || nsignatures2 == 0);
+            signscnt2 = (uint32_t*) xcalloc(CMP_BINSIZE, sizeof(uint32_t));
             for (int i = 0; i < nsignatures2; i++) {
-                seq2->signscnt[seq2->signatures[i]%CMP_BINSIZE]++;
+                signscnt2[seq2->signatures[i]%CMP_BINSIZE]++;
             }
+        } else {
+            assert (NULL != seq2->signscnt);
+            signscnt2 = seq2->signscnt;
         }
         
-        int sign1tot = 0;
-        int sign2tot = 0;
+        int64_t ret = 0;
         for (int i = 0; i < CMP_BINSIZE; i++) {
-            sign1tot += seq1->signscnt[i];
-            sign2tot += seq2->signscnt[i];
+            ret += MIN((int64_t)signscnt1[i], (int64_t)signscnt2[i]); // - abs((int64_t)seq1->signscnt[i] - (int64_t)seq2->signscnt[i]);
         }
-        int64_t diff = 0;
-        for (int i = 0; i < CMP_BINSIZE; i++) {
-            diff += 100 * abs((int64_t)seq1->signscnt[i] - (int64_t)seq2->signscnt[i]) / MAX((int64_t)seq1->signscnt[i], (int64_t)seq2->signscnt[i]);
-        }
-        diff /= CMP_BINSIZE;
         
         if (seq1->seqlen <= ALN_MAX_SEQLEN) {
-            free(seq1->signscnt);
-            seq1->signscnt = NULL;
+            assert (signscnt1 != seq1->signscnt);
+            assert (signscnt1 != NULL);
+            free(signscnt1);
         }
         if (seq2->seqlen <= ALN_MAX_SEQLEN) {
-            free(seq2->signscnt);
-            seq2->signscnt = NULL;
+            assert (signscnt2 != seq2->signscnt);
+            assert (signscnt2 != NULL);
+            free(signscnt2);
         }
-        return diff;
+        return ret;
     }
-    assert (NULL == seq1->signscnt);
-    assert (NULL == seq2->signscnt);
+    assert (NULL == seq1->signscnt || 0 == nsignatures1 || !fprintf(stderr, ">%s\n%s\n of length %d is invalid as seq1", seq1->name, seq1->seq, seq1->seqlen));
+    assert (NULL == seq2->signscnt || 0 == nsignatures2 || !fprintf(stderr, ">%s\n%s\n of length %d is invalid as seq2", seq2->name, seq2->seq, seq2->seqlen));
+#endif
 
     while (i != nsignatures1 && j != nsignatures2) {
         if (seq1->signatures[i] == seq2->signatures[j]) {
@@ -442,18 +461,27 @@ void PARAMS_init(const int argc, const char *const *const argv) {
         SIM_BASE = 25;
         SIM_PERC = 50;
         SIM_MODE = 1;
+        COV_SRC_SEQLEN_MAX = 40*1000;
+        COV_SNK_SEQLEN_MAX = 40*1000;
+        HASH_MIN_RATIO = 8;
     } else if (dna_cnt < rna_cnt) {
         IS_INPUT_NUC = 1; // rna
         LEN_PERC = 80;
         SIM_BASE = 25;
         SIM_PERC = 70;
         SIM_MODE = 1;
+        COV_SRC_SEQLEN_MAX = 120*1000;
+        COV_SNK_SEQLEN_MAX = 120*1000;
+        HASH_MIN_RATIO = 12;
     } else {
         IS_INPUT_NUC = 2; // dna
         LEN_PERC = 0;
         SIM_BASE = 0;
         SIM_PERC = 90;
         SIM_MODE = 1;
+        COV_SRC_SEQLEN_MAX = 120*1000;
+        COV_SNK_SEQLEN_MAX = 120*1000;
+        HASH_MIN_RATIO = 16;
     }
     
     for (int i = 0; i < 256; i++) {
@@ -525,6 +553,12 @@ void PARAMS_init(const int argc, const char *const *const argv) {
             SIGN_SHARED_PERC_ZSCORE = atoi(argv[i+1]);
         } else if (!strcmp("--sign-length", argv[i])) {
             SIGN_LENGTH = atoi(argv[i+1]);
+        } else if (!strcmp("--cov-src-seqlen-max", argv[i])) {
+            COV_SRC_SEQLEN_MAX = atoi(argv[i+1]);
+        } else if (!strcmp("--cov-snk-seqlen-max", argv[i])) {
+            COV_SNK_SEQLEN_MAX = atoi(argv[i+1]);
+        } else if (!strcmp("--hash-min-ratio", argv[i])) {
+            HASH_MIN_RATIO = atoi(argv[i+1]);
         } else if (!strcmp("--israndom", argv[i])) {
             // pass
         } else if (!are_args_parsed[i]) {
@@ -580,28 +614,32 @@ void seq_signatures_init(seq_t *const seq_ptr) {
         }
         std::sort(signs.rbegin(), signs.rend());
         int j = 0;
-        std::vector<uint16_t> signatures;
+        std::vector<sign_t> signatures;
         signatures.reserve(nsigns);
         for (auto sign : signs) {
-            signatures.push_back((uint16_t)sign);
+            signatures.push_back((sign_t)sign);
             j++;
             if (nsigns == j) { break; }
         }
         std::sort(signatures.rbegin(), signatures.rend());
+#if !USEALN
         if (seq_ptr->seqlen <= ALN_MAX_SEQLEN) {
-            seq_ptr->signatures = (uint16_t*) xcalloc(nsigns, sizeof(uint16_t));
-            int j = 0;
+#endif
+            seq_ptr->signatures = (sign_t*) xcalloc(nsigns, sizeof(sign_t));
+            j = 0;
             for (auto sign : signatures) {
                 seq_ptr->signatures[j] = sign;
                 j++;
             }
-            assert(j <= nsigns);
+            assert(j == nsigns);
+#if !USEALN
         } else {
             seq_ptr->signscnt = (uint32_t*) xcalloc(CMP_BINSIZE, sizeof(uint32_t));
             for (auto sign : signatures) {
                 seq_ptr->signscnt[sign%CMP_BINSIZE]++;
             }
         }
+#endif
     }
 }
 
@@ -793,7 +831,7 @@ int main(const int argc, const char *const *const argv) {
             int iteratedseqcnt_atmax = 0;
             int tp_distcompcnt_atmax = 0;
             int fp_distcompcnt_atmax = 0;
-            if (seq_arrlist.data[i].coveredcnt <= COV_SRC_MAX && (int)(seq_arrlist.data[i].seqlen) >= (int)SEED_LENGTH) {
+            if (seq_arrlist.data[i].seqlen <= COV_SRC_SEQLEN_MAX && seq_arrlist.data[i].coveredcnt <= COV_SRC_MAX && (int)(seq_arrlist.data[i].seqlen) >= (int)SEED_LENGTH) {
                 uint64_t hash = hash_init(seq_arrlist.data[i].seq);
                 seed_cov(&seeds[hash % DBENTRY_CNT], i, visited);
                 for (int j = SEED_LENGTH; j < strlen(seq_arrlist.data[i].seq); j++) {
@@ -835,7 +873,8 @@ int main(const int argc, const char *const *const argv) {
                         double p = pow(SIM_PERC / 100.0, SIGN_LENGTH);
                         double n = seqlen_to_nsigns(coveredseq->seqlen);
                         int sd = ceil(sqrt(p * (1 - p) * n) / n * SIGN_SHARED_PERC_ZSCORE);
-                        if (coveredseq->coveredcnt <= COV_SNK_MAX 
+                        if (coveredseq->seqlen <= COV_SNK_SEQLEN_MAX
+                                && coveredseq->coveredcnt <= COV_SNK_MAX 
                                 && coveringseq->seqlen * LEN_PERC <= coveredseq->seqlen * 100 
                                 && coveredseq->seqlen * LEN_PERC <= coveringseq->seqlen * 100
                                 && p <= psigns + sd) {
