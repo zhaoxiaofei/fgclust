@@ -46,10 +46,10 @@ int main(int argc, char **argv) {
     std::cerr << "GITCOMMIT = " << GITCOMMIT << std::endl;
     std::cerr << "CXXVERSION = " << CXXVERSION << std::endl;
 
-    bool israndom = false;
+    bool israndom = true;
     for (int i = 1; i < argc; i++) {
         if (!strcmp("--israndom", argv[i])) {
-            israndom = true;
+            israndom = atoi(argv[i+1]);
         }
     }
     kseq_t *kseq = kseq_init(fileno(stdin));

@@ -45,7 +45,7 @@ int main(int argc, char** argv) {
             }
         }
         uint32_t nelems = set_to_elems[set].size();
-        assert(0 < nelems);
+        assert(0 < nelems || !fprintf(stderr, "The line %s is invalid!\n", line));
         set_to_nelems[set] = nelems;
         nelems_to_sets[nelems].insert(set);
     }
