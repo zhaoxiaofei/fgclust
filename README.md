@@ -1,12 +1,16 @@
 # README #
 
-This README would normally document whatever steps are necessary to get your application up and running.
+How to compile:
+>>> make # in the project root directory
+
+How to run:
+>>> bin/fgclust.sh # a help message will show up
 
 ### What is this repository for? ###
 
-* Quick summary
-* Version
-* [Learn Markdown](https://bitbucket.org/tutorials/markdowndemo)
+* This repository contains the source code for FgClust, a fast and scalable algorithm for clustering biological sequences. FgClust can cluster all EST sequences in the NCBI EST database, all RNA sequences in RefSeq, and all protein sequences released by UniProt in less than one day each on a typical Linux server.
+* A stable version (aka v1.0) will be released in the near future.
+
 
 ### How do I get set up? ###
 
