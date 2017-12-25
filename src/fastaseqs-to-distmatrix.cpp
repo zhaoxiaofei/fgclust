@@ -71,7 +71,7 @@ int ALPHA_TYPE_TO_SIZE[] = {10, 10, 10};
 int SIM_PERC = 90;
 int SIM_BASE = 25;
 
-int DBENTRY_FILT_OCC_MIN = 1000;
+int DBENTRY_FILT_OCC_MIN = 1000*1000;
 int DBENTRY_FILT_PAIR_SUBSAMP_CNT = 800;
 int DBENTRY_FILT_PAIR_ATTEMPT_CNT = 10;
 int DBENTRY_FILT_PAIR_TRUEHIT_MAX = 4;
@@ -82,8 +82,8 @@ uint64_t DBENTRY_CNT = 0; // can be overriden after determination of db size
 
 // variables that are derived from SIM_PERC but can be overriden in command line
 
-int COV_SRC_MAX = 0;
-int COV_SNK_MAX = 0;
+int COV_SRC_MAX = 5;
+int COV_SNK_MAX = 1000*1000;
 
 int SEED_LENGTH = 0; // can be overriden after determination of db size 
 int SEED_MAXGAP = 0; // can be overriden after determination of db size
@@ -221,9 +221,12 @@ typedef struct {
 }
 seq_t; // 16+16*4 bytes +++
 
+const bool fail_len_cutoff(const seq_t *seq1, const seq_t *seq2) {
+    return seq1->seqlen * LEN_PERC > seq2->seqlen * 100 || seq2->seqlen * LEN_PERC > seq1->seqlen * 100;
+}
+
 static const int calc_perc_seq_sim_editdist(const seq_t *seq1, const seq_t *seq2) {
     
-    if (seq1->seqlen * LEN_PERC > seq2->seqlen * 100 || seq2->seqlen * LEN_PERC > seq1->seqlen * 100) { return 0; }
     int maxEditDist = seq1->seqlen - ceil(sqrt(SQUARE((double)SIM_BASE) + SQUARE((double)(seq1->seqlen * SIM_PERC) / 100.0)));
     if (maxEditDist < 0) { return 0; }
     
@@ -351,8 +354,8 @@ void PARAMS_init(const int argc, const char *const *const argv) {
         }
     }
     
-    COV_SRC_MAX = (150 - SIM_PERC) / 20;
-    COV_SNK_MAX = (150 - SIM_PERC) / 5;
+    //COV_SRC_MAX = (150 - SIM_PERC) / 20;
+    //COV_SNK_MAX = (150 - SIM_PERC) / 5;
 
     SIGN_LENGTH = (SIM_PERC + 360) / (150 - SIM_PERC);
     SIGN_SHARED_CNT_MIN = MAX(1, SIM_PERC / 10 - 4); 
@@ -454,7 +457,9 @@ void seed_cov(const seed_t *seed, const uint32_t coveringidx, std::set<uint32_t>
     seq_t *coveringseq = &seq_arrlist.data[coveringidx];
     for (int i = 0; i < seed->size; i++) { 
         int coveredidx = seed->seqidxs[i];
-        visited.insert(coveredidx);
+        if (!fail_len_cutoff(coveringseq, &seq_arrlist.data[coveredidx])) {
+            visited.insert(coveredidx);
+        }
     }
 }
 
@@ -573,6 +578,13 @@ int main(const int argc, const char *const *const argv) {
     
     int seedsize_histogram[1000+1];
     print_seedsize_histogram(seedsize_histogram, "seedsize_histogram 1"); 
+    
+    int maxseedsize = 0;
+    for (int i = 0; i < DBENTRY_CNT; i++) {
+        maxseedsize = MAX(maxseedsize, seeds[i].size);
+    }
+    
+    std::cerr << "maxseedsize = " << maxseedsize << std::endl;
 
     #pragma omp parallel for schedule(dynamic, 9999*100) 
     for (int i = 0 ; i < DBENTRY_CNT; i++) {
@@ -596,8 +608,10 @@ int main(const int argc, const char *const *const argv) {
                 for (auto seqidxpair : nsigns_to_seqidx_pairs[nsigns]) {
                     int seqidx1 = seqidxpair.first;
                     int seqidx2 = seqidxpair.second;
-                    uint8_t sim = calc_perc_seq_sim_editdist(&seq_arrlist.data[seqidx1], &seq_arrlist.data[seqidx2]);
-                    if (sim >= SIM_PERC) { nhits++; }
+                    if (!fail_len_cutoff(&seq_arrlist.data[seqidx1], &seq_arrlist.data[seqidx2])) {
+                        uint8_t sim = calc_perc_seq_sim_editdist(&seq_arrlist.data[seqidx1], &seq_arrlist.data[seqidx2]);
+                        if (sim >= SIM_PERC) { nhits++; }
+                    }
                 }
             }
             if (nhits <= DBENTRY_FILT_PAIR_TRUEHIT_MAX) {
