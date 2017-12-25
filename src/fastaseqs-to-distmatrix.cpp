@@ -71,10 +71,10 @@ int ALPHA_TYPE_TO_SIZE[] = {10, 10, 10};
 int SIM_PERC = 90;
 int SIM_BASE = 25;
 
-int DBENTRY_FILT_OCC_MIN = 1000*1000;
-int DBENTRY_FILT_PAIR_SUBSAMP_CNT = 800;
-int DBENTRY_FILT_PAIR_ATTEMPT_CNT = 10;
-int DBENTRY_FILT_PAIR_TRUEHIT_MAX = 4;
+int DBENTRY_FILT_OCC_MIN = 1000; // 1000*1000; lower -> more filtering, more time saving later
+int DBENTRY_FILT_PAIR_SUBSAMP_CNT = 1000; // 800; // lower -> less filtering accuracy, less time
+int DBENTRY_FILT_PAIR_ATTEMPT_CNT = 50; // 10; // lower -> less filtering accuracy, less time
+int DBENTRY_FILT_PAIR_TRUEHIT_MAX = 5; // lower -> less filtering accuracy
 
 // dbsize-related variables
 
@@ -82,7 +82,7 @@ uint64_t DBENTRY_CNT = 0; // can be overriden after determination of db size
 
 // variables that are derived from SIM_PERC but can be overriden in command line
 
-int COV_SRC_MAX = 5;
+int COV_SRC_MAX = 4; // 5;
 int COV_SNK_MAX = 1000*1000;
 
 int SEED_LENGTH = 0; // can be overriden after determination of db size 
@@ -92,9 +92,9 @@ int SEED_MINCNT = 0; // can be overriden after determination of db size
 int SIGN_LENGTH = 0;
 int SIGN_SHARED_CNT_MIN = 0; 
 
-int ATTEMPT_INI = 0;
-int ATTEMPT_INC = 0;
-int ATTEMPT_MAX = 0;
+int ATTEMPT_INI = 50;
+int ATTEMPT_INC = 50;
+int ATTEMPT_MAX = 50;
 
 
 void showparams() {
@@ -360,9 +360,9 @@ void PARAMS_init(const int argc, const char *const *const argv) {
     SIGN_LENGTH = (SIM_PERC + 360) / (150 - SIM_PERC);
     SIGN_SHARED_CNT_MIN = MAX(1, SIM_PERC / 10 - 4); 
     
-    ATTEMPT_INI = 100 - SIM_PERC;
-    ATTEMPT_INC = 100 - SIM_PERC;
-    ATTEMPT_MAX = 110 - SIM_PERC;
+    //ATTEMPT_INI = 100 - SIM_PERC;
+    //ATTEMPT_INC = 100 - SIM_PERC;
+    //ATTEMPT_MAX = 110 - SIM_PERC;
 
     if (IS_INPUT_NUC) {
         SIGN_LENGTH = (SIM_PERC + 900) / (200 - SIM_PERC);
