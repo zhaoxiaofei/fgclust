@@ -20,6 +20,8 @@
 #include <time.h> 
 #include <unistd.h>
 
+#define ENTROHASH 0
+
 void *xmalloc(size_t size) {
     void *ret = malloc(size);
     if (NULL == ret) {
@@ -42,7 +44,11 @@ void *xrealloc(void *ptr, size_t size) {
 #define MAX(a, b) (((a) > (b) ? (a) : (b)))
 #define SQUARE(a) ((a)*(a))
 
+#if ENTROHASH
+#define NUM_SIGNATURES (256)
+#else
 #define NUM_SIGNATURES (32)
+#endif
 
 KSEQ_INIT(int, read)
 
@@ -92,9 +98,9 @@ int SEED_MINCNT = 0; // can be overriden after determination of db size
 int SIGN_LENGTH = 0;
 int SIGN_SHARED_CNT_MIN = 0; 
 
-int ATTEMPT_INI = 50;
-int ATTEMPT_INC = 50;
-int ATTEMPT_MAX = 50;
+int ATTEMPT_INI = 50; //50;
+int ATTEMPT_INC = 50; //50;
+int ATTEMPT_MAX = 50; //50;
 
 
 void showparams() {
@@ -215,7 +221,14 @@ seed_t; // 16 bytes++
 typedef struct {
     char *name;
     char *seq;
+#if ENTROHASH
+    uint64_t compressedsign;
+    uint64_t compressedsign2;
+    uint64_t compressedsign3;
+    uint64_t compressedsign4;
+#else
     uint16_t signatures[NUM_SIGNATURES];
+#endif
     uint32_t coveredcnt;
     uint32_t seqlen;
 }
@@ -246,6 +259,16 @@ static const int calc_perc_seq_sim_editdist(const seq_t *seq1, const seq_t *seq2
 }
 
 int calc_n_shared_signatures(const seq_t *seq1, const seq_t *seq2) {
+#if ENTROHASH
+    int ret1 = __builtin_popcountll(seq1->compressedsign  ^ seq2->compressedsign );
+    int ret2 = __builtin_popcountll(seq1->compressedsign2 ^ seq2->compressedsign2);
+    int ret3 = __builtin_popcountll(seq1->compressedsign3 ^ seq2->compressedsign3);
+    int ret4 = __builtin_popcountll(seq1->compressedsign4 ^ seq2->compressedsign4);
+    // assert (ret <= NUM_SIGNATURES);
+    return MIN(MIN(ret2, ret3), ret4);
+    return ret1 + ret2 + ret3 + ret4;
+    // return MAX(ret - 32, 0);
+#else
     int i = 0;
     int j = 0;
     int ret = 0;
@@ -263,6 +286,7 @@ int calc_n_shared_signatures(const seq_t *seq1, const seq_t *seq2) {
         }
     }
     return ret;
+#endif
 }
 
 typedef struct {
@@ -358,7 +382,7 @@ void PARAMS_init(const int argc, const char *const *const argv) {
     //COV_SNK_MAX = (150 - SIM_PERC) / 5;
 
     SIGN_LENGTH = (SIM_PERC + 360) / (150 - SIM_PERC);
-    SIGN_SHARED_CNT_MIN = MAX(1, SIM_PERC / 10 - 4); 
+    // SIGN_SHARED_CNT_MIN = MAX(1, SIM_PERC / 10 - 4); 
     
     //ATTEMPT_INI = 100 - SIM_PERC;
     //ATTEMPT_INC = 100 - SIM_PERC;
@@ -424,7 +448,14 @@ void seq_longword_init(seq_t *const seq_ptr, int idx) {
 }
 
 void seq_signatures_init(seq_t *const seq_ptr) {
+#if ENTROHASH  
+    seq_ptr->compressedsign = 0;
+    seq_ptr->compressedsign2 = 0;
+    seq_ptr->compressedsign3 = 0;
+    seq_ptr->compressedsign4 = 0;
+#else
     memset(seq_ptr->signatures, 0, NUM_SIGNATURES * sizeof(uint16_t));
+#endif
     if ((int)seq_ptr->seqlen >= (int)SIGN_LENGTH) {
         std::vector<uint64_t> signs;
         signs.reserve((int)seq_ptr->seqlen - (int)SIGN_LENGTH + 1);
@@ -435,6 +466,34 @@ void seq_signatures_init(seq_t *const seq_ptr) {
             signs.push_back(sign);
         }
         std::sort(signs.rbegin(), signs.rend());
+#if ENTROHASH
+        auto it = signs.begin();
+        uint64_t stepval = (SIGN_MOD + 256/2) / 256;
+        uint64_t currval = SIGN_MOD;
+        //std::vector<uint64_t> signvec;
+        for (int k = 256 - 1; k >= 0; --k) {
+            while (it != signs.end() && (*it) > currval) { ++it; }
+            currval -= stepval;
+            if (it == signs.end()) {break;}
+            if ((k%4) == 0) { seq_ptr->compressedsign  |= ( (__builtin_popcountll (*it) & 0x1UL)        << (k/4)); }
+            if ((k%4) == 1) { seq_ptr->compressedsign2 |= ( (                     (*it) & 0x1UL)        << (k/4)); }
+            if ((k%4) == 2) { seq_ptr->compressedsign3 |= ( (                    ((*it) & 0x2UL) / 2UL) << (k/4)); }
+            if ((k%4) == 3) { seq_ptr->compressedsign4 |= ( (                    ((*it) & 0x4UL) / 4UL) << (k/4)); }
+            //signvec.push_back(*it);
+            // std::cerr << "I picked sign " << (*it) << " for threshold " << currval << std::endl;
+        }
+        assert(UINT64_MAX - 256/2 < currval || currval < 256/2 || it == signs.end());
+        if (!seq_ptr->compressedsign && signs.size() > 40) { 
+            std::cerr << seq_ptr->name << " may have wrong compressed-sign" << std::endl; 
+            //for (auto sign : signvec) {
+            //    std::cerr << "picked sign = " << sign << std::endl;
+            //}
+            for (auto sign : signs) {
+                std::cerr << "sign = " << sign << std::endl;
+            }
+            abort();
+        }
+#else
         int j = 0;
         std::vector<uint16_t> signatures;
         signatures.reserve(NUM_SIGNATURES);
@@ -450,7 +509,13 @@ void seq_signatures_init(seq_t *const seq_ptr) {
             j++;
         }
         assert(j <= NUM_SIGNATURES);
+#endif
     }
+    /*
+    for (int i = 0; i < NUM_SIGNATURES; i++) {
+        seq_ptr->compressedsign |= (0x1L << ((seq_ptr->signatures[i] * 23) % 64));
+    }
+    */
 }
 
 void seed_cov(const seed_t *seed, const uint32_t coveringidx, std::set<uint32_t> & visited) {
