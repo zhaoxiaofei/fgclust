@@ -31,11 +31,12 @@ function resetfile() {
 }
 
 function run_mine_with_infastafile_seqid() {
+    if [ -f "$1.faa" ]; then db="$1.faa"; else db="$1.fna"; fi
     { time -p {
         echo "run_mine_with_infastafile_seqid($1, $2, $3, $4) eval-began-at $(date)"
-        date; cat "$1.faa" "$1.fna"   | "${FGCLUST}"/fastaseqs-to-distmatrix.out --sim-perc $3 > "$2-$3.distmatrix" || true
+        date; cat "${db}"             | "${FGCLUST}"/fastaseqs-to-distmatrix.out --sim-perc $3 > "$2-$3.distmatrix" || true
         date; cat "$2-$3.distmatrix"  | "${FGCLUST}"/linsetcover.out                           > "$2-$3.ordsetcover"
-        date; cat "$2-$3.ordsetcover" | "${FGCLUST}"/setcover-ords-to-hdrs.out $1.faa          > "$2-$3.hdrsetcover-clu.tsv"
+        date; cat "$2-$3.ordsetcover" | "${FGCLUST}"/setcover-ords-to-hdrs.out "${db}"         > "$2-$3.hdrsetcover-clu.tsv"
         echo "run_mine_with_infastafile_seqid($1, $2, $3) eval-ended-at $(date)"
     } } 2>&1 | tee "$2-$3.mine.time"
 }
