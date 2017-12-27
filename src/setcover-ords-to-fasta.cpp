@@ -12,10 +12,10 @@ KSEQ_INIT(int, read)
 int main(int argc, char **argv) {
     std::cerr << "GITCOMMIT = " << GITCOMMIT << std::endl;
     std::cerr << "CXXVERSION = " << CXXVERSION << std::endl;
-    int is_out_fa_hdr_in_csv = false;
-    for (int i = 1; i + 1 < argc; i++) {
-        if (!strcmp("--is-output-fasta-header-in-csv", argv[i])) {
-            is_out_fa_hdr_in_csv = atoi(argv[i+1]);
+    int is_out_fa_hdr_in_tsv = true;
+    for (int i = 1; i + 1 < argc; i+=2) {
+        if (!strcmp("--is-output-fasta-header-in-tsv", argv[i])) {
+            is_out_fa_hdr_in_tsv = atoi(argv[i+1]);
         } else {
             abort();
         }
@@ -51,9 +51,9 @@ int main(int argc, char **argv) {
     for (int i = 0; i < fastarecords.size(); i++) {
         if (0 < inner_to_outers[i].size()) {
             std::cout << ">" << fastarecords[i].first;
-            if (is_out_fa_hdr_in_csv) {
+            if (is_out_fa_hdr_in_tsv) {
                 for (auto outer : inner_to_outers[i] ) {
-                    std::cout << "," << fastarecords[outer].first;
+                    std::cout << "\t" << fastarecords[outer].first;
                 }
             }
             std::cout << std::endl << fastarecords[i].second << std::endl;
