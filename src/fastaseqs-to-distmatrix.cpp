@@ -105,6 +105,7 @@ int SIGN_SHARED_CNT_MIN = 0;
 
 int SIM_PERC = 0;
 int SIM_BASE = 25;
+int SIM_DIFF = 0;
 int SIM_ZVAL = 10 * 100; // 11; // real z-score threshold is about 75% of this value due to innacuracy of normal approximation of binomial
 
 bool ZVAL_AS_SIM = false;
@@ -149,6 +150,7 @@ void showparams() {
     
     std::cerr << " SIM_PERC = " << (int)SIM_PERC << std::endl;
     std::cerr << " SIM_BASE = " << (int)SIM_BASE << std::endl;
+    std::cerr << " SIM_DIFF = " << (int)SIM_DIFF << std::endl;
     std::cerr << " SIM_ZVAL = " << (int)SIM_ZVAL << std::endl;
 
     std::cerr << " ZVAL_AS_SIM = " << ZVAL_AS_SIM << std::endl;    
@@ -193,7 +195,8 @@ void show_usage(const int argc, const char *const *const argv) {
     std::cerr << "            \t: the effective value is 0.2 to 0.4 times less than this set value due to normal approximation of skewed binomial" << std::endl;
     std::cerr << "  --sim-base\t: A covers B only if (len(B) - edit-distance(A, B)) >= sim_perc * len(B) + sim_base [sim_base=" << SIM_BASE << "]" << std::endl;
     std::cerr << "  --sim-perc\t:   where gaps at ends of B are not penalized. [sim_perc="                                      << SIM_PERC << "]" << std::endl;
-               
+    std::cerr << "  --sim-diff\t: percent of deletions in the covering sequence that are ignored, 0 means skip alignment ["     << SIM_DIFF << "]" << std::endl;
+
     std::cerr << "  --zval-as-sim\t: used the sim-zval as similarity threshold [" << ZVAL_AS_SIM   << "]" << std::endl;
 
     std::cerr << "Note: default value of 0 means dependence to other parameters or to the input." << std::endl;
@@ -289,13 +292,21 @@ const bool fail_len_cutoff(const seq_t *seq1, const seq_t *seq2) {
 
 static const int calc_perc_seq_sim_editdist(const seq_t *seq1, const seq_t *seq2, const double matchprob) {
     
-    int maxEditDist = seq1->seqlen - ceil((1 - DBL_EPSILON) * (sqrt(SQUARE((double)SIM_BASE) + SQUARE((double)(seq1->seqlen * SIM_PERC) / 100.0))));
+    int maxEditDist = seq1->seqlen - ceil((1 - DBL_EPSILON) * (sqrt(SQUARE((double)SIM_BASE) + SQUARE((double)(seq1->seqlen * (SIM_PERC - SIM_DIFF)) / 100.0))));
     if (maxEditDist < 0) { return 0; }
     
     EdlibAlignResult result;
-    result = edlibAlign(seq1->seq, seq1->seqlen, seq2->seq, seq2->seqlen,
-                        edlibNewAlignConfig(maxEditDist, EDLIB_MODE_HW, EDLIB_TASK_DISTANCE));
-    int editdist = result.editDistance;
+    int editdist;
+    if (SIM_DIFF) {
+        result = edlibAlign(seq1->seq, seq1->seqlen, seq2->seq, seq2->seqlen,
+                            edlibNewAlignConfig(maxEditDist, EDLIB_MODE_HW, EDLIB_TASK_PATH));
+        int match = result.alignmentLength - result.editDistance;
+        editdist = (int)seq1->seqlen - match;
+    } else {
+        result = edlibAlign(seq1->seq, seq1->seqlen, seq2->seq, seq2->seqlen,
+                            edlibNewAlignConfig(maxEditDist, EDLIB_MODE_HW, EDLIB_TASK_DISTANCE));
+        editdist = result.editDistance;
+    }
     edlibFreeAlignResult(result);
 
     assert(editdist >= -1);
@@ -497,6 +508,7 @@ void PARAMS_init(const int argc, const char *const *const argv) {
         else if (!strcmp("--sim-zval",       argv[i])) { SIM_ZVAL              = atoi(argv[i+1]);} 
         else if (!strcmp("--sim-perc",       argv[i])) { SIM_PERC              = atoi(argv[i+1]);} 
         else if (!strcmp("--sim-base",       argv[i])) { SIM_BASE              = atoi(argv[i+1]); } 
+        else if (!strcmp("--sim-diff",       argv[i])) { SIM_DIFF              = atoi(argv[i+1]); } 
 
         else if (!strcmp("--zval-as-sim",    argv[i])) { ZVAL_AS_SIM           = atoi(argv[i+1]);} 
         
@@ -837,14 +849,16 @@ int main(const int argc, const char *const *const argv) {
                 for (auto seqidxpair : nsigns_to_seqidx_pairs[nsigns]) {
                     int seqidx1 = seqidxpair.first;
                     int seqidx2 = seqidxpair.second;
-                    double chprobs[256];
-                    memset(chprobs, 0, 256 * sizeof(double));
-                    for (int j = 0; j < seq_arrlist.data[seqidx2].seqlen; j++) {
-                        chprobs[seq_arrlist.data[seqidx2].seq[j]] += 1.0 / seq_arrlist.data[seqidx2].seqlen;
-                    }
                     double matchprob = 0;
-                    for (int j = 0; j < 256; j++) {
-                        matchprob += chprobs[j] * chprobs[j];
+                    if (SIM_ZVAL) {
+                        double chprobs[256];
+                        memset(chprobs, 0, 256 * sizeof(double));
+                        for (int j = 0; j < seq_arrlist.data[seqidx2].seqlen; j++) {
+                            chprobs[seq_arrlist.data[seqidx2].seq[j]] += 1.0 / seq_arrlist.data[seqidx2].seqlen;
+                        }
+                        for (int j = 0; j < 256; j++) {
+                            matchprob += chprobs[j] * chprobs[j];
+                        }
                     }
                     int sim = calc_perc_seq_sim_editdist(&seq_arrlist.data[seqidx1], &seq_arrlist.data[seqidx2], matchprob);
                     if (sim >= SIM_PERC) { nhits++; }
@@ -877,16 +891,17 @@ int main(const int argc, const char *const *const argv) {
             int max_attempts = ATTEMPT_INI;
             int max_attempts_arg = 0;
             if (seq_arrlist.data[i].coveredcnt <= COV_SRC_MAX && (int)(seq_arrlist.data[i].seqlen) >= (int)SEED_LENGTH) {
-                double chprobs[256];
-                memset(chprobs, 0, 256 * sizeof(double));
-                for (int j = 0; j < seq_arrlist.data[i].seqlen; j++) {
-                    chprobs[seq_arrlist.data[i].seq[j]] += 1.0 / seq_arrlist.data[i].seqlen;
-                }
                 double matchprob = 0;
-                for (int j = 0; j < 256; j++) {
-                    matchprob += chprobs[j] * chprobs[j];
+                if (SIM_ZVAL) {
+                    double chprobs[256];
+                    memset(chprobs, 0, 256 * sizeof(double));
+                    for (int j = 0; j < seq_arrlist.data[i].seqlen; j++) {
+                        chprobs[seq_arrlist.data[i].seq[j]] += 1.0 / seq_arrlist.data[i].seqlen;
+                    }
+                    for (int j = 0; j < 256; j++) {
+                        matchprob += chprobs[j] * chprobs[j];
+                    }
                 }
-
                 uint64_t hash = hash_init(seq_arrlist.data[i].seq);
                 seed_cov(&seeds[hash % DBENTRY_CNT], i, visited);
                 for (int j = SEED_LENGTH; j < seq_arrlist.data[i].seqlen; j++) {

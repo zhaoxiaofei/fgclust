@@ -33,9 +33,9 @@ function resetfile() {
 function run_mine_with_infastafile_seqid() {
     { time -p {
         echo "run_mine_with_infastafile_seqid($1, $2, $3, $4) eval-began-at $(date)"
-        date; cat "$1.faa"            | "${ROOTDIR}"/bin/fastaseqs-to-distmatrix.out --sim-perc $3 > "$2-$3.distmatrix"
-        date; cat "$2-$3.distmatrix"  | "${ROOTDIR}"/bin/linsetcover.out                           > "$2-$3.ordsetcover"
-        date; cat "$2-$3.ordsetcover" | "${ROOTDIR}"/bin/setcover-ords-to-hdrs.out $1.faa          > "$2-$3.hdrsetcover-clu.tsv"
+        date; cat "$1.faa"            | "${FGCLUST}"/bin/fastaseqs-to-distmatrix.out --sim-perc $3 > "$2-$3.distmatrix"
+        date; cat "$2-$3.distmatrix"  | "${FGCLUST}"/bin/linsetcover.out                           > "$2-$3.ordsetcover"
+        date; cat "$2-$3.ordsetcover" | "${FGCLUST}"/bin/setcover-ords-to-hdrs.out $1.faa          > "$2-$3.hdrsetcover-clu.tsv"
         echo "run_mine_with_infastafile_seqid($1, $2, $3) eval-ended-at $(date)"
     } } 2>&1 | tee "$2-$3.mine.time"
 }
@@ -98,16 +98,6 @@ function run_cdhit_with_infastafile_seqid() {
     if grep -Fq " eval-ended-at " "$2-$3.cdhit.time"; then cdhitnext=true; else cdhitnext=false; fi
 }
 
-function run_minenuc_with_infastafile_seqid() {
-    { time -p {
-        echo "run_minenuc_with_infastafile_seqid($1, $2, $3) eval-began-at $(date)"
-        date; cat "$1.fna"            | "${ROOTDIR}"/bin/fastaseqs-to-distmatrix.out --sim-perc $3 --is-input-nuc 1 > "$2-$3.distmatrix"
-        date; cat "$2-$3.distmatrix"  | "${ROOTDIR}"/bin/linsetcover.out                                            > "$2-$3.ordsetcover"
-        date; cat "$2-$3.ordsetcover" | "${ROOTDIR}"/bin/setcover-ords-to-hdrs.out $1.fna                           > "$2-$3.hdrsetcover-clu.tsv"
-        echo "run_minenuc_with_infastafile_seqid($1, $2, $3) eval-ended-at $(date)"
-    } } 2>&1 | tee "$2-$3.minenuc.time"
-}
-
 function run_vsearch_with_infastafile_seqid() {
     { time -p {
         echo "run_vsearch_with_infastafile_seqid($1, $2, $3) eval-began-at $(date)"
@@ -132,14 +122,20 @@ function run_cdhitest_with_infastafile_seqid() {
 }
 
 for SIM in $(echo $CSVSIM | sed "s/,/ /g"); do
-    
+    FGCLUST="${OUTDIR}/${SIM}-fgclust-bin/"
+    if [[ "${PROG}" == *"mine"* ]]; then mkdir -p "${FGCLUST}"; cp "${ROOTDIR}/bin/"*.out "${FGCLUST}"; fi
+done
+
+for SIM in $(echo $CSVSIM | sed "s/,/ /g"); do
+    FGCLUST="${OUTDIR}/${SIM}-fgclust-bin/"
+ 
     function gen_fam_metrics() {
         cat "$1.tsv" | "${ROOTDIR}"/benchmark/src/pfam-clstr-to-metrics.py | tee "$1.fam-metrics"
     }
 
     ## run Rfam.seed
 
-    if [[ "${PROG}" == *"mine"* ]];    then run_minenuc_with_infastafile_seqid  "${INPREF}/Rfam.seed_shuf" "${OUTDIR}/Rfam.seed_shuf" $SIM 3334; fi
+    if [[ "${PROG}" == *"mine"* ]];    then run_mine_with_infastafile_seqid     "${INPREF}/Rfam.seed_shuf" "${OUTDIR}/Rfam.seed_shuf" $SIM 3334; fi
     if [[ "${PROG}" == *"vsearch"* ]]; then run_vsearch_with_infastafile_seqid  "${INPREF}/Rfam.seed_shuf" "${OUTDIR}/Rfam.seed_shuf" $SIM 3334; fi
     if [[ "${PROG}" == *"cdhit"* ]];   then run_cdhitest_with_infastafile_seqid "${INPREF}/Rfam.seed_shuf" "${OUTDIR}/Rfam.seed_shuf" $SIM 3334; fi
 
@@ -164,6 +160,7 @@ for SIM in $(echo $CSVSIM | sed "s/,/ /g"); do
 done
 
 for SIM in $(echo $CSVSIM | sed "s/,/ /g"); do
+    FGCLUST="${OUTDIR}/${SIM}-fgclust-bin/"
 
     # skip the rest if sim is either 60 or 80 
     if [[ "60,80" == *"$SIM"* ]]; then continue; fi
