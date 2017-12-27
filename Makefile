@@ -1,6 +1,6 @@
 CXX=g++
-CXXFLAGS=-O3 -static-libstdc++ -I lib -DGITCOMMIT=\"CXX-$(shell git rev-parse HEAD)-diff$(shell git diff --name-only | wc -l)\" -DCXXVERSION="\"$(shell $(CXX) --version | head -n1)\""
-GPRFLAGS=-O2 -static-libstdc++ -I lib -DGITCOMMIT=\"GPR-$(shell git rev-parse HEAD)-diff$(shell git diff --name-only | wc -l)\" -DCXXVERSION="\"$(shell $(CXX) --version | head -n1)\"" -g
+CXXFLAGS=-O3 -static-libstdc++ -I lib -DGITCOMMIT=\"CXX-$(shell git rev-parse HEAD)-diff$(shell git diff --name-only | wc -l)\" -DCXXVERSION="\"$(shell $(CXX) --version | head -n1)\"" -DDESC="\"$(desc)\""
+GPRFLAGS=-O2 -static-libstdc++ -I lib -DGITCOMMIT=\"GPR-$(shell git rev-parse HEAD)-diff$(shell git diff --name-only | wc -l)\" -DCXXVERSION="\"$(shell $(CXX) --version | head -n1)\"" -DDESC="\"$(desc)\"" -pg
 
 all: bin/len-revname-sort.out bin/fastaseqs-to-distmatrix.out bin/linsetcover.out bin/setcover-ords-to-hdrs.out bin/setcover-ords-to-fasta.out \
                               bin/fastaseqs-to-distmatrix.gpr

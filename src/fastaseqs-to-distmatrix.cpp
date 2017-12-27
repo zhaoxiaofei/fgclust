@@ -104,7 +104,7 @@ int SIGN_LENGTH = 0;
 int SIGN_SHARED_CNT_MIN = 0; 
 
 int SIM_PERC = 0;
-int SIM_BASE = 25;
+int SIM_BASE = 0; // 25;
 int SIM_DIFF = 0;
 int SIM_ZVAL = 10 * 100; // 11; // real z-score threshold is about 75% of this value due to innacuracy of normal approximation of binomial
 
@@ -694,6 +694,9 @@ int main(const int argc, const char *const *const argv) {
 
     std::cerr << "GITCOMMIT = " << GITCOMMIT << std::endl;
     std::cerr << "CXXVERSION = " << CXXVERSION << std::endl;
+#ifdef DESC
+    std::cerr << "DESC = " << DESC << std::endl;
+#endif
     std::cerr << "For usage and help, please enter either one of the following commands:" << std::endl;
     std::cerr << "  " << argv[0] << " --help" << std::endl;
     std::cerr << "  " << argv[0] << " --usage" << std::endl;
