@@ -3,6 +3,7 @@
 #include <iostream>
 #include <set>
 #include <sstream>
+#include <tuple>
 #include <vector>
 
 #include <unistd.h>
@@ -21,12 +22,12 @@ int main(int argc, char **argv) {
         }
     }
 
-    std::vector<std::pair<std::string, std::string>> fastarecords;
+    std::vector<std::tuple<std::string, std::string, std::string>> fastarecords;
     
     FILE *fastafile = fopen(argv[1], "r");
     kseq_t *kseq = kseq_init(fileno(fastafile));
     while ( kseq_read(kseq) >= 0 ) { 
-        fastarecords.push_back(std::make_pair(kseq->name.s, kseq->seq.s));
+        fastarecords.push_back(std::make_tuple(kseq->name.s, kseq->seq.s, kseq->comment.s));
     }
     kseq_destroy(kseq);
     fclose(fastafile);
@@ -50,13 +51,15 @@ int main(int argc, char **argv) {
 
     for (int i = 0; i < fastarecords.size(); i++) {
         if (0 < inner_to_outers[i].size()) {
-            std::cout << ">" << fastarecords[i].first;
+            std::cout << ">" << std::get<0>(fastarecords[i]);
             if (is_out_fa_hdr_in_csv) {
                 for (auto outer : inner_to_outers[i] ) {
-                    std::cout << "," << fastarecords[outer].first;
+                    std::cout << "," << std::get<0>(fastarecords[outer]);
                 }
+            } else {
+                std::cout << "\t" << std::get<2>(fastarecords[i]);
             }
-            std::cout << std::endl << fastarecords[i].second << std::endl;
+            std::cout << std::endl << std::get<1>(fastarecords[i]) << std::endl;
         }
     }
 }
