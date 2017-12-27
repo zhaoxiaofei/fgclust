@@ -104,9 +104,9 @@ int SIGN_LENGTH = 0;
 int SIGN_SHARED_CNT_MIN = 0; 
 
 int SIM_PERC = 0;
-int SIM_BASE = 0; // 25;
+int SIM_BASE = 25; // 0; // 25;
 int SIM_DIFF = 0;
-int SIM_ZVAL = 10 * 100; // 11; // real z-score threshold is about 75% of this value due to innacuracy of normal approximation of binomial
+int SIM_ZVAL = 0; // 10 * 100; // 11; // real z-score threshold is about 75% of this value due to innacuracy of normal approximation of binomial
 
 bool ZVAL_AS_SIM = false;
 
