@@ -2,6 +2,7 @@
 #include "edlib.h"
 
 #include <algorithm>
+#include <iomanip>
 #include <iostream>
 #include <set>
 #include <vector>
@@ -87,9 +88,9 @@ int COV_SRC_MAX = 5; // 5;
 int COV_SNK_MAX = 1000*1000;
 
 int DBFILT_MINSEED = 1000; // 1000*1000; lower -> more filtering, more time saving later
-int DBFILT_SUBSAMP = 1000; // 800; // lower -> less filtering accuracy, less time
-int DBFILT_ATTEMPT = 50; // 10; // lower -> less filtering accuracy, less time
-int DBFILT_TRUEHIT = 5; // lower -> less filtering accuracy
+int DBFILT_SUBSAMP = 50*50; // 800; // lower -> less filtering accuracy, less time
+// int DBFILT_ATTEMPT = 50; // 10; // lower -> less filtering accuracy, less time // not useful because same as ATTEMPT_* 
+int DBFILT_TRUEHIT = (50*50)/200; // 5; // lower -> less filtering accuracy
 
 int IS_INPUT_NUC = -1; // guessed
 
@@ -134,7 +135,7 @@ void showparams() {
     std::cerr << " DBFILT_MINSEED = " << DBFILT_MINSEED << std::endl;
     std::cerr << " DBFILT_SUBSAMP = " << DBFILT_SUBSAMP << std::endl; 
     std::cerr << " DBFILT_TRUEHIT = " << DBFILT_TRUEHIT << std::endl;
-    std::cerr << " DBFILT_ATTEMPT = " << DBFILT_ATTEMPT << std::endl;
+    //std::cerr << " DBFILT_ATTEMPT = " << DBFILT_ATTEMPT << std::endl;
 
     std::cerr << " IS_INPUT_NUC = " << IS_INPUT_NUC         << std::endl;
     
@@ -176,7 +177,7 @@ void show_usage(const int argc, const char *const *const argv) {
     
     std::cerr << "  --dbfilt-minseed\t: minimum number of times a seed occurs to trigger seed pruning.["           << DBFILT_MINSEED << "]" << std::endl;
     std::cerr << "  --dbfilt-subsamp\t: number of sequence pairs (SP) subsampled for seed pruning .["              << DBFILT_SUBSAMP << "]" << std::endl;
-    std::cerr << "  --dbfilt-attempt\t: number of attempts on most likely (minhash) similar SP for seed pruning.[" << DBFILT_ATTEMPT << "]" << std::endl;
+    // std::cerr << "  --dbfilt-attempt\t: number of attempts on most likely (minhash) similar SP for seed pruning.[" << DBFILT_ATTEMPT << "]" << std::endl;
     std::cerr << "  --dbfilt-truepos\t: maximum number of true posive SP hits to trigger pruning.["                << DBFILT_TRUEHIT << "]" << std::endl;
     
     std::cerr << "  --is-input-nuc\t: 0, 1, and 2 mean input is protein, RNA, and DNA, respectively (auto detected). [" << IS_INPUT_NUC << "]" << std::endl;
@@ -493,7 +494,7 @@ void PARAMS_init(const int argc, const char *const *const argv) {
         
         else if (!strcmp("--dbfilt-minseed", argv[i])) { DBFILT_MINSEED        = atoi(argv[i+1]); } 
         else if (!strcmp("--dbfilt-subsamp", argv[i])) { DBFILT_SUBSAMP        = atoi(argv[i+1]); } 
-        else if (!strcmp("--dbfilt-attempt", argv[i])) { DBFILT_ATTEMPT        = atoi(argv[i+1]); } 
+        // else if (!strcmp("--dbfilt-attempt", argv[i])) { DBFILT_ATTEMPT        = atoi(argv[i+1]); } 
         else if (!strcmp("--dbfilt-truehit", argv[i])) { DBFILT_TRUEHIT        = atoi(argv[i+1]); } 
 
         else if (!strcmp("--is-input-nuc",   argv[i])) { IS_INPUT_NUC          = atoi(argv[i+1]); } 
@@ -531,7 +532,7 @@ void PARAMS_init(const int argc, const char *const *const argv) {
         are_args_parsed[i+1] += is_arg_parsed;
     }
     
-    double p = pow(SIM_PERC / 100.001, SIGN_LENGTH);
+    double p = pow((1 - DBL_EPSILON) * SIM_PERC / 100, SIGN_LENGTH);
     double sd = sqrt(NUM_SIGNATURES * p * (1-p));
     double mean = NUM_SIGNATURES * p;
     SIGN_SHARED_CNT_MIN = MAX(floor(mean - sd * 3), 1); // three standard deviations below the normal distribution of true positives.
@@ -666,22 +667,26 @@ void seed_cov(const seed_t *seed, const uint32_t coveringidx, std::set<uint32_t>
     }
 }
 
-void print_seedsize_histogram(int seedsize_histogram[], const char *name) {
-    memset(seedsize_histogram, 0, (1000+1) * sizeof(int));
+void set_seedsize_histogram(int seedsize_histogram[]) {
+    memset(seedsize_histogram, 0, 512 * sizeof(int));
     for (int i = 0 ; i < DBENTRY_CNT; i++) {
-        uint32_t seedsize = (seeds[i].size > 1000 ? 1000 : seeds[i].size);
-        seedsize_histogram[seedsize]++;
+        int histidx = floor(log(seeds[i].size + 1 + DBL_EPSILON) * 10);
+        assert(histidx < 512 || !fprintf(stderr, "dbentry %d has seed count %d which is too high!\n", i, seeds[i].size));
+        seedsize_histogram[histidx]++;
     }
-    std::cerr << "Start of " << name << std::endl;
-    for (int i = 0; i < 1000+1; i++) {
-        std::cerr << i << "\t";
+}
+
+void print_seedsize_histogram(const int hist1[], const int hist2[]) {
+
+    std::cerr << "Seedsize histogram with lower/upper delimiters and frequency before/after filter as columns:" << std::endl;
+    for (int i = 0; i < 512; i++) {
+        if (hist1[i] > 0 || hist2[i] > 0)
+        {
+            double lowerlim = (exp(((double)i  ) / 10) - 1 - DBL_EPSILON);
+            double upperlim = (exp(((double)i+1) / 10) - 1 - DBL_EPSILON); 
+            std::cerr << "\t" << lowerlim << "\t" << upperlim << "\t" << hist1[i] << "\t" << hist2[i] << std::setprecision(15) << std::endl;
+        }
     }
-    std::cerr << std::endl;
-    for (int i = 0; i < 1000+1; i++) {
-        std::cerr << seedsize_histogram[i] << "\t";
-    }
-    std::cerr << std::endl;
-    std::cerr << "End of " << name << std::endl;
 }
 
 int main(const int argc, const char *const *const argv) {
@@ -698,8 +703,8 @@ int main(const int argc, const char *const *const argv) {
     std::cerr << "DESC = " << DESC << std::endl;
 #endif
     std::cerr << "For usage and help, please enter either one of the following commands:" << std::endl;
-    std::cerr << "  " << argv[0] << " --help" << std::endl;
-    std::cerr << "  " << argv[0] << " --usage" << std::endl;
+    std::cerr << "\t" << argv[0] << " --help" << std::endl;
+    std::cerr << "\t" << argv[0] << " --usage" << std::endl;
     std::cerr << "Reading fasta sequences from STDIN" << std::endl; 
 
     std::set<int> printthresholds;
@@ -734,9 +739,9 @@ int main(const int argc, const char *const *const argv) {
     }
     DBENTRY_CNT = num_residues / CHAR_PER_SEED + 1;
     std::cerr << "Derived paramters: " << std::endl;
-    std::cerr << "  NUM_SEQS = " << seq_arrlist.size << std::endl;
-    std::cerr << "  NUM_RESIDUES = " << num_residues << std::endl;
-    std::cerr << "  DBENTRY_CNT = " << DBENTRY_CNT << std::endl;
+    std::cerr << "\tNUM_SEQS = " << seq_arrlist.size << std::endl;
+    std::cerr << "\tNUM_RESIDUES = " << num_residues << std::endl;
+    std::cerr << "\tDBENTRY_CNT = " << DBENTRY_CNT << std::endl;
     
     uint64_t ch_to_cnt[256];
     memset(ch_to_cnt, 0, 256 * sizeof(uint64_t));
@@ -757,13 +762,14 @@ int main(const int argc, const char *const *const argv) {
     for (int i = 0; i < 256; i++) {
         ch_to_prob[i] = ((double)ch_to_cnt[i] + 1.0 / 256) / ((double)ch_totcnt + 1);
         ch_entropy -= ch_to_prob[i] * log(ch_to_prob[i]);
-        std::cerr << i << " : " << ch_to_cnt[i] << " , "; // print all ascii characters
+        if (ch_to_cnt[i] > 0) {
+            if (32 <= i && i < 127) {
+                std::cerr << "\t" << i << "\t" << ch_to_cnt[i] << "\t" << (char)i << std::endl; // print printable ascii
+            } else {
+                std::cerr << "\t" << i << "\t" << ch_to_cnt[i] << "\t" << "not-printable" << std::endl; 
+            }
+        }
     }
-    std::cerr << std::endl;
-    for (int i = 32; i < 127; i++) {
-        std::cerr << (char)i << " : " << ch_to_cnt[i] << " , "; // print printable ascii characters
-    }
-    std::cerr << std::endl;
 
     double INFO_PER_LETTER = exp(ch_entropy); // (IS_INPUT_NUC ? 3.3 : 8.5);
     std::cerr << "INFO_PER_LETTER = " << INFO_PER_LETTER << std::endl;
@@ -781,14 +787,14 @@ int main(const int argc, const char *const *const argv) {
             SEED_MAXGAP = (SIM_PERC / 5);
             SEED_MINCNT = (120 - SIM_PERC); 
         }
-        SEED_LENGTH = MIN(MAX(SEED_LENGTH, 7), 25);
+        SEED_LENGTH = MIN(MAX(SEED_LENGTH, 4), 25);
         SEED_MAXGAP = MAX(SEED_MAXGAP, 1);
         SEED_MINCNT = MAX(SEED_MINCNT, 20);
         
         std::cerr << "Command-line parameter values after adjustment with SEED_EVALUE = " << SEED_EVALUE << ":" << std::endl;
-        std::cerr << "  SEED_LENGTH = " << SEED_LENGTH << std::endl;
-        std::cerr << "  SEED_MAXGAP = " << SEED_MAXGAP << std::endl;
-        std::cerr << "  SEED_MINCNT = " << SEED_MINCNT << std::endl;
+        std::cerr << "\tSEED_LENGTH = " << SEED_LENGTH << std::endl;
+        std::cerr << "\tSEED_MAXGAP = " << SEED_MAXGAP << std::endl;
+        std::cerr << "\tSEED_MINCNT = " << SEED_MINCNT << std::endl;
     } else {
         std::cerr << "No adjustment made because SEED_EVALUE = " << SEED_EVALUE << std::endl;
     }
@@ -815,20 +821,23 @@ int main(const int argc, const char *const *const argv) {
         }
     }
     
-    int seedsize_histogram[1000+1];
-    print_seedsize_histogram(seedsize_histogram, "seedsize_histogram 1"); 
-    
+    int seedsize_hist1[512];
+    int seedsize_hist2[512];
+
+#if 0
     int maxseedsize = 0;
     for (int i = 0; i < DBENTRY_CNT; i++) {
         maxseedsize = MAX(maxseedsize, seeds[i].size);
     }
-    
     std::cerr << "maxseedsize = " << maxseedsize << std::endl;
+#endif
 
+    set_seedsize_histogram(seedsize_hist1);
+    
     #pragma omp parallel for schedule(dynamic, 9999*100) 
     for (int i = 0 ; i < DBENTRY_CNT; i++) {
         if (seeds[i].size > DBFILT_MINSEED) {
-            unsigned int randstate = 1 + (unsigned int)i;
+            unsigned int randstate = i;
             int probsimcnt = 0;
             std::array<std::set<std::pair<uint32_t, uint32_t>>, NUM_SIGNATURES+1> nsigns_to_seqidx_pairs;
             std::fill(nsigns_to_seqidx_pairs.begin(), nsigns_to_seqidx_pairs.end(), std::set<std::pair<uint32_t, uint32_t>>());
@@ -836,19 +845,22 @@ int main(const int argc, const char *const *const argv) {
                 uint32_t seqidx1 = seeds[i].seqidxs[rand_r(&randstate) % seeds[i].size];
                 uint32_t seqidx2 = seeds[i].seqidxs[rand_r(&randstate) % (seeds[i].size - 1)];
                 if (seqidx1 == seqidx2) { seqidx2 = seeds[i].size-1; }
+// Changing seq order affects filter threshold
+#ifdef ORDER_AWARE_FILT
                 if (seq_arrlist.data[seqidx1].seqlen > seq_arrlist.data[seqidx2].seqlen) {
                     SWAP(seqidx1, seqidx2);
                 }
+#endif
                 if (!fail_len_cutoff(&seq_arrlist.data[seqidx1], &seq_arrlist.data[seqidx2])) {
                     int nsharedsigns = calc_n_shared_signatures(&seq_arrlist.data[seqidx1], &seq_arrlist.data[seqidx2]); 
                     nsigns_to_seqidx_pairs[nsharedsigns].insert(std::make_pair(seqidx1, seqidx2));
                 }
             }
             int nhits = 0;
-            int attemptcnt = 0;
+            int attemptcnt = ATTEMPT_INI;
             for (int nsigns = NUM_SIGNATURES; 
-                    nsigns >= SIGN_SHARED_CNT_MIN && attemptcnt < DBFILT_ATTEMPT && nhits <= DBFILT_TRUEHIT; 
-                    nsigns--, attemptcnt++) {
+                     nsigns >= SIGN_SHARED_CNT_MIN && attemptcnt > 0 && nhits <= DBFILT_TRUEHIT; 
+                     --nsigns) {
                 for (auto seqidxpair : nsigns_to_seqidx_pairs[nsigns]) {
                     int seqidx1 = seqidxpair.first;
                     int seqidx2 = seqidxpair.second;
@@ -863,8 +875,16 @@ int main(const int argc, const char *const *const argv) {
                             matchprob += chprobs[j] * chprobs[j];
                         }
                     }
+                    // assert(seq_arrlist.data[seqidx1].seqlen <= seq_arrlist.data[seqidx2].seqlen);
                     int sim = calc_perc_seq_sim_editdist(&seq_arrlist.data[seqidx1], &seq_arrlist.data[seqidx2], matchprob);
-                    if (sim >= SIM_PERC) { nhits++; }
+                    if (sim >= SIM_PERC) { 
+                        attemptcnt = MIN(attemptcnt + ATTEMPT_INC, ATTEMPT_MAX);
+                        nhits++;
+                        if (!(nhits <= DBFILT_TRUEHIT)) { break; }
+                    } else { 
+                        attemptcnt--;
+                        if (!(attemptcnt > 0)) { break; }
+                    }
                 }
             }
             if (nhits <= DBFILT_TRUEHIT) {
@@ -874,7 +894,10 @@ int main(const int argc, const char *const *const argv) {
             }
         }
     }
-    print_seedsize_histogram(seedsize_histogram, "seedsize_histogram 2"); 
+    
+    set_seedsize_histogram(seedsize_hist2);
+
+    print_seedsize_histogram(seedsize_hist1, seedsize_hist2); 
     
     printf("%d %d\n", seq_arrlist.size, seq_arrlist.size);
     std::vector<std::vector<std::pair<uint32_t, uint8_t>>> coveredarr(BATCHSIZE_INI);
