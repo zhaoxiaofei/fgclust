@@ -23,6 +23,7 @@
 #include <unistd.h>
 
 #define ENTROHASH 0
+#define ORDER_AWARE_FILT 1
 
 void *xmalloc(size_t size) {
     void *ret = malloc(size);
@@ -42,12 +43,11 @@ void *xrealloc(void *ptr, size_t size) {
     return ret;
 }
 
-#define SWAP(a, b) { auto tmp = (a); (a) = (b); (b) = (tmp); }
 #define MIN(a, b) (((a) < (b) ? (a) : (b)))
 #define MAX(a, b) (((a) > (b) ? (a) : (b)))
-// #define SQUARE(a) ((a)*(a))
 
 const auto SQUARE(const auto v) { return v * v; }
+void SWAP(auto &a, auto &b) {auto tmp = a; a = b; b = tmp; }
 
 #if ENTROHASH
 #define NUM_SIGNATURES (256)
@@ -58,7 +58,6 @@ const auto SQUARE(const auto v) { return v * v; }
 KSEQ_INIT(int, read)
 
 // constants
-const int PARAM_INIT_SEQCNT = 100;
 
 const int BATCHSIZE_INI = 256; // 15999;
 const int BATCHSIZE_INC = 2; // 15999;
@@ -90,7 +89,7 @@ int COV_SNK_MAX = 1000*1000;
 int DBFILT_MINSEED = 1000; // 1000*1000; lower -> more filtering, more time saving later
 int DBFILT_SUBSAMP = 50*50; // 800; // lower -> less filtering accuracy, less time
 // int DBFILT_ATTEMPT = 50; // 10; // lower -> less filtering accuracy, less time // not useful because same as ATTEMPT_* 
-int DBFILT_TRUEHIT = (50*50)/200; // 5; // lower -> less filtering accuracy
+int DBFILT_TRUEHIT = (50*50-1)/100; // 5; // lower -> less filtering accuracy
 
 int IS_INPUT_NUC = -1; // guessed
 
@@ -450,7 +449,7 @@ void seq_arrlist_add(const kseq_t *kseq) {
 void PARAMS_init(const int argc, const char *const *const argv) {
     int nb_cnt = 0;
     int aa_cnt = 0;
-    for (int i = 0; i < MIN(seq_arrlist.size, PARAM_INIT_SEQCNT); i++) {
+    for (int i = 0; i < MIN(seq_arrlist.size, BATCHSIZE_INI); i++) {
         for (int j = 0; j < seq_arrlist.data[i].seqlen; j++) {
             if (NULL != strchr("ACGTUacgtu", seq_arrlist.data[i].seq[j])) {
                 nb_cnt++;
@@ -724,13 +723,13 @@ int main(const int argc, const char *const *const argv) {
             time(&endtime);
             fprintf(stderr, "Read %d sequences in %.f seconds.\n", i, difftime(endtime, begtime));
         }
-        if (PARAM_INIT_SEQCNT == i) {
+        if (BATCHSIZE_INI == i) {
             PARAMS_init(argc, argv);
         }
     }
     kseq_destroy(kseq);
     
-    if (i < PARAM_INIT_SEQCNT) { PARAMS_init(argc, argv); }
+    if (i < BATCHSIZE_INI) { PARAMS_init(argc, argv); }
     
     // reinitialize some vars
     uint64_t num_residues = 0;
@@ -812,7 +811,8 @@ int main(const int argc, const char *const *const argv) {
             fprintf(stderr, "Indexed %d sequences in %.f seconds.\n", i, difftime(endtime, begtime));
         }
     }
-
+    
+    time(&begtime);
     #pragma omp parallel for schedule(dynamic, 9999*10)
     for (int i = 0 ; i < seq_arrlist.size; i++) {
         seq_signatures_init(&seq_arrlist.data[i]);
@@ -820,7 +820,9 @@ int main(const int argc, const char *const *const argv) {
             seq_arrlist.data[i].seq[j] = ALPHA_TYPE_TO_CHAR_TO_REDUCED[2][seq_arrlist.data[i].seq[j]];
         }
     }
-    
+    time(&endtime);
+    std::cerr << "Initialized minhash and reduce alphabet in " << difftime(endtime, begtime) << " seconds." << std::endl;
+
     int seedsize_hist1[512];
     int seedsize_hist2[512];
 
@@ -834,6 +836,7 @@ int main(const int argc, const char *const *const argv) {
 
     set_seedsize_histogram(seedsize_hist1);
     
+    time(&begtime);
     #pragma omp parallel for schedule(dynamic, 9999*100) 
     for (int i = 0 ; i < DBENTRY_CNT; i++) {
         if (seeds[i].size > DBFILT_MINSEED) {
@@ -846,7 +849,7 @@ int main(const int argc, const char *const *const argv) {
                 uint32_t seqidx2 = seeds[i].seqidxs[rand_r(&randstate) % (seeds[i].size - 1)];
                 if (seqidx1 == seqidx2) { seqidx2 = seeds[i].size-1; }
 // Changing seq order affects filter threshold
-#ifdef ORDER_AWARE_FILT
+#if ORDER_AWARE_FILT
                 if (seq_arrlist.data[seqidx1].seqlen > seq_arrlist.data[seqidx2].seqlen) {
                     SWAP(seqidx1, seqidx2);
                 }
@@ -894,11 +897,14 @@ int main(const int argc, const char *const *const argv) {
             }
         }
     }
+    time(&endtime);
     
     set_seedsize_histogram(seedsize_hist2);
 
     print_seedsize_histogram(seedsize_hist1, seedsize_hist2); 
     
+    std::cerr << "Filtered " << seedsize_hist2[0] - seedsize_hist1[0] << " seeds in seq index in " << difftime(endtime, begtime) << " seconds." << std::endl;
+
     printf("%d %d\n", seq_arrlist.size, seq_arrlist.size);
     std::vector<std::vector<std::pair<uint32_t, uint8_t>>> coveredarr(BATCHSIZE_INI);
     std::fill(coveredarr.begin(), coveredarr.end(), std::vector<std::pair<uint32_t, uint8_t>>(0));
