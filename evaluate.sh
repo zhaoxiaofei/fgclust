@@ -31,10 +31,11 @@ function resetfile() {
 }
 
 function run_mine_with_infastafile_seqid() {
+    if [ -z "$5" ]; then cov=5 ; else cov=$5; fi
     if [ -f "$1.faa" ]; then db="$1.faa"; else db="$1.fna"; fi
     { time -p {
         echo "run_mine_with_infastafile_seqid($1, $2, $3, $4) eval-began-at $(date)"
-        date; cat "${db}"             | "${FGCLUST}"/fastaseqs-to-distmatrix.out --sim-perc $3 > "$2-$3.distmatrix" || true
+        date; cat "${db}"             | "${FGCLUST}"/fastaseqs-to-distmatrix.out --sim-perc $3 --cov-src-max $cov > "$2-$3.distmatrix" || true
         date; cat "$2-$3.distmatrix"  | "${FGCLUST}"/linsetcover.out                           > "$2-$3.ordsetcover"
         date; cat "$2-$3.ordsetcover" | "${FGCLUST}"/setcover-ords-to-hdrs.out "${db}"         > "$2-$3.hdrsetcover-clu.tsv"
         echo "run_mine_with_infastafile_seqid($1, $2, $3) eval-ended-at $(date)"
@@ -135,23 +136,31 @@ for SIM in $(echo $CSVSIM | sed "s/,/ /g"); do
     }
 
     ## run Rfam.seed
-
+    
+    if [[ "${PROG}" == *"testgiu"* ]]; then run_mine_with_infastafile_seqid     "${INPREF}/Rfam.seed_sort" "${OUTDIR}/Rfam.seed_sort" $SIM 3334 0; fi
+    if [[ "${PROG}" == *"testcov"* ]]; then run_mine_with_infastafile_seqid     "${INPREF}/Rfam.seed_shuf" "${OUTDIR}/Rfam.seed_cov0" $SIM 3334 0; fi
     if [[ "${PROG}" == *"mine"* ]];    then run_mine_with_infastafile_seqid     "${INPREF}/Rfam.seed_shuf" "${OUTDIR}/Rfam.seed_shuf" $SIM 3334; fi
     if [[ "${PROG}" == *"vsearch"* ]]; then run_vsearch_with_infastafile_seqid  "${INPREF}/Rfam.seed_shuf" "${OUTDIR}/Rfam.seed_shuf" $SIM 3334; fi
     if [[ "${PROG}" == *"cdhit"* ]];   then run_cdhitest_with_infastafile_seqid "${INPREF}/Rfam.seed_shuf" "${OUTDIR}/Rfam.seed_shuf" $SIM 3334; fi
 
+    if [[ "${PROG}" == *"testgiu"* ]]; then gen_fam_metrics "${OUTDIR}/Rfam.seed_sort-${SIM}.hdrsetcover-clu"; fi
+    if [[ "${PROG}" == *"testcov"* ]]; then gen_fam_metrics "${OUTDIR}/Rfam.seed_cov0-${SIM}.hdrsetcover-clu"; fi
     if [[ "${PROG}" == *"mine"* ]];    then gen_fam_metrics "${OUTDIR}/Rfam.seed_shuf-${SIM}.hdrsetcover-clu"; fi
     if [[ "${PROG}" == *"vsearch"* ]]; then gen_fam_metrics "${OUTDIR}/Rfam.seed_shuf_vsearch-${SIM}-clu"    ; fi
     if [[ "${PROG}" == *"cdhit"* ]];   then gen_fam_metrics "${OUTDIR}/Rfam.seed_shuf-${SIM}.cdhitest-clu"   ; fi
 
     ## run Pfam-A.seed
-
+    
+    if [[ "${PROG}" == *"testgiu"* ]];  then run_mine_with_infastafile_seqid     "${INPREF}/Pfam-A.seed_sort" "${OUTDIR}/Pfam-A.seed_sort" $SIM 3334 0; fi
+    if [[ "${PROG}" == *"testcov"* ]];  then run_mine_with_infastafile_seqid     "${INPREF}/Pfam-A.seed_shuf" "${OUTDIR}/Pfam-A.seed_cov0" $SIM 3334 0; fi
     if [[ "${PROG}" == *"mine"* ]];     then run_mine_with_infastafile_seqid     "${INPREF}/Pfam-A.seed_shuf" "${OUTDIR}/Pfam-A.seed_shuf" $SIM 3334; fi
     if [[ "${PROG}" == *"linclust"* ]]; then run_linclust_with_infastafile_seqid "${INPREF}/Pfam-A.seed_shuf" "${OUTDIR}/Pfam-A.seed_shuf" $SIM 3334; fi
     if [[ "${PROG}" == *"quaclust"* ]]; then run_quaclust_with_infastafile_seqid "${INPREF}/Pfam-A.seed_shuf" "${OUTDIR}/Pfam-A.seed_shuf" $SIM 3334; fi
     if [[ "${PROG}" == *"cdhit"* ]];    then run_cdhit_with_infastafile_seqid    "${INPREF}/Pfam-A.seed_shuf" "${OUTDIR}/Pfam-A.seed_shuf" $SIM 3334; fi
     if [[ "${PROG}" == *"kclust"* ]];   then run_kclust_with_infastafile_seqid   "${INPREF}/Pfam-A.seed_shuf" "${OUTDIR}/Pfam-A.seed_shuf" $SIM 3334; fi
     
+    if [[ "${PROG}" == *"testgiu"* ]];  then gen_fam_metrics "${OUTDIR}/Pfam-A.seed_sort-${SIM}.hdrsetcover-clu"; fi
+    if [[ "${PROG}" == *"testcov"* ]];  then gen_fam_metrics "${OUTDIR}/Pfam-A.seed_cov0-${SIM}.hdrsetcover-clu"; fi
     if [[ "${PROG}" == *"mine"* ]];     then gen_fam_metrics "${OUTDIR}/Pfam-A.seed_shuf-${SIM}.hdrsetcover-clu"; fi
     if [[ "${PROG}" == *"linclust"* ]]; then gen_fam_metrics "${OUTDIR}/Pfam-A.seed_shuf-${SIM}.linclust-clu"   ; fi
     if [[ "${PROG}" == *"quaclust"* ]]; then gen_fam_metrics "${OUTDIR}/Pfam-A.seed_shuf-${SIM}.quaclust-clu"   ; fi
@@ -168,17 +177,21 @@ for SIM in $(echo $CSVSIM | sed "s/,/ /g"); do
 
     ## run pdb 
     (
+        if [[ "${PROG}" == *"testgiu"* ]];  then run_mine_with_infastafile_seqid     "${INPREF}/pdbent-seqres_sort" "${OUTDIR}/pdbent-seqres_sort" $SIM 3334 0; fi 
+        if [[ "${PROG}" == *"testcov"* ]];  then run_mine_with_infastafile_seqid     "${INPREF}/pdbent-seqres_shuf" "${OUTDIR}/pdbent-seqres_cov0" $SIM 3334 0; fi 
         if [[ "${PROG}" == *"mine"* ]];     then run_mine_with_infastafile_seqid     "${INPREF}/pdbent-seqres_shuf" "${OUTDIR}/pdbent-seqres_shuf" $SIM 3334; fi
         if [[ "${PROG}" == *"linclust"* ]]; then run_linclust_with_infastafile_seqid "${INPREF}/pdbent-seqres_shuf" "${OUTDIR}/pdbent-seqres_shuf" $SIM 3334; fi
         if [[ "${PROG}" == *"quaclust"* ]]; then run_quaclust_with_infastafile_seqid "${INPREF}/pdbent-seqres_shuf" "${OUTDIR}/pdbent-seqres_shuf" $SIM 3334; fi
         if [[ "${PROG}" == *"cdhit"* ]];    then run_cdhit_with_infastafile_seqid    "${INPREF}/pdbent-seqres_shuf" "${OUTDIR}/pdbent-seqres_shuf" $SIM 3334; fi
         if [[ "${PROG}" == *"kclust"* ]];   then run_kclust_with_infastafile_seqid   "${INPREF}/pdbent-seqres_shuf" "${OUTDIR}/pdbent-seqres_shuf" $SIM 3334; fi
         flock -e 200
-        cat "${OUTDIR}/pdbent-seqres_shuf-${SIM}."*clu.tsv | "${ROOTDIR}"/benchmark/src/update_memtable.py "${OUTDIR}/pdbent-seqres_shuf_memtable.tsv"
+        cat "${OUTDIR}/pdbent-seqres_"*"-${SIM}."*clu.tsv | "${ROOTDIR}"/benchmark/src/update_memtable.py "${OUTDIR}/pdbent-seqres_shuf_memtable.tsv"
         function clu_tsv_to_tms() {
             cat "$1" | "${ROOTDIR}"/benchmark/src/setcover-hdrs-to-tms.py "${OUTDIR}/pdbent-seqres_shuf_memtable.tsv" > "$1".tms;
             benchmark/src/gen-pdbent-cdf.py "$1".tms | tee "$1".cdf;
         }
+        if [[ "${PROG}" == *"testgiu"* ]];  then clu_tsv_to_tms "${OUTDIR}/pdbent-seqres_sort-${SIM}.hdrsetcover-clu.tsv" ; fi
+        if [[ "${PROG}" == *"testcov"* ]];  then clu_tsv_to_tms "${OUTDIR}/pdbent-seqres_cov0-${SIM}.hdrsetcover-clu.tsv" ; fi
         if [[ "${PROG}" == *"mine"* ]];     then clu_tsv_to_tms "${OUTDIR}/pdbent-seqres_shuf-${SIM}.hdrsetcover-clu.tsv" ; fi
         if [[ "${PROG}" == *"linclust"* ]]; then clu_tsv_to_tms "${OUTDIR}/pdbent-seqres_shuf-${SIM}.linclust-clu.tsv"    ; fi
         if [[ "${PROG}" == *"quaclust"* ]]; then clu_tsv_to_tms "${OUTDIR}/pdbent-seqres_shuf-${SIM}.quaclust-clu.tsv"    ; fi
@@ -189,6 +202,8 @@ for SIM in $(echo $CSVSIM | sed "s/,/ /g"); do
     ## run uniprot
 
     timelim=$((3600*50))
+    if [[ "${PROG}" == *"testgiu"* ]] ; then testgiunext=true ; else testgiunext=false ; fi 
+    if [[ "${PROG}" == *"testcov"* ]] ; then testcovnext=true ; else testcovnext=false ; fi 
     if [[ "${PROG}" == *"mine"* ]]    ; then minenext=true    ; else minenext=false    ; fi 
     if [[ "${PROG}" == *"linclust"* ]]; then linclustnext=true; else linclustnext=false; fi 
     if [[ "${PROG}" == *"quaclust"* ]]; then quaclustnext=true; else quaclustnext=false; fi 
@@ -196,6 +211,8 @@ for SIM in $(echo $CSVSIM | sed "s/,/ /g"); do
     if [[ "${PROG}" == *"kclust"* ]]  ; then kclustnext=true  ; else kclustnext=false  ; fi 
     #for uniref in down32x-uniref100-2017-01 down16x-uniref100-2017-01 down8x-uniref100-2017-01 down4x-uniref100-2017-01 down2x-uniref100-2017-01 uniref100-2017-01; do
     for uniref in uniref100-02 uniref100-12 uniref100-2011-01 uniref100-2014-01 uniref100-2017-01; do    
+        if $testgiunext ; then run_mine_with_infastafile_seqid     "${INPREF}/${uniref}_sort" "${OUTDIR}/${uniref}_sort" $SIM $timelim 0; fi
+        if $testcovnext ; then run_mine_with_infastafile_seqid     "${INPREF}/${uniref}_shuf" "${OUTDIR}/${uniref}_cov0" $SIM $timelim 0; fi
         if $minenext    ; then run_mine_with_infastafile_seqid     "${INPREF}/${uniref}_shuf" "${OUTDIR}/${uniref}_shuf" $SIM $timelim; fi
         if $linclustnext; then run_linclust_with_infastafile_seqid "${INPREF}/${uniref}_shuf" "${OUTDIR}/${uniref}_shuf" $SIM $timelim; fi
         if $quaclustnext; then run_quaclust_with_infastafile_seqid "${INPREF}/${uniref}_shuf" "${OUTDIR}/${uniref}_shuf" $SIM $timelim; fi
