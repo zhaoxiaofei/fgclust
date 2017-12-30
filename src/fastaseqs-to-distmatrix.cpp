@@ -49,10 +49,12 @@ void *xrealloc(void *ptr, size_t size) {
 const auto SQUARE(const auto v) { return v * v; }
 void SWAP(auto &a, auto &b) {auto tmp = a; a = b; b = tmp; }
 
+#ifndef NUM_SIGNATURES
 #if ENTROHASH
 #define NUM_SIGNATURES (256)
 #else
 #define NUM_SIGNATURES (32)
+#endif
 #endif
 
 KSEQ_INIT(int, read)
@@ -93,19 +95,19 @@ int DBFILT_TRUEHIT = (50*50-1)/100; // 5; // lower -> less filtering accuracy
 
 int IS_INPUT_NUC = -1; // guessed
 
-int LEN_PERC = 80;
+int LEN_PERC = -1;
 
 int SEED_EVALUE = 10;
 int SEED_LENGTH = 10; // can be overriden after determination of db size 
 int SEED_MAXGAP = 10; // can be overriden after determination of db size
 int SEED_MINCNT = 10; // can be overriden after determination of db size
 
-int SIGN_LENGTH = 0;
-int SIGN_SHARED_CNT_MIN = 0; 
+int SIGN_LENGTH = -1;
+int SIGN_SHARED_CNT_MIN = -1; 
 
-int SIM_PERC = 0;
-int SIM_BASE = 25; // 0; // 25;
-int SIM_DIFF = 0;
+int SIM_PERC = -1;
+int SIM_BASE = -1; // 0; // 25;
+int SIM_DIFF = -1;
 int SIM_ZVAL = 0; // 10 * 100; // 11; // real z-score threshold is about 75% of this value due to innacuracy of normal approximation of binomial
 
 bool ZVAL_AS_SIM = false;
@@ -199,7 +201,7 @@ void show_usage(const int argc, const char *const *const argv) {
 
     std::cerr << "  --zval-as-sim\t: used the sim-zval as similarity threshold [" << ZVAL_AS_SIM   << "]" << std::endl;
 
-    std::cerr << "Note: default value of 0 means dependence to other parameters or to the input." << std::endl;
+    std::cerr << "Note: default value of -1 means dependence to other parameters or to the input." << std::endl;
     exit(-1);
 }
 
@@ -449,21 +451,41 @@ void seq_arrlist_add(const kseq_t *kseq) {
 void PARAMS_init(const int argc, const char *const *const argv) {
     int nb_cnt = 0;
     int aa_cnt = 0;
+    int baseTcnt = 0;
+    int baseUcnt = 0;
     for (int i = 0; i < MIN(seq_arrlist.size, BATCHSIZE_INI); i++) {
         for (int j = 0; j < seq_arrlist.data[i].seqlen; j++) {
             if (NULL != strchr("ACGTUacgtu", seq_arrlist.data[i].seq[j])) {
                 nb_cnt++;
+                if (NULL != strchr("Tt", seq_arrlist.data[i].seq[j])) {
+                    baseTcnt++;
+                }
+                if (NULL != strchr("Uu", seq_arrlist.data[i].seq[j])) {
+                    baseUcnt++;
+                }
+
             } else {
                 aa_cnt++;
             }
         }
     }
+    LEN_PERC = 80;
+    SIM_BASE = 25;
+    SIM_DIFF = 0;
     if (aa_cnt * 4 > nb_cnt) {
         IS_INPUT_NUC = 0;
         SIM_PERC = 50;
     } else {
-        IS_INPUT_NUC = 1;
-        SIM_PERC = 90;
+        if (baseTcnt < baseUcnt) {
+            IS_INPUT_NUC = 1;
+            SIM_PERC = 70;
+        } else {
+            IS_INPUT_NUC = 2;
+            SIM_PERC = 90;
+            LEN_PERC = 0;
+            SIM_BASE = 0;
+            SIM_DIFF = SIM_PERC;
+        }
     }
     
     for (int i = 0; i < 256; i++) {
