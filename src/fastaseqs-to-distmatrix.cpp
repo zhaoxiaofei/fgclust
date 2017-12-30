@@ -356,6 +356,7 @@ int __attribute__((noinline)) calc_n_shared_kmers(const seq_t *seq1, const seq_t
         if ((*it1) == (*it2)) {
             ret++;
             it1++;
+            it2++;
         } else if ((*it1) < (*it2)) {
             it2++;
         } else if ((*it1) > (*it2)) {
