@@ -97,7 +97,7 @@ int IS_INPUT_NUC = -1; // guessed
 
 int LEN_PERC = -1;
 
-int SEED_EVALUE = 10;
+int SEED_EVALUE = 1;
 int SEED_LENGTH = 10; // can be overriden after determination of db size 
 int SEED_MAXGAP = 10; // can be overriden after determination of db size
 int SEED_MINCNT = 10; // can be overriden after determination of db size
