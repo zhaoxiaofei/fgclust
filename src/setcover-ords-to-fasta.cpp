@@ -3,6 +3,7 @@
 #include <iostream>
 #include <set>
 #include <sstream>
+#include <tuple>
 #include <vector>
 
 #include <unistd.h>
@@ -12,7 +13,7 @@ KSEQ_INIT(int, read)
 int main(int argc, char **argv) {
     std::cerr << "GITCOMMIT = " << GITCOMMIT << std::endl;
     std::cerr << "CXXVERSION = " << CXXVERSION << std::endl;
-    int is_out_fa_hdr_in_tsv = true;
+    int is_out_fa_hdr_in_tsv = false;
     for (int i = 1; i + 1 < argc; i+=2) {
         if (!strcmp("--is-output-fasta-header-in-tsv", argv[i])) {
             is_out_fa_hdr_in_tsv = atoi(argv[i+1]);
@@ -21,12 +22,12 @@ int main(int argc, char **argv) {
         }
     }
 
-    std::vector<std::pair<std::string, std::string>> fastarecords;
+    std::vector<std::tuple<std::string, std::string, std::string>> fastarecords;
     
     FILE *fastafile = fopen(argv[1], "r");
     kseq_t *kseq = kseq_init(fileno(fastafile));
     while ( kseq_read(kseq) >= 0 ) { 
-        fastarecords.push_back(std::make_pair(kseq->name.s, kseq->seq.s));
+        fastarecords.push_back(std::make_tuple(kseq->name.s, kseq->seq.s, kseq->comment.s));
     }
     kseq_destroy(kseq);
     fclose(fastafile);
@@ -48,15 +49,17 @@ int main(int argc, char **argv) {
         inner_to_outers[inner].push_back(outer);
     }
 
-    for (unsigned i = 0; i < fastarecords.size(); i++) {
-        if (0 < inner_to_outers[i].size()) {
-            std::cout << ">" << fastarecords[i].first;
+    for (unsigned inner = 0; inner < fastarecords.size(); inner++) {
+        if (0 < inner_to_outers[inner].size()) {
+            std::cout << ">" << std::get<0>(fastarecords[inner]);
             if (is_out_fa_hdr_in_tsv) {
-                for (auto outer : inner_to_outers[i] ) {
-                    std::cout << "\t" << fastarecords[outer].first;
+                for (auto outer : inner_to_outers[inner] ) {
+                    std::cout << "\t" << std::get<0>(fastarecords[outer]);
                 }
+            } else {
+                std::cout << "\t" << std::get<2>(fastarecords[inner]);
             }
-            std::cout << std::endl << fastarecords[i].second << std::endl;
+            std::cout << std::endl << std::get<1>(fastarecords[inner]) << std::endl;
         }
     }
 }

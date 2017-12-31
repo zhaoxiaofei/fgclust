@@ -4,6 +4,7 @@
 #include <iostream>
 #include <set>
 #include <sstream>
+#include <tuple>
 #include <vector>
 
 #include <unistd.h>
@@ -14,12 +15,12 @@ int main(int argc, char **argv) {
     std::cerr << "GITCOMMIT = " << GITCOMMIT << std::endl;
     std::cerr << "CXXVERSION = " << CXXVERSION << std::endl;
 
-    std::vector<std::pair<std::string, std::string>> fastarecords;
+    std::vector<std::tuple<std::string, std::string>> fastarecords;
     
     FILE *fastafile = fopen(argv[1], "r");
     kseq_t *kseq = kseq_init(fileno(fastafile));
     while ( kseq_read(kseq) >= 0 ) { 
-        fastarecords.push_back(std::make_pair(kseq->name.s, kseq->seq.s));
+        fastarecords.push_back(std::make_tuple(kseq->name.s, kseq->comment.s));
     }
     kseq_destroy(kseq);
     fclose(fastafile);
@@ -41,7 +42,7 @@ int main(int argc, char **argv) {
         assert(inner >= 0);
         assert(outer >= 0);
         assert(sim > 0);
-        std::cout << fastarecords.at(inner).first << "\t" << fastarecords.at(outer).first << "\t" << sim << std::endl;
+        std::cout << std::get<0>(fastarecords.at(inner)) << "\t" << std::get<0>(fastarecords.at(outer)) << "\t" << sim << "\t" << std::get<1>(fastarecords.at(outer)) << std::endl;
     }
 }
 
