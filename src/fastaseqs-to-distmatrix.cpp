@@ -99,7 +99,7 @@ int LEN_PERC = -1;
 
 int SEED_EVALUE = 1;
 int SEED_LENGTH = 10; // can be overriden after determination of db size 
-int SEED_MAXGAP = 10; // can be overriden after determination of db size
+int SEED_MAXGAP = 1000*1000; // can be overriden after determination of db size
 int SEED_MINCNT = 10; // can be overriden after determination of db size
 
 int SIGN_LENGTH = -1;
@@ -742,10 +742,11 @@ int main(const int argc, const char *const *const argv) {
     time(&begtime);
     while ( kseq_read(kseq) >= 0 ) {
         seq_arrlist_add(kseq);
-        if (printthresholds.find(++i) != printthresholds.end()) {
+        if (0 == ((i+1) & i)) {
             time(&endtime);
-            fprintf(stderr, "Read %d sequences in %.f seconds.\n", i, difftime(endtime, begtime));
+            fprintf(stderr, "Read %d sequences in %.f seconds.\n", i+1, difftime(endtime, begtime));
         }
+        i++;
         if (BATCHSIZE_INI == i) {
             PARAMS_init(argc, argv);
         }
@@ -796,22 +797,11 @@ int main(const int argc, const char *const *const argv) {
     double INFO_PER_LETTER = exp(ch_entropy); // (IS_INPUT_NUC ? 3.3 : 8.5);
     std::cerr << "INFO_PER_LETTER = " << INFO_PER_LETTER << std::endl;
     if (SEED_EVALUE > 0) {
-        double adjusted_kmer_size = log((double)num_residues / SEED_EVALUE + INFO_PER_LETTER) / log(INFO_PER_LETTER);
-        int inf_kmer_size = (int)floor(adjusted_kmer_size);
-        int sim_kmer_size = 150 / (100 - MIN((int)SIM_PERC, 99));
-        if (inf_kmer_size > sim_kmer_size) { 
-            int adjusted_kmer_space_ratio = (int)(100.0 * (adjusted_kmer_size - floor(adjusted_kmer_size)));
-            SEED_LENGTH = inf_kmer_size;
-            SEED_MAXGAP = (SIM_PERC / 5) * (100 + adjusted_kmer_space_ratio) / 100; 
-            SEED_MINCNT = (120 - SIM_PERC) * 100 / (100 + adjusted_kmer_space_ratio);
-        } else {
-            SEED_LENGTH = sim_kmer_size;
-            SEED_MAXGAP = (SIM_PERC / 5);
-            SEED_MINCNT = (120 - SIM_PERC); 
-        }
-        SEED_LENGTH = MIN(MAX(SEED_LENGTH, 4), 25);
-        SEED_MAXGAP = MAX(SEED_MAXGAP, 1);
-        SEED_MINCNT = MAX(SEED_MINCNT, 20);
+        double seedlen_fract = log((double)num_residues / SEED_EVALUE + INFO_PER_LETTER) / log(INFO_PER_LETTER);
+        int    seedlen_floor = (int)floor(seedlen_floor);
+        double seedlen_diff1 = seedlen_fract - seedlen_floor;
+        SEED_LENGTH = MIN(MAX(seedlen_floor, 4), 25);
+        SEED_MINCNT = (int)floor((100 + 10 - SIM_PERC) / (1 + seedlen_diff1));
         
         std::cerr << "Command-line parameter values after adjustment with SEED_EVALUE = " << SEED_EVALUE << ":" << std::endl;
         std::cerr << "\tSEED_LENGTH = " << SEED_LENGTH << std::endl;
@@ -829,9 +819,9 @@ int main(const int argc, const char *const *const argv) {
     time(&begtime);
     for (int i = 0 ; i < seq_arrlist.size; i++) {
         seq_longword_init(&seq_arrlist.data[i], i);
-        if (printthresholds.find(i) != printthresholds.end()) {
+        if (0 == ((i+1) & i)) {
             time(&endtime);
-            fprintf(stderr, "Indexed %d sequences in %.f seconds.\n", i, difftime(endtime, begtime));
+            fprintf(stderr, "Indexed %d sequences in %.f seconds.\n", i+1, difftime(endtime, begtime));
         }
     }
     
