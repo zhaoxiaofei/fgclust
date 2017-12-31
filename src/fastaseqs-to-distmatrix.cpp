@@ -82,7 +82,7 @@ int ATTEMPT_MAX = 50; //50;
 
 uint64_t CHAR_PER_SEED = 40;
 
-unsigned int COV_SRC_MAX = 5; // 5;
+unsigned int COV_SRC_MAX = 8; // 5;
 unsigned int COV_SNK_MAX = INT_MAX;
 
 unsigned int DBFILT_MINSEED = 1000; // 1000*1000; lower -> more filtering, more time saving later
@@ -550,7 +550,7 @@ void PARAMS_init(const int argc, const char *const *const argv) {
     }
 
     if (2 == IS_INPUT_NUC) {
-        SIM_DIFF = SIM_PERC;
+        SIM_DIFF = MIN(SIM_PERC,  20);
     } else {
         SIM_DIFF = 0;
     }
