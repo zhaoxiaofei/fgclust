@@ -86,7 +86,7 @@ int ATTEMPT_MAX = 50; //50;
 uint64_t CHAR_PER_SEED = 40;
 
 int COV_SRC_MAX = 5; // 5;
-int COV_SNK_MAX = 1000*1000;
+int COV_SNK_MAX = INT_MAX;
 
 int DBFILT_MINSEED = 1000; // 1000*1000; lower -> more filtering, more time saving later
 int DBFILT_SUBSAMP = 50*50; // 800; // lower -> less filtering accuracy, less time
@@ -99,7 +99,7 @@ int LEN_PERC = -1;
 
 int SEED_EVALUE = 1;
 int SEED_LENGTH = 10; // can be overriden after determination of db size 
-int SEED_MAXGAP = 1000*1000; // can be overriden after determination of db size
+int SEED_MAXGAP = INT_MAX; // can be overriden after determination of db size
 int SEED_MINCNT = 10; // can be overriden after determination of db size
 
 int SIGN_LENGTH = -1;
@@ -346,7 +346,7 @@ std::vector<uint64_t> compsigns(const seq_t *seq_ptr) {
     return signs;
 }
 
-int __attribute__((noinline)) calc_n_shared_kmers(const seq_t *seq1, const seq_t *seq2) {
+int __attribute__((noinline)) calc_n_shared_shortwords(const seq_t *seq1, const seq_t *seq2) {
     std::vector<uint64_t> signs1 = compsigns(seq1);
     std::vector<uint64_t> signs2 = compsigns(seq2);
     auto it1 = signs1.begin();
@@ -372,7 +372,7 @@ int calc_n_shared_signatures(const seq_t *seq1, const seq_t *seq2) {
     // The value 75 is an empirical threshold that works well in practice. O
     // Once a seq A is less than 75% long than another seq B, counting the same number of minhash features does not work.
     if (seq1->seqlen * 75 > seq2->seqlen * 100 || seq2->seqlen * 75 > seq1->seqlen * 100) {
-        return calc_n_shared_kmers(seq1, seq2); 
+        return calc_n_shared_shortwords(seq1, seq2); 
     }
 
 #if ENTROHASH
@@ -598,12 +598,12 @@ void PARAMS_init(const int argc, const char *const *const argv) {
 
 void seq_longword_init(seq_t *const seq_ptr, int idx) {
     if ((int)seq_ptr->seqlen >= (int)SEED_LENGTH) {
-        int kmerspace = MAX(1, MIN(SEED_MAXGAP, seq_ptr->seqlen / SEED_MINCNT));
+        int interseed_gap = MAX(1, MIN(SEED_MAXGAP, seq_ptr->seqlen / SEED_MINCNT));
         uint64_t hash = hash_init(seq_ptr->seq);
         seed_add(hash, idx);
         for (int i = SEED_LENGTH; i < (int)seq_ptr->seqlen; i += 1) {
             hash = hash_update(hash, seq_ptr->seq[i-SEED_LENGTH], seq_ptr->seq[i]);
-            if (0 == i % kmerspace) { seed_add(hash, idx); }
+            if (0 == i % interseed_gap) { seed_add(hash, idx); }
         }
     }
 }
@@ -935,7 +935,7 @@ int main(const int argc, const char *const *const argv) {
             int distcompcnt = 0;
             int max_attempts = ATTEMPT_INI;
             int max_attempts_arg = 0;
-            if (seq_arrlist.data[i].coveredcnt <= COV_SRC_MAX && (int)(seq_arrlist.data[i].seqlen) >= (int)SEED_LENGTH) {
+            if (seq_arrlist.data[i].coveredcnt < COV_SRC_MAX && (int)(seq_arrlist.data[i].seqlen) >= (int)SEED_LENGTH) {
                 double matchprob = 0;
                 if (SIM_ZVAL) {
                     double chprobs[256];
@@ -970,7 +970,7 @@ int main(const int argc, const char *const *const argv) {
                     for (auto coveredidx : nsharedsigns_to_coveredidxs_vec.at(nsigns)) {
                         seq_t *coveringseq = &seq_arrlist.data[i];
                         seq_t *coveredseq = &seq_arrlist.data[coveredidx];
-                        if (coveredseq->coveredcnt <= COV_SNK_MAX) {
+                        if (coveredseq->coveredcnt < COV_SNK_MAX) {
                             int sim = calc_perc_seq_sim_editdist(coveredseq, coveringseq, matchprob);
 
                             if (sim >= SIM_PERC) {
