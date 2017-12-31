@@ -3,7 +3,6 @@
 #include <iostream>
 #include <set>
 #include <sstream>
-#include <tuple>
 #include <vector>
 
 #include <unistd.h>
@@ -22,12 +21,12 @@ int main(int argc, char **argv) {
         }
     }
 
-    std::vector<std::tuple<std::string, std::string, std::string>> fastarecords;
+    std::vector<std::pair<std::string, std::string>> fastarecords;
     
     FILE *fastafile = fopen(argv[1], "r");
     kseq_t *kseq = kseq_init(fileno(fastafile));
     while ( kseq_read(kseq) >= 0 ) { 
-        fastarecords.push_back(std::make_tuple(kseq->name.s, kseq->seq.s, kseq->comment.s));
+        fastarecords.push_back(std::make_pair(kseq->name.s, kseq->seq.s));
     }
     kseq_destroy(kseq);
     fclose(fastafile);
@@ -56,10 +55,8 @@ int main(int argc, char **argv) {
                 for (auto outer : inner_to_outers[i] ) {
                     std::cout << "\t" << fastarecords[outer].first;
                 }
-            } else {
-                std::cout << "\t" << std::get<2>(fastarecords[i]);
             }
-            std::cout << std::endl << std::get<1>(fastarecords[i]) << std::endl;
+            std::cout << std::endl << fastarecords[i].second << std::endl;
         }
     }
 }

@@ -1,4 +1,5 @@
 #!/usr/bin/env sh
+#set -evx
 
 BINROOT=$(dirname `which $0`)
 if [ $# -lt 2 ]; then
@@ -16,8 +17,6 @@ if [ $# -lt 2 ]; then
     echo "" | "${BINROOT}/fastaseqs-to-distmatrix.out" --help
     exit 0
 fi
-
-set -evx
 
 INFILE="$1"
 OUTFASTA="$2"
