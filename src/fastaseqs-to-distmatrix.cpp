@@ -213,11 +213,6 @@ void alphareduce(const char *const strarg, const int reducetype) {
     }
 }
 
-int calc_vecnorm(int a, int b) {
-    return (int)ceil(sqrt(a * a + b * b));
-}
-
-
 void hash_sign_INIT() {
     int i;
     SEED_POWER = 1;
@@ -293,7 +288,7 @@ const bool fail_len_cutoff(const seq_t *src, const seq_t *snk) {
     return src->seqlen * LEN_PERC_SRC > snk->seqlen * 100 || snk->seqlen * LEN_PERC_SNK > src->seqlen * 100;
 }
 
-static const int calc_perc_seq_sim_editdist(const seq_t *src, const seq_t *snk, const double matchprob, const double *chprobs) {
+static const int comp_perc_seq_sim_editdist(const seq_t *src, const seq_t *snk, const double matchprob, const double *chprobs) {
     
     int maxEditDist = snk->seqlen - ceil((1 - DBL_EPSILON) * (sqrt(SQUARE((double)SIM_BASE) + SQUARE((double)(snk->seqlen * (SIM_PERC - SIM_DIFF)) / 100.0))));
     if (maxEditDist < 0) { return 0; }
@@ -338,7 +333,7 @@ static const int calc_perc_seq_sim_editdist(const seq_t *src, const seq_t *snk, 
     return ret;
 }
 
-void compsigns(std::vector<uint64_t> &signs, const seq_t *seq_ptr) {
+void comp_store_short_words(std::vector<uint64_t> &signs, const seq_t *seq_ptr) {
     if ((int)seq_ptr->seqlen >= (int)SIGN_LENGTH) {
         signs.reserve((int)seq_ptr->seqlen - (int)SIGN_LENGTH + 1);
         uint64_t sign = sign_init(seq_ptr->seq);
@@ -351,12 +346,12 @@ void compsigns(std::vector<uint64_t> &signs, const seq_t *seq_ptr) {
     }
 }
 
-int __attribute__((noinline)) calc_n_shared_shortwords(std::vector<uint64_t> &src_shortwords, const seq_t *src, const seq_t *snk) {
+int __attribute__((noinline)) comp_n_shared_shortwords(std::vector<uint64_t> &src_shortwords, const seq_t *src, const seq_t *snk) {
     if (0 == src_shortwords.size()) {
-        compsigns(src_shortwords, src);
+        comp_store_short_words(src_shortwords, src);
     }
     std::vector<uint64_t> snk_shortwords;
-    compsigns(snk_shortwords, snk);
+    comp_store_short_words(snk_shortwords, snk);
     
     auto it1 = src_shortwords.begin();
     auto it2 = snk_shortwords.begin();
@@ -377,11 +372,11 @@ int __attribute__((noinline)) calc_n_shared_shortwords(std::vector<uint64_t> &sr
     return ret2;
 }
 
-int calc_n_shared_signatures(std::vector<uint64_t> &src_shortwords, const seq_t *src, const seq_t *snk) {
+int comp_n_shared_signatures(std::vector<uint64_t> &src_shortwords, const seq_t *src, const seq_t *snk) {
     // The value 75 is an empirical threshold that works well in practice. O
     // Once a seq A is less than 75% long than another seq B, counting the same number of minhash features does not work.
     if (src->seqlen * 75 > snk->seqlen * 100 || snk->seqlen * 75 > src->seqlen * 100) {
-        return calc_n_shared_shortwords(src_shortwords, src, snk); 
+        return comp_n_shared_shortwords(src_shortwords, src, snk); 
     }
 
 #if ENTROHASH
@@ -887,7 +882,7 @@ int main(const int argc, const char *const *const argv) {
 #endif
                 if (!fail_len_cutoff(&seq_arrlist.data[srcidx], &seq_arrlist.data[snkidx])) {
                     std::vector<uint64_t> src_shortwords;
-                    int nsharedsigns = calc_n_shared_signatures(src_shortwords, &seq_arrlist.data[srcidx], &seq_arrlist.data[snkidx]); 
+                    int nsharedsigns = comp_n_shared_signatures(src_shortwords, &seq_arrlist.data[srcidx], &seq_arrlist.data[snkidx]); 
                     nsigns_to_srcsnk_idx_pairs[nsharedsigns].insert(std::make_pair(srcidx, snkidx));
                 }
             }
@@ -911,7 +906,7 @@ int main(const int argc, const char *const *const argv) {
                         }
                     }
                     // assert(seq_arrlist.data[srcidx].seqlen <= seq_arrlist.data[snkidx].seqlen);
-                    int sim = calc_perc_seq_sim_editdist(&seq_arrlist.data[srcidx], &seq_arrlist.data[snkidx], matchprob, chprobs);
+                    int sim = comp_perc_seq_sim_editdist(&seq_arrlist.data[srcidx], &seq_arrlist.data[snkidx], matchprob, chprobs);
                     if (sim >= SIM_PERC) { 
                         attemptcnt = MIN(attemptcnt + ATTEMPT_INC, ATTEMPT_MAX);
                         nhits++;
@@ -976,7 +971,7 @@ int main(const int argc, const char *const *const argv) {
                 std::vector<std::vector<uint32_t>> nsharedsigns_to_coveredidxs_vec(NUM_SIGNATURES + 1, std::vector<uint32_t>());
                 for (auto coveredidx: visited) {
                     if ((i != coveredidx)) {
-                        int n_shared_signatures = calc_n_shared_signatures(src_shortwords, &seq_arrlist.data[i], &seq_arrlist.data[coveredidx]);
+                        int n_shared_signatures = comp_n_shared_signatures(src_shortwords, &seq_arrlist.data[i], &seq_arrlist.data[coveredidx]);
                         nsharedsigns_to_coveredidxs_vec.at(n_shared_signatures).push_back(coveredidx);
                     }
                 }
@@ -989,7 +984,7 @@ int main(const int argc, const char *const *const argv) {
                         seq_t *coveringseq = &seq_arrlist.data[i];
                         seq_t *coveredseq = &seq_arrlist.data[coveredidx];
                         if (coveredseq->coveredcnt < COV_SNK_MAX) {
-                            int sim = calc_perc_seq_sim_editdist(coveringseq, coveredseq, matchprob, chprobs);
+                            int sim = comp_perc_seq_sim_editdist(coveringseq, coveredseq, matchprob, chprobs);
 
                             if (sim >= SIM_PERC) {
                                 coveredarr[i-iter].push_back(std::make_pair(coveredidx, sim));
