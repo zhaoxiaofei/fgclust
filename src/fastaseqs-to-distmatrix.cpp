@@ -808,7 +808,7 @@ int main(const int argc, const char *const *const argv) {
         int    seedlen_floor = (int)floor(seedlen_fract);
         double seedlen_diff1 = seedlen_fract - seedlen_floor;
         SEED_LENGTH = MIN(MAX(seedlen_floor, 4), 25);
-        SEED_MINCNT = (int)floor((100 + 10 - SIM_PERC) / pow(SHANNON_INFO_PER_LETTER, seedlen_diff1)); 
+        SEED_MINCNT = (int)floor((100 + 10 - SIM_PERC) / pow(SHANNON_INFO_PER_LETTER, seedlen_diff1) * (IS_INPUT_NUC ? 3 : 1));
         
         std::cerr << "Command-line parameter values after adjustment with SEED_EVALUE = " << SEED_EVALUE << ":" << std::endl;
         std::cerr << "\tSEED_LENGTH = " << SEED_LENGTH << std::endl;
