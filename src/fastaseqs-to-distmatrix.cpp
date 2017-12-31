@@ -185,11 +185,11 @@ void show_usage(const int argc, const char *const *const argv) {
 
     std::cerr << "  --len-perc\t: A covers B only if min(len(A) / len(B), len(B) / len(A)) >= len_perc. [" << LEN_PERC << "]" << std::endl; 
     
-    std::cerr << "  --seed-length\t: length of an indexed seed. overwrite --seed-evalue. ["     << SEED_LENGTH << "]" << std::endl;
-    std::cerr << "  --seed-maxgap\t: max number of residues between consecutive seeds. ["       << SEED_MAXGAP << "]" << std::endl;
-    std::cerr << "  --seed-mincnt\t: minimum number of seeds per sequence.["                    << SEED_MINCNT << "]" << std::endl;
-    std::cerr << "  --seed-evalue\t: evalue for seed hit (higher leads to slower runtime). ["   << SEED_EVALUE << "]" << std::endl;
-
+    std::cerr << "  --seed-evalue\t: evalue for seed hit. 0 means do not use this parameter ["                     << SEED_EVALUE << "]" << std::endl;
+    std::cerr << "  --seed-length\t: length of an indexed seed. Overwritten by nonzero --seed-evalue. ["           << SEED_LENGTH << "]" << std::endl;
+    std::cerr << "  --seed-maxgap\t: max number of residues between consecutive seeds. ["                          << SEED_MAXGAP << "]" << std::endl;
+    std::cerr << "  --seed-mincnt\t: minimum number of seeds per sequence. Overwritten by nonzero --seed-evalue [" << SEED_MINCNT << "]" << std::endl;
+    
     std::cerr << "  --sign-length\t: length of k-mers for computing minhash values. ["                      << SIGN_LENGTH         << "]" << std::endl;
     std::cerr << "  --sign-shared-cnt-min\t: minimum number of minhash values to trigger sequence search [" << SIGN_SHARED_CNT_MIN << "]" << std::endl; 
 
@@ -795,13 +795,17 @@ int main(const int argc, const char *const *const argv) {
     }
 
     double INFO_PER_LETTER = exp(ch_entropy); // (IS_INPUT_NUC ? 3.3 : 8.5);
-    std::cerr << "INFO_PER_LETTER = " << INFO_PER_LETTER << std::endl;
+    // 0.33 is used to normalize whole-protein Shannon-information entropy to about 1 bit per position // https://www.ncbi.nlm.nih.gov/pubmed/8804598
+    double SHANNON_INFO_PER_LETTER = pow(INFO_PER_LETTER, 0.33); // estimated
+    std::cerr << "INFO_PER_LETTER = " << INFO_PER_LETTER << " , SHANNON_INFO_PER_LETTER = " << SHANNON_INFO_PER_LETTER << std::endl;
+    std::cerr << "Recommended similarity-threshold for detecting homology = " << 1 / SHANNON_INFO_PER_LETTER << " , actual similarity-threshold = " << SIM_PERC << std::endl;
+
     if (SEED_EVALUE > 0) {
         double seedlen_fract = log((double)num_residues / SEED_EVALUE + INFO_PER_LETTER) / log(INFO_PER_LETTER);
         int    seedlen_floor = (int)floor(seedlen_floor);
         double seedlen_diff1 = seedlen_fract - seedlen_floor;
         SEED_LENGTH = MIN(MAX(seedlen_floor, 4), 25);
-        SEED_MINCNT = (int)floor((100 + 10 - SIM_PERC) / (1 + seedlen_diff1));
+        SEED_MINCNT = (int)floor((100 + 10 - SIM_PERC) / pow(SHANNON_INFO_PER_LETTER, seedlen_diff1)); 
         
         std::cerr << "Command-line parameter values after adjustment with SEED_EVALUE = " << SEED_EVALUE << ":" << std::endl;
         std::cerr << "\tSEED_LENGTH = " << SEED_LENGTH << std::endl;
