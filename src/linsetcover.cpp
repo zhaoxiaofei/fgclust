@@ -31,7 +31,7 @@ int main(int argc, char** argv) {
         std::stringstream ss(line);
         uint32_t tokval;
         uint32_t elem;
-        uint8_t sim;
+        uint8_t sim = 0;
         uint32_t tokcnt = 0;
         while (ss >> tokval) {
             tokcnt += 1;
@@ -45,7 +45,7 @@ int main(int argc, char** argv) {
             }
         }
         uint32_t nelems = set_to_elems[set].size();
-        assert(0 < nelems || !fprintf(stderr, "The line %s is invalid!\n", line));
+        assert(0 < nelems || !(std::cerr << "The line " << line << " is invalid!" << std::endl));
         set_to_nelems[set] = nelems;
         nelems_to_sets[nelems].insert(set);
     }

@@ -37,7 +37,7 @@ int main(int argc, char **argv) {
     for (size_t i = 0; i < fastarecords.size(); i++) {
         std::getline(std::cin, line);
         std::stringstream ss(line);
-        int inner, outer, sim;
+        int inner, outer;
         ss >> inner;
         ss >> outer;
         if (0 == outer) {
@@ -48,7 +48,7 @@ int main(int argc, char **argv) {
         inner_to_outers[inner].push_back(outer);
     }
 
-    for (int i = 0; i < fastarecords.size(); i++) {
+    for (unsigned i = 0; i < fastarecords.size(); i++) {
         if (0 < inner_to_outers[i].size()) {
             std::cout << ">" << fastarecords[i].first;
             if (is_out_fa_hdr_in_tsv) {
