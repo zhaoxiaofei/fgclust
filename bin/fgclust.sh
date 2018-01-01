@@ -1,7 +1,5 @@
 #!/usr/bin/env sh
-#set -evx
 
-BINROOT=$(dirname `which $0`)
 if [ $# -lt 2 ]; then
     echo "Usage: $0 <input-fasta-file> <output-fasta-file> <optional-parameters>"
     echo "  <input-fasta-file>  : the input fasta, fastq, or gzipped-fastq file that contains either only nucleotide sequences or only protein sequences"
@@ -18,6 +16,9 @@ if [ $# -lt 2 ]; then
     exit 0
 fi
 
+set -evx
+
+BINROOT=$(dirname `which $0`)
 INFILE="$1"
 OUTFASTA="$2"
 OUTCLUST="${2}.clu"
