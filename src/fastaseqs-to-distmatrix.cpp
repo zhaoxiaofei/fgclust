@@ -19,8 +19,25 @@
 #include <time.h> 
 #include <unistd.h>
 
+#ifndef ENTROHASH
 #define ENTROHASH 0
+#endif
+#ifndef ORDER_AWARE_FILT
 #define ORDER_AWARE_FILT 1
+#endif
+#ifndef VARSIGN
+#define VARSIGN 1
+#endif
+
+#ifndef NUM_SIGNATURES
+#if ENTROHASH
+#define NUM_SIGNATURES (256)
+#elif VARSIGN
+#define NUM_SIGNATURES (32)
+#else
+#define NUM_SIGNATURES (32)
+#endif
+#endif
 
 void *xmalloc(size_t size) {
     void *ret = malloc(size);
@@ -40,19 +57,14 @@ void *xrealloc(void *ptr, size_t size) {
     return ret;
 }
 
-#define MIN(a, b) (((a) < (b) ? (a) : (b)))
-#define MAX(a, b) (((a) > (b) ? (a) : (b)))
+// #define MIN(a, b) (((a) < (b) ? (a) : (b)))
+// #define MAX(a, b) (((a) > (b) ? (a) : (b)))
+
+const auto MIN(const auto a, const auto b) { return a < b ? a : b; }
+const auto MAX(const auto a, const auto b) { return a > b ? a : b; }
 
 const auto SQUARE(const auto v) { return v * v; }
 void SWAP(auto &a, auto &b) {auto tmp = a; a = b; b = tmp; }
-
-#ifndef NUM_SIGNATURES
-#if ENTROHASH
-#define NUM_SIGNATURES (256)
-#else
-#define NUM_SIGNATURES (32)
-#endif
-#endif
 
 KSEQ_INIT(int, read)
 
@@ -80,8 +92,6 @@ int ATTEMPT_INI = 50; //50;
 int ATTEMPT_INC = 50; //50;
 int ATTEMPT_MAX = 50; //50;
 
-uint64_t CHAR_PER_SEED = 40;
-
 unsigned int COV_SRC_MAX = 8; // 5;
 unsigned int COV_SNK_MAX = INT_MAX;
 
@@ -95,7 +105,8 @@ int IS_INPUT_NUC = -1; // guessed
 int LEN_PERC_SRC = -1;
 int LEN_PERC_SNK = -1;
 
-int SEED_EVALUE = 1;
+uint64_t SEED_N_PER_SEQ = 0;
+double SEED_EVALUE = 1;
 int SEED_LENGTH = 10; // can be overriden after determination of db size 
 int SEED_MAXGAP = INT_MAX; // can be overriden after determination of db size
 int SEED_MINCNT = 10; // can be overriden after determination of db size
@@ -126,9 +137,7 @@ void showparams() {
     std::cerr << "\tATTEMPT_INI = " << ATTEMPT_INI << std::endl;
     std::cerr << "\tATTEMPT_INC = " << ATTEMPT_INC << std::endl;
     std::cerr << "\tATTEMPT_MAX = " << ATTEMPT_MAX << std::endl;
-    
-    std::cerr << "\tCHAR_PER_SEED = "  << CHAR_PER_SEED << std::endl;
-    
+        
     std::cerr << "\tCOV_SRC_MAX = " << COV_SRC_MAX  << std::endl;
     std::cerr << "\tCOV_SNK_MAX = " << COV_SNK_MAX << std::endl;
     
@@ -142,10 +151,11 @@ void showparams() {
     std::cerr << "\tLEN_PERC_SRC = " << (int)LEN_PERC_SRC << std::endl;
     std::cerr << "\tLEN_PERC_SNK = " << (int)LEN_PERC_SNK << std::endl;
 
-    std::cerr << "\tSEED_EVALUE = " << SEED_EVALUE << std::endl;
-    std::cerr << "\tSEED_LENGTH = " << SEED_LENGTH << std::endl;
-    std::cerr << "\tSEED_MAXGAP = " << SEED_MAXGAP << std::endl;
-    std::cerr << "\tSEED_MINCNT = " << SEED_MINCNT << std::endl;
+    std::cerr << "\tSEED_N_PER_SEQ = " << SEED_N_PER_SEQ << std::endl;
+    std::cerr << "\tSEED_EVALUE = "    << SEED_EVALUE    << std::endl;
+    std::cerr << "\tSEED_LENGTH = "    << SEED_LENGTH    << std::endl;
+    std::cerr << "\tSEED_MAXGAP = "    << SEED_MAXGAP    << std::endl;
+    std::cerr << "\tSEED_MINCNT = "    << SEED_MINCNT    << std::endl;
 
     std::cerr << "\tSIGN_LENGTH = " << SIGN_LENGTH    << std::endl;
     std::cerr << "\tSIGN_SHARED_CNT_MIN = " << SIGN_SHARED_CNT_MIN      << std::endl;
@@ -170,8 +180,6 @@ void show_usage(const int argc, const char *const *const argv) {
     std::cerr << "  --attempt-ini\t: initial number of attempts. ["                             << ATTEMPT_INI << "]" << std::endl;
     std::cerr << "  --attempt-inc\t: number of attempts incremented per true positive hits. ["  << ATTEMPT_INC << "]" << std::endl;
     std::cerr << "  --attempt-max\t: number of attempts capped at this maximum value. ["        << ATTEMPT_MAX << "]" << std::endl;
-
-    std::cerr << "  --char-per-seed\t: number of residues covered by one seed [" << CHAR_PER_SEED << "]" << std::endl;
     
     std::cerr << "  --cov-snk-max\t: max number of times that the covered sequence can be covered.["     << COV_SNK_MAX   << "]" << std::endl;
     std::cerr << "  --cov-src-max\t: max number of times that the covering sequence can be coverered. [" << COV_SRC_MAX   << "]" << std::endl;
@@ -185,8 +193,9 @@ void show_usage(const int argc, const char *const *const argv) {
 
     std::cerr << "  --len-perc-src\t: A cannot cover B if len(A) * len-perc-src > len(B) * 100. [" << LEN_PERC_SRC << "]" << std::endl; 
     std::cerr << "  --len-perc-snk\t: A cannot cover B if len(B) * len-perc-snk > len(A) * 100. [" << LEN_PERC_SNK << "]" << std::endl; 
-
-    std::cerr << "  --seed-evalue\t: evalue for seed hit. 0 means do not use this parameter ["                   << SEED_EVALUE << "]" << std::endl;
+    
+    std::cerr << "  --seed-n-per-seq\t: number of seed hashtable entries per sequence (by default 10 for protein 30 for nucleotides). [" << SEED_N_PER_SEQ << "]" << std::endl;
+    std::cerr << "  --seed-evalue\t: evalue for seed hit. 0 or negative value means do not use this parameter [" << SEED_EVALUE << "]" << std::endl;
     std::cerr << "  --seed-length\t: length of an indexed seed. Overwritten by nonzero seed-evalue. ["           << SEED_LENGTH << "]" << std::endl;
     std::cerr << "  --seed-maxgap\t: max number of residues between consecutive seeds (not used anymore). ["     << SEED_MAXGAP << "]" << std::endl;
     std::cerr << "  --seed-mincnt\t: minimum number of seeds per sequence. Overwritten by nonzero seed-evalue [" << SEED_MINCNT << "]" << std::endl;
@@ -276,6 +285,8 @@ typedef struct {
     uint64_t compressedsign2;
     uint64_t compressedsign3;
     uint64_t compressedsign4;
+#elif VARSIGN
+    uint16_t *varsigns;
 #else
     uint16_t signatures[NUM_SIGNATURES];
 #endif
@@ -283,6 +294,10 @@ typedef struct {
     uint32_t seqlen;
 }
 seq_t; // 16+16*4 bytes +++
+
+const unsigned int seqlen_to_n_varsigns(unsigned int seqlen) {
+    return MIN(MAX((unsigned int)25, seqlen / (unsigned int)8), seqlen - (unsigned int)SIGN_LENGTH + 1);
+}
 
 const bool fail_len_cutoff(const seq_t *src, const seq_t *snk) {
     return src->seqlen * LEN_PERC_SRC > snk->seqlen * 100 || snk->seqlen * LEN_PERC_SNK > src->seqlen * 100;
@@ -373,22 +388,53 @@ int __attribute__((noinline)) comp_n_shared_shortwords(std::vector<uint64_t> &sr
 }
 
 int comp_n_shared_signatures(std::vector<uint64_t> &src_shortwords, const seq_t *src, const seq_t *snk) {
-    // The value 75 is an empirical threshold that works well in practice. O
-    // Once a seq A is less than 75% long than another seq B, counting the same number of minhash features does not work.
-    if (src->seqlen * 75 > snk->seqlen * 100 || snk->seqlen * 75 > src->seqlen * 100) {
-        return comp_n_shared_shortwords(src_shortwords, src, snk); 
-    }
 
 #if ENTROHASH
+    uint64_t r1 = src->compressedsign  ^ snk->compressedsign;
+    uint64_t r2 = src->compressedsign2 ^ snk->compressedsign2;
+    uint64_t r3 = src->compressedsign3 ^ snk->compressedsign3;
+    uint64_t r4 = src->compressedsign4 ^ snk->compressedsign4;
+    uint64_t ra = = r1 & r2 & r3 & r4;
+    return __builtin_popcountll(ra);
+
     int ret1 = __builtin_popcountll(src->compressedsign  ^ snk->compressedsign );
     int ret2 = __builtin_popcountll(src->compressedsign2 ^ snk->compressedsign2);
     int ret3 = __builtin_popcountll(src->compressedsign3 ^ snk->compressedsign3);
     int ret4 = __builtin_popcountll(src->compressedsign4 ^ snk->compressedsign4);
     // assert (ret <= NUM_SIGNATURES);
+    return ret1 & ret2 & ret3 & ret4;
     return MIN(MIN(ret2, ret3), ret4);
     return ret1 + ret2 + ret3 + ret4;
     // return MAX(ret - 32, 0);
+#elif  VARSIGN
+    unsigned long i = 0;
+    unsigned long j = 0;
+    const unsigned long ni = seqlen_to_n_varsigns(src->seqlen);
+    const unsigned long nj = seqlen_to_n_varsigns(snk->seqlen);
+    const unsigned long imax = MIN(ni, (unsigned long)NUM_SIGNATURES * 100UL*9999UL / ((unsigned long)LEN_PERC_SRC * 9999UL + 1UL));
+    const unsigned long jmax = MIN(nj, (unsigned long)NUM_SIGNATURES);
+    unsigned long ret = 0;
+    while (i != imax && j != jmax) {
+        if (src->varsigns[i] == snk->varsigns[j]) {
+            ret++;
+            i++; 
+            j++;
+        } else if (src->varsigns[i] < snk->varsigns[j]) {
+            j++;
+        } else {
+            i++;
+        }
+    }
+    
+    // return ret / (j * snk->seqlen / nj / src->seqlen * ni);
+    unsigned long ret2 = (unsigned long)NUM_SIGNATURES * (ret * nj * (unsigned long)src->seqlen) / (ni * (unsigned long)snk->seqlen * (unsigned long)j + 1UL);
+    return (int)MIN(ret2, (unsigned long)NUM_SIGNATURES);
 #else
+    // The value 75 is an empirical threshold that works well in practice. O
+    // Once a seq A is less than 75% long than another seq B, counting the same number of minhash features does not work.
+    if (src->seqlen * 75 > snk->seqlen * 100 || snk->seqlen * 75 > src->seqlen * 100) {
+        return comp_n_shared_shortwords(src_shortwords, src, snk); 
+    }
     int i = 0;
     int j = 0;
     int ret = 0;
@@ -481,6 +527,7 @@ void PARAMS_init(const int argc, const char *const *const argv) {
     if (aa_cnt * 4 > nb_cnt) {
         IS_INPUT_NUC = 0;
         SIM_PERC = 50;
+        SEED_N_PER_SEQ = 10;
     } else {
         if (baseTcnt < baseUcnt) {
             IS_INPUT_NUC = 1;
@@ -491,6 +538,7 @@ void PARAMS_init(const int argc, const char *const *const argv) {
             SIM_PERC = 90;
             SIM_BASE = 0;
         }
+        SEED_N_PER_SEQ = 10 * 3;
     }
     
     for (int i = 0; i < 256; i++) {
@@ -513,8 +561,6 @@ void PARAMS_init(const int argc, const char *const *const argv) {
         else if (!strcmp("--attempt-inc",    argv[i])) { ATTEMPT_INC           = atoi(argv[i+1]); } 
         else if (!strcmp("--attempt-max",    argv[i])) { ATTEMPT_MAX           = atoi(argv[i+1]); } 
        
-        else if (!strcmp("--char-per-seed",  argv[i])) { CHAR_PER_SEED         = atoi(argv[i+1]);} 
-
         else if (!strcmp("--cov-src-max",    argv[i])) { COV_SRC_MAX           = atoi(argv[i+1]); } 
         else if (!strcmp("--cov-snk-max",    argv[i])) { COV_SNK_MAX           = atoi(argv[i+1]); } 
         
@@ -527,8 +573,9 @@ void PARAMS_init(const int argc, const char *const *const argv) {
 
         else if (!strcmp("--len-perc-src",   argv[i])) { LEN_PERC_SRC          = atoi(argv[i+1]); } 
         else if (!strcmp("--len-perc-snk",   argv[i])) { LEN_PERC_SNK          = atoi(argv[i+1]); } 
-
-        else if (!strcmp("--seed-evalue",    argv[i])) { SEED_EVALUE           = atoi(argv[i+1]); } 
+        
+        else if (!strcmp("--seed-n-per-seq", argv[i])) { SEED_N_PER_SEQ        = atoi(argv[i+1]);} 
+        else if (!strcmp("--seed-evalue",    argv[i])) { SEED_EVALUE           = atof(argv[i+1]); } 
         else if (!strcmp("--seed-length",    argv[i])) { SEED_LENGTH           = atoi(argv[i+1]); } 
         else if (!strcmp("--seed-maxgap",    argv[i])) { SEED_MAXGAP           = atoi(argv[i+1]); }
         else if (!strcmp("--seed-mincnt",    argv[i])) { SEED_MINCNT           = atoi(argv[i+1]); }
@@ -610,7 +657,7 @@ void PARAMS_init(const int argc, const char *const *const argv) {
 
 void seq_longword_init(seq_t *const seq_ptr, int idx) {
     if ((int)seq_ptr->seqlen >= (int)SEED_LENGTH) {
-        unsigned int interseed_gap = MAX(1, seq_ptr->seqlen / SEED_MINCNT);
+        unsigned int interseed_gap = MAX((unsigned int)1, seq_ptr->seqlen / SEED_MINCNT);
         uint64_t hash = hash_init(seq_ptr->seq);
         seed_add(hash, idx);
         for (int i = SEED_LENGTH; i < (int)seq_ptr->seqlen; i += 1) {
@@ -626,6 +673,8 @@ void seq_signatures_init(seq_t *const seq_ptr) {
     seq_ptr->compressedsign2 = 0;
     seq_ptr->compressedsign3 = 0;
     seq_ptr->compressedsign4 = 0;
+#elif VARSIGN
+    seq_ptr->varsigns = NULL;
 #else
     memset(seq_ptr->signatures, 0, NUM_SIGNATURES * sizeof(uint16_t));
 #endif
@@ -666,7 +715,23 @@ void seq_signatures_init(seq_t *const seq_ptr) {
             }
             abort();
         }
-#else
+#elif VARSIGN
+        unsigned int n_varsigns = seqlen_to_n_varsigns(seq_ptr->seqlen);
+        std::vector<uint16_t> signatures;
+        signatures.reserve(n_varsigns);
+        for (auto sign : signs) {
+            signatures.push_back((uint16_t)sign);
+            if (signatures.size() == n_varsigns) { break; }
+        }
+        std::sort(signatures.rbegin(), signatures.rend());
+        seq_ptr->varsigns = (uint16_t*) malloc(n_varsigns * sizeof(uint16_t));
+        unsigned int j = 0;
+        for (auto sign : signatures) {
+            seq_ptr->varsigns[j] = sign;
+            j++;
+        }
+        assert(n_varsigns == j);
+#else    
         int j = 0;
         std::vector<uint16_t> signatures;
         signatures.reserve(NUM_SIGNATURES);
@@ -682,6 +747,7 @@ void seq_signatures_init(seq_t *const seq_ptr) {
             j++;
         }
         assert(j <= NUM_SIGNATURES);
+    
 #endif
     }
     /*
@@ -772,7 +838,7 @@ int main(const int argc, const char *const *const argv) {
     for (unsigned int i = 0 ; i < seq_arrlist.size; i++) {
         num_residues += seq_arrlist.data[i].seqlen;
     }
-    DBENTRY_CNT = num_residues / CHAR_PER_SEED + 1;
+    DBENTRY_CNT = seq_arrlist.size * SEED_N_PER_SEQ;
     std::cerr << "Derived paramters: " << std::endl;
     std::cerr << "\tNUM_SEQS = " << seq_arrlist.size << std::endl;
     std::cerr << "\tNUM_RESIDUES = " << num_residues << std::endl;
