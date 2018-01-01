@@ -108,9 +108,9 @@ int LEN_PERC_SNK = -1;
 uint64_t SEED_N_PER_SEQ = 0;
 double SEED_EVALUE = 1;
 int SEED_LENGTH = 10; // can be overriden after determination of db size 
-int SEED_MAXGAP = INT_MAX; // can be overriden after determination of db size
 int SEED_MINCNT = 10; // can be overriden after determination of db size
 
+int SIGN_CHCOV_MAX = 8;
 int SIGN_LENGTH = -1;
 int SIGN_SHARED_CNT_MIN = -1; 
 
@@ -154,9 +154,9 @@ void showparams() {
     std::cerr << "\tSEED_N_PER_SEQ = " << SEED_N_PER_SEQ << std::endl;
     std::cerr << "\tSEED_EVALUE = "    << SEED_EVALUE    << std::endl;
     std::cerr << "\tSEED_LENGTH = "    << SEED_LENGTH    << std::endl;
-    std::cerr << "\tSEED_MAXGAP = "    << SEED_MAXGAP    << std::endl;
     std::cerr << "\tSEED_MINCNT = "    << SEED_MINCNT    << std::endl;
 
+    std::cerr << "\tSIGN_CHCOV_MAX = " << SIGN_CHCOV_MAX << std::endl;
     std::cerr << "\tSIGN_LENGTH = " << SIGN_LENGTH    << std::endl;
     std::cerr << "\tSIGN_SHARED_CNT_MIN = " << SIGN_SHARED_CNT_MIN      << std::endl;
     
@@ -197,9 +197,9 @@ void show_usage(const int argc, const char *const *const argv) {
     std::cerr << "  --seed-n-per-seq\t: number of seed hashtable entries per sequence (by default 10 for protein 30 for nucleotides). [" << SEED_N_PER_SEQ << "]" << std::endl;
     std::cerr << "  --seed-evalue\t: evalue for seed hit. 0 or negative value means do not use this parameter [" << SEED_EVALUE << "]" << std::endl;
     std::cerr << "  --seed-length\t: length of an indexed seed. Overwritten by nonzero seed-evalue. ["           << SEED_LENGTH << "]" << std::endl;
-    std::cerr << "  --seed-maxgap\t: max number of residues between consecutive seeds (not used anymore). ["     << SEED_MAXGAP << "]" << std::endl;
     std::cerr << "  --seed-mincnt\t: minimum number of seeds per sequence. Overwritten by nonzero seed-evalue [" << SEED_MINCNT << "]" << std::endl;
     
+    std::cerr << "  --sign-chcov-max\t: max ratio of sequence length to number of minhash values ["         << SIGN_CHCOV_MAX      << "]" << std::endl;
     std::cerr << "  --sign-length\t: length of k-mers for computing minhash values. ["                      << SIGN_LENGTH         << "]" << std::endl;
     std::cerr << "  --sign-shared-cnt-min\t: minimum number of minhash values to trigger sequence search [" << SIGN_SHARED_CNT_MIN << "]" << std::endl; 
 
@@ -296,7 +296,7 @@ typedef struct {
 seq_t; // 16+16*4 bytes +++
 
 const unsigned int seqlen_to_n_varsigns(unsigned int seqlen) {
-    return MIN(MAX((unsigned int)25, seqlen / (unsigned int)8), seqlen - (unsigned int)SIGN_LENGTH + 1);
+    return MIN(MAX((unsigned int)NUM_SIGNATURES, seqlen / (unsigned int)SIGN_CHCOV_MAXS), seqlen - (unsigned int)SIGN_LENGTH + 1);
 }
 
 const bool fail_len_cutoff(const seq_t *src, const seq_t *snk) {
@@ -342,7 +342,7 @@ static const int comp_perc_seq_sim_editdist(const seq_t *src, const seq_t *snk, 
         //fprintf(stderr, "seq1=%s,src=%s,mean=%f,var=%f,zval=%f,seqlen1=%d,editdist=%d\n", seq1->name, src->name, mean, var, zval, seq1->seqlen, editdist);
         
         if (zval < SIM_ZVAL / 100.0) { return 0; }
-        if (ZVAL_AS_SIM) { return MIN(200, 100 + floor(zval)); }
+        if (ZVAL_AS_SIM) { return MIN(100*2, 100 + floor(zval)); } // 100 (100*2) are the min (max) scores for a hit by z-value, respectively
     }
     int ret = 100 * (snk->seqlen - editdist) / snk->seqlen;
     return ret;
@@ -382,8 +382,8 @@ int __attribute__((noinline)) comp_n_shared_shortwords(std::vector<uint64_t> &sr
             it1++;
         }
     }
-    int ret2 = ret * 32 / snk_shortwords.size();
-    assert (ret2 <= 32);
+    int ret2 = ret * NUM_SIGNATURES / snk_shortwords.size();
+    assert (ret2 <= NUM_SIGNATURES);
     return ret2;
 }
 
@@ -577,7 +577,7 @@ void PARAMS_init(const int argc, const char *const *const argv) {
         else if (!strcmp("--seed-n-per-seq", argv[i])) { SEED_N_PER_SEQ        = atoi(argv[i+1]);} 
         else if (!strcmp("--seed-evalue",    argv[i])) { SEED_EVALUE           = atof(argv[i+1]); } 
         else if (!strcmp("--seed-length",    argv[i])) { SEED_LENGTH           = atoi(argv[i+1]); } 
-        else if (!strcmp("--seed-maxgap",    argv[i])) { SEED_MAXGAP           = atoi(argv[i+1]); }
+        else if (!strcmp("--sign-chcov-max", argv[i])) { SIGN_CHCOV_MAX           = atoi(argv[i+1]); }
         else if (!strcmp("--seed-mincnt",    argv[i])) { SEED_MINCNT           = atoi(argv[i+1]); }
         
         else if (!strcmp("--sim-zval",       argv[i])) { SIM_ZVAL              = atoi(argv[i+1]); } 
@@ -887,7 +887,6 @@ int main(const int argc, const char *const *const argv) {
         
         std::cerr << "Command-line parameter values after adjustment with SEED_EVALUE = " << SEED_EVALUE << ":" << std::endl;
         std::cerr << "\tSEED_LENGTH = " << SEED_LENGTH << std::endl;
-        std::cerr << "\tSEED_MAXGAP = " << SEED_MAXGAP << std::endl;
         std::cerr << "\tSEED_MINCNT = " << SEED_MINCNT << std::endl;
     } else {
         std::cerr << "No adjustment made because SEED_EVALUE = " << SEED_EVALUE << std::endl;
