@@ -442,6 +442,8 @@ void seq_arrlist_add(const kseq_t *kseq) {
         seq_arrlist.bufsize *= 2;
         seq_arrlist.data = (seq_t*)xrealloc(seq_arrlist.data, seq_arrlist.bufsize * sizeof(seq_t));
     }
+    assert(kseq->name.l > 0);
+    assert(kseq->seq.l > 0);
     seq_arrlist.data[seq_arrlist.size].name = (char*)xmalloc(kseq->name.l + 1);
     seq_arrlist.data[seq_arrlist.size].seq = (char*)xmalloc(kseq->seq.l + 1);
     strcpy(seq_arrlist.data[seq_arrlist.size].name, kseq->name.s);
@@ -762,7 +764,7 @@ int main(const int argc, const char *const *const argv) {
         }
     }
     kseq_destroy(kseq);
-    
+    assert(0 < i);
     if (i < BATCHSIZE_INI) { PARAMS_init(argc, argv); }
     
     // reinitialize some vars
@@ -784,7 +786,7 @@ int main(const int argc, const char *const *const argv) {
         unsigned int seqidx = rand_r(&randstate) % seq_arrlist.size;
         unsigned int residx = rand_r(&randstate) % seq_arrlist.data[seqidx].seqlen;
         char ch = ALPHA_TYPE_TO_CHAR_TO_REDUCED[2][(int)seq_arrlist.data[seqidx].seq[residx]];
-        ch_to_freq_weighted_by_seqlen[(int)ch] += 1.0 / (double)seq_arrlist.data[seqidx].seqlen;
+        ch_to_freq_weighted_by_seqlen[(int)ch] += (double)seq_arrlist.data[seqidx].seqlen;
     }
     double ch_totcnt = 0;
     for (int i = 0; i < 256; i++) {
