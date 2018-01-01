@@ -14,10 +14,6 @@ else
     PROG="$4"
 fi
 
-GITCOMM=$(cd "${ROOTDIR}" && git log | head -n1 | awk '{print substr($2, 0, 8)}')
-GITDIFF=$(cd "${ROOTDIR}" && git diff --name-only | wc -l)
-OUTDIR="${OUTDIR}/${GITCOMM}-${GITDIFF}/"
-
 mkdir -p "${OUTDIR}"
 
 function resetfile() {
