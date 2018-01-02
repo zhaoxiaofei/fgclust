@@ -61,6 +61,10 @@ int main(int argc, char **argv) {
         if (!(seqs.size() & (seqs.size() - 1))) { std::cerr << "sort : processed " << seqs.size() << " sequences." << std::endl; }
     }
     kseq_destroy(kseq);
+    if (seqs.size() == 0) {
+        std::cerr << "ERROR: the input fasta file has no sequence!" << std::endl;
+        return -1;
+    }
     if (israndom) {
         std::mt19937 g(7);
         std::shuffle(seqs.begin(), seqs.end(), g);
