@@ -23,7 +23,7 @@
 #define ENTROHASH 0
 #endif
 #ifndef ORDER_AWARE_FILT
-#define ORDER_AWARE_FILT 1
+#define ORDER_AWARE_FILT 0
 #endif
 #ifndef VARSIGN
 #define VARSIGN 1
@@ -57,9 +57,6 @@ void *xrealloc(void *ptr, size_t size) {
     return ret;
 }
 
-// #define MIN(a, b) (((a) < (b) ? (a) : (b)))
-// #define MAX(a, b) (((a) > (b) ? (a) : (b)))
-
 const auto MIN(const auto a, const auto b) { return a < b ? a : b; }
 const auto MAX(const auto a, const auto b) { return a > b ? a : b; }
 
@@ -71,7 +68,7 @@ KSEQ_INIT(int, read)
 // constants
 
 const unsigned int BATCHSIZE_INI = 256; // 15999;
-const unsigned int BATCHSIZE_INC = 4; //8; // 2; // 15999;
+const unsigned int BATCHSIZE_INC = 2; //4; //8; // 2; // 15999;
 
 const uint64_t PRIME_BASE = 48271L;
 const uint64_t SIGN_BASE  = 48271L; 
@@ -97,9 +94,9 @@ unsigned int COV_SRC_MAX = 5; // 5+1; // 8; // 5;
 unsigned int COV_SNK_MAX = INT_MAX;
 
 unsigned int DBFILT_MINSEED = 1000; // 1000*1000; lower -> more filtering, more time saving later
-int DBFILT_SUBSAMP = 50*50; // 800; // lower -> less filtering accuracy, less time
+int DBFILT_SUBSAMP = 10*1000; // 50*50; // 800; // lower -> less filtering accuracy, less time
 // int DBFILT_ATTEMPT = 50; // 10; // lower -> less filtering accuracy, less time // not useful because same as ATTEMPT_* 
-int DBFILT_TRUEHIT = (50*50-1)/100; // 5; // lower -> less filtering accuracy
+int DBFILT_TIMEFAC = 10*1000; // (50*50-1)/100; // 5; // lower -> less filtering accuracy
 
 int IS_INPUT_NUC = -1; // guessed
 
@@ -145,7 +142,7 @@ void showparams() {
     
     std::cerr << "\tDBFILT_MINSEED = " << DBFILT_MINSEED << std::endl;
     std::cerr << "\tDBFILT_SUBSAMP = " << DBFILT_SUBSAMP << std::endl; 
-    std::cerr << "\tDBFILT_TRUEHIT = " << DBFILT_TRUEHIT << std::endl;
+    std::cerr << "\tDBFILT_TIMEFAC = " << DBFILT_TIMEFAC << std::endl;
     //std::cerr << "\tDBFILT_ATTEMPT = " << DBFILT_ATTEMPT << std::endl;
 
     std::cerr << "\tIS_INPUT_NUC = " << IS_INPUT_NUC << std::endl;
@@ -190,7 +187,7 @@ void show_usage(const int argc, const char *const *const argv) {
     std::cerr << "  --dbfilt-minseed\t: minimum number of times a seed occurs to trigger seed pruning.["           << DBFILT_MINSEED << "]" << std::endl;
     std::cerr << "  --dbfilt-subsamp\t: number of sequence pairs (SP) subsampled for seed pruning .["              << DBFILT_SUBSAMP << "]" << std::endl;
     // std::cerr << "  --dbfilt-attempt\t: number of attempts on most likely (minhash) similar SP for seed pruning.[" << DBFILT_ATTEMPT << "]" << std::endl;
-    std::cerr << "  --dbfilt-truepos\t: maximum number of true posive SP hits to trigger pruning.["                << DBFILT_TRUEHIT << "]" << std::endl;
+    std::cerr << "  --dbfilt-truepos\t: a seed occurring this times more needs 1\% increase in true positive SP (map 0 to 0).[" << DBFILT_TIMEFAC << "]" << std::endl;
     
     std::cerr << "  --is-input-nuc\t: 0, 1, and 2 mean input is protein, RNA, and DNA, respectively (auto detected). [" << IS_INPUT_NUC << "]" << std::endl;
 
@@ -573,7 +570,7 @@ void PARAMS_init(const int argc, const char *const *const argv) {
         else if (!strcmp("--dbfilt-minseed", argv[i])) { DBFILT_MINSEED        = atoi(argv[i+1]); } 
         else if (!strcmp("--dbfilt-subsamp", argv[i])) { DBFILT_SUBSAMP        = atoi(argv[i+1]); } 
         // else if (!strcmp("--dbfilt-attempt", argv[i])) { DBFILT_ATTEMPT        = atoi(argv[i+1]); } 
-        else if (!strcmp("--dbfilt-truehit", argv[i])) { DBFILT_TRUEHIT        = atoi(argv[i+1]); } 
+        else if (!strcmp("--dbfilt-timefac", argv[i])) { DBFILT_TIMEFAC        = atoi(argv[i+1]); } 
 
         else if (!strcmp("--is-input-nuc",   argv[i])) { IS_INPUT_NUC          = atoi(argv[i+1]); } 
 
@@ -961,8 +958,9 @@ int main(const int argc, const char *const *const argv) {
             }
             int nhits = 0;
             int attemptcnt = ATTEMPT_INI;
+            int minhits = floor(log(seeds[i].size + DBL_EPSILON) / log(DBFILT_TIMEFAC) / 100 * DBFILT_SUBSAMP);
             for (int nsigns = NUM_SIGNATURES; 
-                     nsigns >= SIGN_SHARED_CNT_MIN && attemptcnt > 0 && nhits <= DBFILT_TRUEHIT; 
+                     nsigns >= SIGN_SHARED_CNT_MIN && attemptcnt > 0 && nhits <= minhits; 
                      --nsigns) {
                 for (auto srcsnk_idx_pair : nsigns_to_srcsnk_idx_pairs[nsigns]) {
                     int srcidx = srcsnk_idx_pair.first;
@@ -983,14 +981,14 @@ int main(const int argc, const char *const *const argv) {
                     if (sim >= SIM_PERC) { 
                         attemptcnt = MIN(attemptcnt + ATTEMPT_INC, ATTEMPT_MAX);
                         nhits++;
-                        if (!(nhits <= DBFILT_TRUEHIT)) { break; }
+                        if (!(nhits <= minhits)) { break; }
                     } else { 
                         attemptcnt--;
                         if (!(attemptcnt > 0)) { break; }
                     }
                 }
             }
-            if (nhits <= DBFILT_TRUEHIT) {
+            if (nhits <= minhits) {
                 seeds[i].size = 0;
                 seeds[i].bufsize = 0;
                 free(seeds[i].seqidxs);
@@ -1090,7 +1088,7 @@ int main(const int argc, const char *const *const argv) {
         }
         if (COV_SRC_ADA) {
             for (unsigned int i = iter; i < MIN(iter + batchsize, itermax); i++) {
-                unsigned int clustersize = (coveredarr[i-iter].size() ? coveredarr[i-iter].size() : seq_arrlist.data[i-iter].coveringcnt) + 1;
+                unsigned int clustersize = (coveredarr[i-iter].size() ? coveredarr[i-iter].size() : seq_arrlist.data[i].coveringcnt) + 1;
                 clusize_sum += 1 + log(clustersize);
             }
             unsigned int clustercnt = MIN(iter + batchsize, itermax) - iter;
