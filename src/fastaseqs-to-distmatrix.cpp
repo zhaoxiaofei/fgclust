@@ -92,7 +92,7 @@ int ATTEMPT_INI = 50; //50;
 int ATTEMPT_INC = 50; //50;
 int ATTEMPT_MAX = 50; //50;
 
-unsigned int COV_SRC_MAX = 8; // 5;
+unsigned int COV_SRC_MAX = 5+1; // 8; // 5;
 unsigned int COV_SNK_MAX = INT_MAX;
 
 unsigned int DBFILT_MINSEED = 1000; // 1000*1000; lower -> more filtering, more time saving later
@@ -296,7 +296,7 @@ typedef struct {
 seq_t; // 16+16*4 bytes +++
 
 const unsigned int seqlen_to_n_varsigns(unsigned int seqlen) {
-    return MIN(MAX((unsigned int)NUM_SIGNATURES, seqlen / (unsigned int)SIGN_CHCOV_MAXS), seqlen - (unsigned int)SIGN_LENGTH + 1);
+    return MIN(MAX((unsigned int)NUM_SIGNATURES, seqlen / (unsigned int)SIGN_CHCOV_MAX), seqlen - (unsigned int)SIGN_LENGTH + 1);
 }
 
 const bool fail_len_cutoff(const seq_t *src, const seq_t *snk) {
