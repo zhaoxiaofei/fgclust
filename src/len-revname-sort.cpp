@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <functional>
 #include <iostream>
 #include <iterator>
 #include <random>
@@ -32,11 +33,15 @@ Sequence::Sequence(const kseq_t *kseq) {
 
 struct 
 {
+    std::hash<std::string> ptr_hash;
     bool operator()(Sequence *a, Sequence *b)
     {
         int alen = a->seq.length();
         int blen = b->seq.length();
         if (alen != blen) { return alen > blen; }
+        auto ahash = ptr_hash(a->name);
+        auto bhash = ptr_hash(b->name);
+        if (ahash != bhash) { return ahash < bhash; }
         else { return a->name < b->name; }
     }
 }
