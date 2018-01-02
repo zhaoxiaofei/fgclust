@@ -71,7 +71,7 @@ KSEQ_INIT(int, read)
 // constants
 
 const unsigned int BATCHSIZE_INI = 256; // 15999;
-const unsigned int BATCHSIZE_INC = 8; // 2; // 15999;
+const unsigned int BATCHSIZE_INC = 4; //8; // 2; // 15999;
 
 const uint64_t PRIME_BASE = 48271L;
 const uint64_t SIGN_BASE  = 48271L; 
