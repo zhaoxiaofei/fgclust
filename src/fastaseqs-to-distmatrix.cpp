@@ -89,7 +89,7 @@ int ATTEMPT_INI = 50; //50;
 int ATTEMPT_INC = 50; //50;
 int ATTEMPT_MAX = 50; //50;
 
-double COV_SRC_ADA = 0.005;
+double COV_SRC_ADA = -1; // 0.005;
 unsigned int COV_SRC_MAX = 5; // 5+1; // 8; // 5;
 unsigned int COV_SNK_MAX = INT_MAX;
 
@@ -180,9 +180,9 @@ void show_usage(const int argc, const char *const *const argv) {
     std::cerr << "  --attempt-inc\t: number of attempts incremented per true positive hits. ["  << ATTEMPT_INC << "]" << std::endl;
     std::cerr << "  --attempt-max\t: number of attempts capped at this maximum value. ["        << ATTEMPT_MAX << "]" << std::endl;
     
-    std::cerr << "  --cov-src-ada\t: Fraction of change to cov-src-max per observation. ["               << COV_SRC_ADA << "]" << std::endl;
-    std::cerr << "  --cov-snk-max\t: max number of times that the covered sequence can be covered.["     << COV_SNK_MAX << "]" << std::endl;
-    std::cerr << "  --cov-src-max\t: max number of times that the covering sequence can be coverered. [" << COV_SRC_MAX << "]" << std::endl;
+    std::cerr << "  --cov-src-ada\t: Fraction of change to cov-src-max per observation. <0 means no change. [" << COV_SRC_ADA << "]" << std::endl;
+    std::cerr << "  --cov-snk-max\t: max number of times that the covered sequence can be covered.["           << COV_SNK_MAX << "]" << std::endl;
+    std::cerr << "  --cov-src-max\t: max number of times that the covering sequence can be coverered. ["       << COV_SRC_MAX << "]" << std::endl;
     
     std::cerr << "  --dbfilt-minseed\t: minimum number of times a seed occurs to trigger seed pruning.["           << DBFILT_MINSEED << "]" << std::endl;
     std::cerr << "  --dbfilt-subsamp\t: number of sequence pairs (SP) subsampled for seed pruning .["              << DBFILT_SUBSAMP << "]" << std::endl;
@@ -1086,7 +1086,7 @@ int main(const int argc, const char *const *const argv) {
                         max_attempts, max_attempts_arg, seq_arrlist.data[i].seqlen, seq_arrlist.data[i].coveredcnt, seq_arrlist.data[i].coveringcnt, cov_src_max);
             }
         }
-        if (COV_SRC_ADA) {
+        if (COV_SRC_ADA > 0) {
             for (unsigned int i = iter; i < MIN(iter + batchsize, itermax); i++) {
                 unsigned int clustersize = (coveredarr[i-iter].size() ? coveredarr[i-iter].size() : seq_arrlist.data[i].coveringcnt) + 1;
                 clusize_sum += 1 + log(clustersize);
