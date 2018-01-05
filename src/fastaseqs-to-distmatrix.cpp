@@ -69,7 +69,7 @@ KSEQ_INIT(int, read)
 
 const unsigned int BATCH_COVRAT = 64;
 const unsigned int BATCHSIZE_INI = 256; // 15999;
-const unsigned int BATCHSIZE_INC = 256; //8; // 2; // 15999;
+const unsigned int BATCHSIZE_INC = 16; //8; // 2; // 15999;
 
 const uint64_t PRIME_BASE = 48271L;
 const uint64_t SIGN_BASE  = 48271L; 
@@ -1021,6 +1021,7 @@ int main(const int argc, const char *const *const argv) {
     double clusize_sum = 0;
     unsigned int clusize_cnt = 0;
     time(&begtime);
+    unsigned long nextprint = 0;
 
     for (unsigned int iter = 0; iter < seq_arrlist.size;) {
         unsigned int itermax = MIN(iter+batchsize, seq_arrlist.size);
@@ -1088,12 +1089,13 @@ int main(const int argc, const char *const *const argv) {
                 
                 std::sort(coveredarr[i-iter].begin(), coveredarr[i-iter].end());
             }
-            if (printthresholds.find(i) != printthresholds.end()) {
+            if (nextprint == i) {
                 time(&endtime);
                 fprintf(stderr, "In %.f secs processed %u seqs\th1to4: %lu %i %i %lu\t"
                         "max_attempts: %i at %i\tseqlen: %u\tcoveredcnt: %u coveringcnt: %u batchsize: %u\n", 
                         difftime(endtime, begtime), i+1, coveredarr[i-iter].size(), distcompcnt, filteredcnt, visited.size(), 
                         max_attempts, max_attempts_arg, seq_arrlist.data[i].seqlen, seq_arrlist.data[i].coveredcnt, seq_arrlist.data[i].coveringcnt, batchsize);
+                nextprint = MAX(nextprint * 21 / 20, itermax);
             }
         }
         if (COV_SRC_ADA > 0) {
@@ -1105,10 +1107,10 @@ int main(const int argc, const char *const *const argv) {
             clusize_cnt += clustercnt;
             cov_src_max = ceil((COV_SRC_MAX + clusize_sum * COV_SRC_ADA) / (1 + clusize_cnt * COV_SRC_ADA));
         }
-        unsigned int maxcov = 0;
-        unsigned int extracov = 0;
+        unsigned long maxcov = 1;
+        unsigned long extracov = 1;
         for (unsigned int i = iter; i < itermax; i++) {
-            maxcov = MAX(maxcov, 1 + coveredarr[i-iter].size());
+            maxcov = MAX(maxcov, coveredarr[i-iter].size());
             if (0 < coveredarr[i-iter].size() && COV_SRC_MAX <= seq_arrlist.data[i].coveredcnt) {
                 extracov += coveredarr[i-iter].size();
             }
@@ -1124,14 +1126,15 @@ int main(const int argc, const char *const *const argv) {
         }
         assert(coveredarr.size() == batchsize);
         iter += batchsize;
-
-        if (maxcov * BATCH_COVRAT > extracov) {
-            batchsize += BATCHSIZE_INC;
+        
+        maxcov *= BATCH_COVRAT;
+        if (maxcov >= extracov) {
+            batchsize += MIN(batchsize, BATCHSIZE_INC * maxcov/extracov);
             while (coveredarr.size() < batchsize) {
                 coveredarr.push_back(std::vector<std::pair<uint32_t, uint8_t>>(0));
             }
         } else {
-            batchsize = MAX(batchsize-1, BATCHSIZE_INI);
+            batchsize -= MIN(batchsize / 2, BATCHSIZE_INC * extracov/maxcov);
         }
     }
 }
