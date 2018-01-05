@@ -67,8 +67,9 @@ KSEQ_INIT(int, read)
 
 // constants
 
+const unsigned int BATCH_COVRAT = 64;
 const unsigned int BATCHSIZE_INI = 256; // 15999;
-const unsigned int BATCHSIZE_INC = 4; //8; // 2; // 15999;
+const unsigned int BATCHSIZE_INC = 256; //8; // 2; // 15999;
 
 const uint64_t PRIME_BASE = 48271L;
 const uint64_t SIGN_BASE  = 48271L; 
@@ -93,10 +94,12 @@ double COV_SRC_ADA = -1; // 0.005;
 unsigned int COV_SRC_MAX = 5; // 5+1; // 8; // 5;
 unsigned int COV_SNK_MAX = INT_MAX;
 
-unsigned int DBFILT_MINSEED = 1000; // 1000*1000; lower -> more filtering, more time saving later
+unsigned int DBFILT_MINSEED = INT_MAX; // 1000*1000; lower -> more filtering, more time saving later
 int DBFILT_SUBSAMP = 10*1000; // 50*50; // 800; // lower -> less filtering accuracy, less time
 // int DBFILT_ATTEMPT = 50; // 10; // lower -> less filtering accuracy, less time // not useful because same as ATTEMPT_* 
 int DBFILT_TIMEFAC = 10*1000; // (50*50-1)/100; // 5; // lower -> less filtering accuracy
+
+unsigned int IDXENTRY_ITMAX = 2048;
 
 int IS_INPUT_NUC = -1; // guessed
 
@@ -139,11 +142,13 @@ void showparams() {
     std::cerr << "\tCOV_SRC_ADA = " << COV_SRC_ADA << std::endl;
     std::cerr << "\tCOV_SRC_MAX = "   << COV_SRC_MAX   << std::endl;
     std::cerr << "\tCOV_SNK_MAX = "   << COV_SNK_MAX   << std::endl;
-    
+   
     std::cerr << "\tDBFILT_MINSEED = " << DBFILT_MINSEED << std::endl;
     std::cerr << "\tDBFILT_SUBSAMP = " << DBFILT_SUBSAMP << std::endl; 
     std::cerr << "\tDBFILT_TIMEFAC = " << DBFILT_TIMEFAC << std::endl;
     //std::cerr << "\tDBFILT_ATTEMPT = " << DBFILT_ATTEMPT << std::endl;
+    
+    std::cerr << "\tIDXENTRY_ITMAX = " << IDXENTRY_ITMAX << std::endl;
 
     std::cerr << "\tIS_INPUT_NUC = " << IS_INPUT_NUC << std::endl;
     
@@ -183,12 +188,14 @@ void show_usage(const int argc, const char *const *const argv) {
     std::cerr << "  --cov-src-ada\t: Fraction of change to cov-src-max per observation. <0 means no change. [" << COV_SRC_ADA << "]" << std::endl;
     std::cerr << "  --cov-snk-max\t: max number of times that the covered sequence can be covered.["           << COV_SNK_MAX << "]" << std::endl;
     std::cerr << "  --cov-src-max\t: max number of times that the covering sequence can be coverered. ["       << COV_SRC_MAX << "]" << std::endl;
-    
+   
     std::cerr << "  --dbfilt-minseed\t: minimum number of times a seed occurs to trigger seed pruning.["           << DBFILT_MINSEED << "]" << std::endl;
     std::cerr << "  --dbfilt-subsamp\t: number of sequence pairs (SP) subsampled for seed pruning .["              << DBFILT_SUBSAMP << "]" << std::endl;
     // std::cerr << "  --dbfilt-attempt\t: number of attempts on most likely (minhash) similar SP for seed pruning.[" << DBFILT_ATTEMPT << "]" << std::endl;
     std::cerr << "  --dbfilt-truepos\t: a seed occurring this times more needs 1\% increase in true positive SP (map 0 to 0).[" << DBFILT_TIMEFAC << "]" << std::endl;
-    
+
+    std::cerr << "  --idxentry-itmax\t: maximum number of times a db-index entry is iterated by a sequence. [" << IDXENTRY_ITMAX << "]" << std::endl;
+
     std::cerr << "  --is-input-nuc\t: 0, 1, and 2 mean input is protein, RNA, and DNA, respectively (auto detected). [" << IS_INPUT_NUC << "]" << std::endl;
 
     std::cerr << "  --len-perc-src\t: A cannot cover B if len(A) * len-perc-src > len(B) * 100. [" << LEN_PERC_SRC << "]" << std::endl; 
@@ -571,7 +578,7 @@ void PARAMS_init(const int argc, const char *const *const argv) {
         else if (!strcmp("--dbfilt-subsamp", argv[i])) { DBFILT_SUBSAMP        = atoi(argv[i+1]); } 
         // else if (!strcmp("--dbfilt-attempt", argv[i])) { DBFILT_ATTEMPT        = atoi(argv[i+1]); } 
         else if (!strcmp("--dbfilt-timefac", argv[i])) { DBFILT_TIMEFAC        = atoi(argv[i+1]); } 
-
+        else if (!strcmp("--idxentry-itmax", argv[i])) { IDXENTRY_ITMAX        = atoi(argv[i+1]); }
         else if (!strcmp("--is-input-nuc",   argv[i])) { IS_INPUT_NUC          = atoi(argv[i+1]); } 
 
         else if (!strcmp("--len-perc-src",   argv[i])) { LEN_PERC_SRC          = atoi(argv[i+1]); } 
@@ -761,6 +768,9 @@ void seq_signatures_init(seq_t *const seq_ptr) {
 }
 
 void seed_cov(const seed_t *seed, const uint32_t coveringidx, std::set<uint32_t> & visited) {
+    if (IDXENTRY_ITMAX < seed->size && seed->seqidxs[IDXENTRY_ITMAX] <= coveringidx) {
+        return;
+    }
     seq_t *coveringseq = &seq_arrlist.data[coveringidx];
     for (unsigned int i = 0; i < seed->size; i++) { 
         unsigned int coveredidx = seed->seqidxs[i];
@@ -1081,9 +1091,9 @@ int main(const int argc, const char *const *const argv) {
             if (printthresholds.find(i) != printthresholds.end()) {
                 time(&endtime);
                 fprintf(stderr, "In %.f secs processed %u seqs\th1to4: %lu %i %i %lu\t"
-                        "max_attempts: %i at %i\tseqlen: %u\tcoveredcnt: %u coveringcnt: %u cov_src_max: %u\n", 
+                        "max_attempts: %i at %i\tseqlen: %u\tcoveredcnt: %u coveringcnt: %u batchsize: %u\n", 
                         difftime(endtime, begtime), i+1, coveredarr[i-iter].size(), distcompcnt, filteredcnt, visited.size(), 
-                        max_attempts, max_attempts_arg, seq_arrlist.data[i].seqlen, seq_arrlist.data[i].coveredcnt, seq_arrlist.data[i].coveringcnt, cov_src_max);
+                        max_attempts, max_attempts_arg, seq_arrlist.data[i].seqlen, seq_arrlist.data[i].coveredcnt, seq_arrlist.data[i].coveringcnt, batchsize);
             }
         }
         if (COV_SRC_ADA > 0) {
@@ -1095,8 +1105,13 @@ int main(const int argc, const char *const *const argv) {
             clusize_cnt += clustercnt;
             cov_src_max = ceil((COV_SRC_MAX + clusize_sum * COV_SRC_ADA) / (1 + clusize_cnt * COV_SRC_ADA));
         }
-
+        unsigned int maxcov = 0;
+        unsigned int extracov = 0;
         for (unsigned int i = iter; i < itermax; i++) {
+            maxcov = MAX(maxcov, 1 + coveredarr[i-iter].size());
+            if (0 < coveredarr[i-iter].size() && COV_SRC_MAX <= seq_arrlist.data[i].coveredcnt) {
+                extracov += coveredarr[i-iter].size();
+            }
             printf("100 %d", i+1);
             for (auto adj : coveredarr[i-iter]) {
                 seq_arrlist.data[adj.first].coveredcnt++;
@@ -1109,9 +1124,14 @@ int main(const int argc, const char *const *const argv) {
         }
         assert(coveredarr.size() == batchsize);
         iter += batchsize;
-        for (unsigned int i = 0; i < BATCHSIZE_INC; i++) {
-            batchsize++;
-            coveredarr.push_back(std::vector<std::pair<uint32_t, uint8_t>>(0));
+
+        if (maxcov * BATCH_COVRAT > extracov) {
+            batchsize += BATCHSIZE_INC;
+            while (coveredarr.size() < batchsize) {
+                coveredarr.push_back(std::vector<std::pair<uint32_t, uint8_t>>(0));
+            }
+        } else {
+            batchsize = MAX(batchsize-1, BATCHSIZE_INI);
         }
     }
 }
