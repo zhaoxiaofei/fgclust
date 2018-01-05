@@ -1124,7 +1124,7 @@ int main(const int argc, const char *const *const argv) {
             printf("\n");
             coveredarr[i-iter].clear();
         }
-        assert(coveredarr.size() == batchsize);
+        assert(coveredarr.size() >= batchsize);
         iter += batchsize;
         
         maxcov *= BATCH_COVRAT;
