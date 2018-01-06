@@ -38,15 +38,22 @@ void bfs(uint32_t node, const std::vector<std::vector<uint32_t>> &node_to_adjs, 
 }
 
 int main(int argc, char** argv) {
-    std::cerr << "GITCOMMIT = "  << GITCOMMIT  << std::endl;
-    std::cerr << "CXXVERSION = " << CXXVERSION << std::endl; 
-    
+        
     int SETCOVER_DEPTH = 0;
-    for (int i = 1; i+1 < argc; i++) {
-        if (!strcmp("--setcover-depth", argv[i])) {
+    for (int i = 1; i < argc; i+=2) {
+        if (i+1 < argc && !strcmp("--setcover-depth", argv[i])) {
             SETCOVER_DEPTH = atoi(argv[i+1]);
+        } else {
+            std::cerr << "Program : " << argv[0] << std::endl;
+            std::cerr << "  version " << GITCOMMIT << " compiled by " << CXXVERSION << std::endl;
+            std::cerr << "Command-line arguments with [default-values]:" << std::endl;
+            std::cerr << "  --setcover-depth\t: A covers B if a path of at most this length from A to B exists. [" << SETCOVER_DEPTH << "]" << std::endl;
+            exit(-1);
+ 
         }
     }
+    std::cerr << "GITCOMMIT = "  << GITCOMMIT  << std::endl;
+    std::cerr << "CXXVERSION = " << CXXVERSION << std::endl; 
 
     uint32_t nsets, nelems;
     

@@ -52,14 +52,14 @@ int main(int argc, char **argv) {
     std::cerr << "CXXVERSION = " << CXXVERSION << std::endl;
 
     int PROCSEQS_ORDER = 1;
-    for (int i = 1; i + 1 < argc; i += 2) {
-        if (!strcmp("--procseqs-order", argv[i])) {
+    for (int i = 1; i < argc; i += 2) {
+        if (i+1 < argc && !strcmp("--procseqs-order", argv[i])) {
             PROCSEQS_ORDER = atoi(argv[i+1]);
         } else {
             std::cerr << "Program : " << argv[0] << std::endl;
             std::cerr << "  version " << GITCOMMIT << " compiled by " << CXXVERSION << std::endl;
             std::cerr << "Command-line arguments with [default-values]:" << std::endl;
-            std::cerr << "  --procseqs-order\t1 and 2 mean by pseudorandom order and by decreasing sequence length, respectively. [" << PROCSEQS_ORDER << "]" << std::endl;
+            std::cerr << "  --procseqs-order\t:1 and 2 mean by pseudorandom order and by decreasing sequence length, respectively. [" << PROCSEQS_ORDER << "]" << std::endl;
             exit(-1);
         }
     }

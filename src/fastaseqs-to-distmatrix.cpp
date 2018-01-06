@@ -113,7 +113,7 @@ int SEQTYPE = 0; // guessed from input by default
 
 int SIGN_CHCOV_MAX = 8;
 int SIGN_LENGTH = -1;
-int SIGN_SHARED_CNT_MIN = -1; 
+int SIGN_CNTMIN = -1; 
 
 int SIM_PERC = -1;
 int SIM_BASE = -1; // 0; // 25;
@@ -162,7 +162,7 @@ void showparams() {
 
     std::cerr << "\tSIGN_CHCOV_MAX = " << SIGN_CHCOV_MAX << std::endl;
     std::cerr << "\tSIGN_LENGTH = " << SIGN_LENGTH    << std::endl;
-    std::cerr << "\tSIGN_SHARED_CNT_MIN = " << SIGN_SHARED_CNT_MIN      << std::endl;
+    std::cerr << "\tSIGN_CNTMIN = " << SIGN_CNTMIN      << std::endl;
     
     std::cerr << "\tSIM_PERC = " << (int)SIM_PERC << std::endl;
     std::cerr << "\tSIM_BASE = " << (int)SIM_BASE << std::endl;
@@ -179,15 +179,15 @@ void show_usage(const int argc, const char *const *const argv) {
     
     std::cerr << "  --alphasize-seed\t: alphabet size for computation of seed ["                << ALPHA_TYPE_TO_SIZE[0] << "]" << std::endl;
     std::cerr << "  --alphasize-sign\t: alphabet size for computation of sign ["                << ALPHA_TYPE_TO_SIZE[1] << "]" << std::endl;
-    std::cerr << "  --alphasize-sim\t: alphabet size for computation of sequence similarity ["  << ALPHA_TYPE_TO_SIZE[2] << "]" << std::endl;
+    std::cerr << "  --alphasize-sim \t: alphabet size for computation of sequence similarity ["  << ALPHA_TYPE_TO_SIZE[2] << "]" << std::endl;
     
-    std::cerr << "  --attempt-ini\t: initial number of attempts. ["                             << ATTEMPT_INI << "]" << std::endl;
-    std::cerr << "  --attempt-inc\t: number of attempts incremented per true positive hits. ["  << ATTEMPT_INC << "]" << std::endl;
-    std::cerr << "  --attempt-max\t: number of attempts capped at this maximum value. ["        << ATTEMPT_MAX << "]" << std::endl;
+    std::cerr << "  --attempt-ini   \t: initial number of attempts. ["                             << ATTEMPT_INI << "]" << std::endl;
+    std::cerr << "  --attempt-inc   \t: number of attempts incremented per true positive hits. ["  << ATTEMPT_INC << "]" << std::endl;
+    std::cerr << "  --attempt-max   \t: number of attempts capped at this maximum value. ["        << ATTEMPT_MAX << "]" << std::endl;
     
-    std::cerr << "  --cov-src-ada\t: Fraction of change to cov-src-max per observation. <0 means no change. [" << COV_SRC_ADA << "]" << std::endl;
-    std::cerr << "  --cov-snk-max\t: max number of times that the covered sequence can be covered.["           << COV_SNK_MAX << "]" << std::endl;
-    std::cerr << "  --cov-src-max\t: max number of times that the covering sequence can be coverered. ["       << COV_SRC_MAX << "]" << std::endl;
+    std::cerr << "  --cov-src-ada   \t: fraction of change to cov-src-max per observation. <0 means no change. [" << COV_SRC_ADA << "]" << std::endl;
+    std::cerr << "  --cov-snk-max   \t: max number of times that the covered sequence can be covered.["           << COV_SNK_MAX << "]" << std::endl;
+    std::cerr << "  --cov-src-max   \t: max number of times that the covering sequence can be coverered. ["       << COV_SRC_MAX << "]" << std::endl;
    
     std::cerr << "  --dbfilt-minseed\t: minimum number of times a seed occurs to trigger seed pruning.["           << DBFILT_MINSEED << "]" << std::endl;
     std::cerr << "  --dbfilt-subsamp\t: number of sequence pairs (SP) subsampled for seed pruning .["              << DBFILT_SUBSAMP << "]" << std::endl;
@@ -196,27 +196,27 @@ void show_usage(const int argc, const char *const *const argv) {
 
     std::cerr << "  --idxentry-itmax\t: maximum number of times a db-index entry is iterated by a sequence. [" << IDXENTRY_ITMAX << "]" << std::endl;
 
-    std::cerr << "  --seqtype\t: 1, 2, and 3 mean input is protein, RNA, and DNA, respectively (auto detected). [" << SEQTYPE << "]" << std::endl;
+    std::cerr << "  --seqtype       \t: 1, 2, and 3 mean input is protein, RNA, and DNA, respectively (auto detected). [" << SEQTYPE << "]" << std::endl;
 
-    std::cerr << "  --len-perc-src\t: A cannot cover B if len(A) * len-perc-src > len(B) * 100. [" << LEN_PERC_SRC << "]" << std::endl; 
-    std::cerr << "  --len-perc-snk\t: A cannot cover B if len(B) * len-perc-snk > len(A) * 100. [" << LEN_PERC_SNK << "]" << std::endl; 
+    std::cerr << "  --len-perc-src  \t: A cannot cover B if len(A) * len-perc-src > len(B) * 100. [" << LEN_PERC_SRC << "]" << std::endl; 
+    std::cerr << "  --len-perc-snk  \t: A cannot cover B if len(B) * len-perc-snk > len(A) * 100. [" << LEN_PERC_SNK << "]" << std::endl; 
     
     std::cerr << "  --seed-n-per-seq\t: number of seed hashtable entries per sequence (by default 10 for protein 30 for nucleotides). [" << SEED_N_PER_SEQ << "]" << std::endl;
-    std::cerr << "  --seed-evalue\t: evalue for seed hit. 0 or negative value means do not use this parameter [" << SEED_EVALUE << "]" << std::endl;
-    std::cerr << "  --seed-length\t: length of an indexed seed. Overwritten by nonzero seed-evalue. ["           << SEED_LENGTH << "]" << std::endl;
-    std::cerr << "  --seed-mincnt\t: minimum number of seeds per sequence. Overwritten by nonzero seed-evalue [" << SEED_MINCNT << "]" << std::endl;
+    std::cerr << "  --seed-evalue   \t: evalue for seed hit. 0 or negative value means do not use this parameter [" << SEED_EVALUE << "]" << std::endl;
+    std::cerr << "  --seed-length   \t: length of an indexed seed. Overwritten by nonzero seed-evalue. ["           << SEED_LENGTH << "]" << std::endl;
+    std::cerr << "  --seed-mincnt   \t: minimum number of seeds per sequence. Overwritten by nonzero seed-evalue [" << SEED_MINCNT << "]" << std::endl;
     
     std::cerr << "  --sign-chcov-max\t: max ratio of sequence length to number of minhash values ["         << SIGN_CHCOV_MAX      << "]" << std::endl;
-    std::cerr << "  --sign-length\t: length of k-mers for computing minhash values. ["                      << SIGN_LENGTH         << "]" << std::endl;
-    std::cerr << "  --sign-shared-cnt-min\t: minimum number of minhash values to trigger sequence search [" << SIGN_SHARED_CNT_MIN << "]" << std::endl; 
+    std::cerr << "  --sign-length   \t: length of k-mers for computing minhash values. ["                      << SIGN_LENGTH         << "]" << std::endl;
+    std::cerr << "  --sign-cntmin   \t: minimum number of minhash values to trigger sequence search [" << SIGN_CNTMIN << "]" << std::endl; 
 
-    std::cerr << "  --sim-zval\t: percent of standard deviations above similarity by chance for a sequence to cover another ["   << SIM_ZVAL << "]" << std::endl;
-    std::cerr << "            \t: the effective value is 0.2 to 0.4 times less than this set value due to normal approximation of skewed binomial." << std::endl;
-    std::cerr << "  --sim-base\t: A covers B only if (len(B) - edit-distance(A, B)) >= sim_perc * len(B) + sim_base [sim_base="  << SIM_BASE << "]" << std::endl;
-    std::cerr << "  --sim-perc\t:   where extra residues at both ends of A are not penalized. [sim_perc="                        << SIM_PERC << "]" << std::endl;
-    std::cerr << "  --sim-diff\t: percent of deletions in the covering sequence that are ignored, 0 means skip alignment ["      << SIM_DIFF << "]" << std::endl;
+    std::cerr << "  --sim-zval      \t: percent of standard deviations above similarity by chance for a sequence to cover another ["   << SIM_ZVAL << "]" << std::endl;
+    std::cerr << "                  \t: the effective value is 0.2 to 0.4 times less than this set value due to normal approximation of skewed binomial." << std::endl;
+    std::cerr << "  --sim-base      \t: A covers B only if (len(B) - edit-distance(A, B)) >= sim_perc * len(B) + sim_base [sim_base="  << SIM_BASE << "]" << std::endl;
+    std::cerr << "  --sim-perc      \t:   where extra residues at both ends of A are not penalized. [sim_perc="                        << SIM_PERC << "]" << std::endl;
+    std::cerr << "  --sim-diff      \t: percent of deletions in the covering sequence that are ignored, 0 means skip alignment ["      << SIM_DIFF << "]" << std::endl;
 
-    std::cerr << "  --zval-as-sim\t: used the sim-zval as similarity threshold [" << ZVAL_AS_SIM   << "]" << std::endl;
+    std::cerr << "  --zval-as-sim   \t: used the sim-zval as similarity threshold [" << ZVAL_AS_SIM   << "]" << std::endl;
 
     std::cerr << "Note: default value of -1 means dependence to other parameters or to the input." << std::endl;
     exit(-1);
@@ -646,11 +646,11 @@ void PARAMS_init(const int argc, const char *const *const argv) {
     double p = pow((1 - DBL_EPSILON) * SIM_PERC / 100, SIGN_LENGTH);
     double sd = sqrt(NUM_SIGNATURES * p * (1-p));
     double mean = NUM_SIGNATURES * p;
-    SIGN_SHARED_CNT_MIN = MAX(floor(mean - sd * 3), 1); // three standard deviations below the normal distribution of true positives.
+    SIGN_CNTMIN = MAX(floor(mean - sd * 3), 1); // three standard deviations below the normal distribution of true positives.
 
     for (int i = 1; i+1 < argc; i += 2) {
         int is_arg_parsed = 1;
-        if (!strcmp("--sign-shared-cnt-min", argv[i])) { SIGN_SHARED_CNT_MIN = atoi(argv[i+1]); } 
+        if (!strcmp("--sign-cntmin", argv[i])) { SIGN_CNTMIN = atoi(argv[i+1]); } 
         else { is_arg_parsed = 0; } 
         are_args_parsed[i]   += is_arg_parsed;
         are_args_parsed[i+1] += is_arg_parsed;
@@ -990,7 +990,7 @@ int main(const int argc, const char *const *const argv) {
             int attemptcnt = ATTEMPT_INI;
             int minhits = floor(log(seeds[i].size + DBL_EPSILON) / log(DBFILT_TIMEFAC) / 100 * DBFILT_SUBSAMP);
             for (int nsigns = NUM_SIGNATURES; 
-                     nsigns >= SIGN_SHARED_CNT_MIN && attemptcnt > 0 && nhits <= minhits; 
+                     nsigns >= SIGN_CNTMIN && attemptcnt > 0 && nhits <= minhits; 
                      --nsigns) {
                 for (auto srcsnk_idx_pair : nsigns_to_srcsnk_idx_pairs[nsigns]) {
                     int srcidx = srcsnk_idx_pair.first;
@@ -1080,11 +1080,11 @@ int main(const int argc, const char *const *const argv) {
                         nsharedsigns_to_coveredidxs_vec.at(n_shared_signatures).push_back(coveredidx);
                     }
                 }
-                for (int nsigns = NUM_SIGNATURES; nsigns >= SIGN_SHARED_CNT_MIN; nsigns--) {
+                for (int nsigns = NUM_SIGNATURES; nsigns >= SIGN_CNTMIN; nsigns--) {
                     filteredcnt += nsharedsigns_to_coveredidxs_vec.at(nsigns).size();
                 } 
                 int attempts = ATTEMPT_INI;
-                for (int nsigns = NUM_SIGNATURES; nsigns >= SIGN_SHARED_CNT_MIN && attempts > 0 && attempts > max_attempts - ATTEMPT_MAX; nsigns--) {
+                for (int nsigns = NUM_SIGNATURES; nsigns >= SIGN_CNTMIN && attempts > 0 && attempts > max_attempts - ATTEMPT_MAX; nsigns--) {
                     for (auto coveredidx : nsharedsigns_to_coveredidxs_vec.at(nsigns)) {
                         seq_t *coveringseq = &seq_arrlist.data[i];
                         seq_t *coveredseq = &seq_arrlist.data[coveredidx];

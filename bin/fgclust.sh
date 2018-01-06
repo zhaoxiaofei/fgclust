@@ -11,12 +11,17 @@ if [ $# -lt 2 ]; then
     echo "  <output-fasta-file>.clu is the output tsv file that contains the three following fields per line: "
     echo "                          the representative centroid, the member covered by the centroid, and the sequence similarity between the centroid and the member"
     echo "  if <output-fasta-file> ends with the extension .keep, then all intermediate files are kept instead of being removed by default"
-    echo "The <optional-parameters> for processing sequences."
-    echo "" | "${BINROOT}/procseqs.out" --help
-    echo "The <optional-parameters> for computing distance matrix:"
-    echo "" | "${BINROOT}/fastaseqs-to-distmatrix.out" --help
-    echo "The <optional-parameters> for clustering:"
-    echo "" | "${BINROOT}/linsetcover.out" --help
+    if [ "$1" == "-help" ]; then 
+        echo "The <optional-parameters> for processing sequences."
+        echo "" | "${BINROOT}/procseqs.out" --help
+        echo "The <optional-parameters> for computing distance matrix:"
+        echo "" | "${BINROOT}/fastaseqs-to-distmatrix.out" --help
+        echo "The <optional-parameters> for clustering:"
+        echo "" | "${BINROOT}/linsetcover.out" --help
+    else
+        echo "For more detail about <optional-parameters>, please enter"
+        echo "  $0 -help"
+    fi
     exit 0
 fi
 
