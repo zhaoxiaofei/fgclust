@@ -27,8 +27,8 @@ bin/setcover-ords-to-hdrs.out   : src/setcover-ords-to-hdrs.cpp
 bin/setcover-ords-to-fasta.out  : src/setcover-ords-to-fasta.cpp
 	$(CXX) src/setcover-ords-to-fasta.cpp  -o bin/setcover-ords-to-fasta.out  $(OUTFLAGS)
 
-bin/procseqs.out        		: src/procseqs.cpp
-	$(CXX) src/procseqs.cpp        		   -o bin/procseqs.out        		  $(OUTFLAGS)
+bin/procseqs.out                : src/procseqs.cpp
+	$(CXX) src/procseqs.cpp                -o bin/procseqs.out                $(OUTFLAGS)
 
 .PHONY clean:
 	rm bin/fastaseqs-to-distmatrix.out bin/linsetcover.out bin/setcover-ords-to-hdrs.out bin/setcover-ords-to-fasta.out bin/procseqs.out \
