@@ -101,8 +101,6 @@ int DBFILT_TIMEFAC = 10*1000; // (50*50-1)/100; // 5; // lower -> less filtering
 
 unsigned int IDXENTRY_ITMAX = 10000; // similar to http://bio-bwa.sourceforge.net/bwa.shtml parameter -c
 
-int IS_INPUT_NUC = -1; // guessed
-
 int LEN_PERC_SRC = -1;
 int LEN_PERC_SNK = -1;
 
@@ -110,6 +108,8 @@ uint64_t SEED_N_PER_SEQ = 0;
 double SEED_EVALUE = 1;
 int SEED_LENGTH = 10; // can be overriden after determination of db size 
 int SEED_MINCNT = 10; // can be overriden after determination of db size
+
+int SEQTYPE = 0; // guessed from input by default
 
 int SIGN_CHCOV_MAX = 8;
 int SIGN_LENGTH = -1;
@@ -149,8 +149,6 @@ void showparams() {
     //std::cerr << "\tDBFILT_ATTEMPT = " << DBFILT_ATTEMPT << std::endl;
     
     std::cerr << "\tIDXENTRY_ITMAX = " << IDXENTRY_ITMAX << std::endl;
-
-    std::cerr << "\tIS_INPUT_NUC = " << IS_INPUT_NUC << std::endl;
     
     std::cerr << "\tLEN_PERC_SRC = " << (int)LEN_PERC_SRC << std::endl;
     std::cerr << "\tLEN_PERC_SNK = " << (int)LEN_PERC_SNK << std::endl;
@@ -159,6 +157,8 @@ void showparams() {
     std::cerr << "\tSEED_EVALUE = "    << SEED_EVALUE    << std::endl;
     std::cerr << "\tSEED_LENGTH = "    << SEED_LENGTH    << std::endl;
     std::cerr << "\tSEED_MINCNT = "    << SEED_MINCNT    << std::endl;
+    
+    std::cerr << "\tSEQTYPE = " << SEQTYPE << std::endl;
 
     std::cerr << "\tSIGN_CHCOV_MAX = " << SIGN_CHCOV_MAX << std::endl;
     std::cerr << "\tSIGN_LENGTH = " << SIGN_LENGTH    << std::endl;
@@ -196,7 +196,7 @@ void show_usage(const int argc, const char *const *const argv) {
 
     std::cerr << "  --idxentry-itmax\t: maximum number of times a db-index entry is iterated by a sequence. [" << IDXENTRY_ITMAX << "]" << std::endl;
 
-    std::cerr << "  --is-input-nuc\t: 0, 1, and 2 mean input is protein, RNA, and DNA, respectively (auto detected). [" << IS_INPUT_NUC << "]" << std::endl;
+    std::cerr << "  --seqtype\t: 1, 2, and 3 mean input is protein, RNA, and DNA, respectively (auto detected). [" << SEQTYPE << "]" << std::endl;
 
     std::cerr << "  --len-perc-src\t: A cannot cover B if len(A) * len-perc-src > len(B) * 100. [" << LEN_PERC_SRC << "]" << std::endl; 
     std::cerr << "  --len-perc-snk\t: A cannot cover B if len(B) * len-perc-snk > len(A) * 100. [" << LEN_PERC_SNK << "]" << std::endl; 
@@ -532,12 +532,12 @@ void PARAMS_init(const int argc, const char *const *const argv) {
         }
     }
     if (aa_cnt * 4 > nb_cnt) {
-        IS_INPUT_NUC = 0;
+        SEQTYPE = 1;
     } else {
         if (baseTcnt < baseUcnt) {
-            IS_INPUT_NUC = 1;
+            SEQTYPE = 2;
         } else {
-            IS_INPUT_NUC = 2;
+            SEQTYPE = 3;
         }
     }
     
@@ -546,7 +546,9 @@ void PARAMS_init(const int argc, const char *const *const argv) {
 
     for (int i = 1; i+1 < argc; i += 2) {
         int is_arg_parsed = 1;
-        if (!strcmp("--is-input-nuc", argv[i])) { IS_INPUT_NUC = atoi(argv[i+1]); } 
+        if      (!strcmp("--procseqs-order", argv[i])) { /* pass */ } 
+        else if (!strcmp("--setcover-depth", argv[i])) { /* pass */ }
+        else if (!strcmp("--seqtype", argv[i])) { SEQTYPE = atoi(argv[i+1]); } 
         else { is_arg_parsed = 0; }
         are_args_parsed[i]   += is_arg_parsed;
         are_args_parsed[i+1] += is_arg_parsed;
@@ -554,19 +556,19 @@ void PARAMS_init(const int argc, const char *const *const argv) {
 
     LEN_PERC_SRC = LEN_PERC_SNK = 80;
     SIM_BASE = 25;
-    if (0 == IS_INPUT_NUC) {
+    if (1 == SEQTYPE) {
         SIM_PERC = 50;
         SEED_N_PER_SEQ = 10;
-    } else if (1 == IS_INPUT_NUC) {
+    } else if (2 == SEQTYPE) {
         SIM_PERC = 70;
         SEED_N_PER_SEQ = 10 * 3;
-    } else if (2 == IS_INPUT_NUC) {
+    } else if (3 == SEQTYPE) {
         LEN_PERC_SRC = LEN_PERC_SNK = 0;
         SIM_PERC = 90;
         SIM_BASE = 0;
         SEED_N_PER_SEQ = 10 * 3;
     } else {
-        std::cerr << "The value of " << IS_INPUT_NUC << " is invalid for the parameter --is-input-nuc." << std::endl;
+        std::cerr << "The value of " << SEQTYPE << " is invalid for the parameter --seqtype." << std::endl;
         show_usage(argc, argv);
     }
     
@@ -578,9 +580,8 @@ void PARAMS_init(const int argc, const char *const *const argv) {
     
     for (int i = 1; i+1 < argc; i += 2) {
         int is_arg_parsed = 1;
-        if      (!strcmp("--israndom",       argv[i])) { /* pass */ } 
-
-        else if (!strcmp("--alphasize-seed", argv[i])) { ALPHA_TYPE_TO_SIZE[0] = atoi(argv[i+1]); } 
+        
+        if      (!strcmp("--alphasize-seed", argv[i])) { ALPHA_TYPE_TO_SIZE[0] = atoi(argv[i+1]); } 
         else if (!strcmp("--alphasize-sign", argv[i])) { ALPHA_TYPE_TO_SIZE[1] = atoi(argv[i+1]); } 
         else if (!strcmp("--alphasize-sim",  argv[i])) { ALPHA_TYPE_TO_SIZE[2] = atoi(argv[i+1]); } 
 
@@ -618,13 +619,13 @@ void PARAMS_init(const int argc, const char *const *const argv) {
     }
     LEN_PERC_SNK = MAX(LEN_PERC_SNK, SIM_PERC);
     
-    if (IS_INPUT_NUC) {
+    if (1 == SEQTYPE) {
         SIGN_LENGTH = (SIM_PERC + 900) / (200 - SIM_PERC); // heuristic values from cd-hit manual page
     } else {
         SIGN_LENGTH = (SIM_PERC + 360) / (150 - SIM_PERC); // heuristic values from cd-hit manual page
     }
 
-    if (2 == IS_INPUT_NUC) {
+    if (3 == SEQTYPE) {
         SIM_DIFF = MIN(SIM_PERC,  20);
     } else {
         SIM_DIFF = 0;
@@ -665,7 +666,7 @@ void PARAMS_init(const int argc, const char *const *const argv) {
                               << are_args_parsed[i] << " times!" << std::endl));
     }
     
-    if (!IS_INPUT_NUC) {
+    if (1 == SEQTYPE) {
         for (int t = 0; t < 3; t++) {
             if (10 == ALPHA_TYPE_TO_SIZE[t]) {
                 alphareduce("DENQ", t);
@@ -904,7 +905,7 @@ int main(const int argc, const char *const *const argv) {
         }
     }
 
-    double INFO_PER_LETTER = exp(ch_entropy); // (IS_INPUT_NUC ? 3.3 : 8.5);
+    double INFO_PER_LETTER = exp(ch_entropy); 
     // 0.33 is used to normalize whole-protein Shannon-information entropy to about 1 bit per position // https://www.ncbi.nlm.nih.gov/pubmed/8804598
     double SHANNON_INFO_PER_LETTER = pow(INFO_PER_LETTER, 0.33); // estimated
     std::cerr << "INFO_PER_LETTER = " << INFO_PER_LETTER << " , SHANNON_INFO_PER_LETTER = " << SHANNON_INFO_PER_LETTER << std::endl;
@@ -915,7 +916,7 @@ int main(const int argc, const char *const *const argv) {
         int    seedlen_floor = (int)floor(seedlen_fract);
         double seedlen_diff1 = seedlen_fract - seedlen_floor;
         SEED_LENGTH = MIN(MAX(seedlen_floor, 4), 25);
-        SEED_MINCNT = (int)floor((100 + 10 - SIM_PERC) / pow(SHANNON_INFO_PER_LETTER, seedlen_diff1) * (IS_INPUT_NUC ? 3 : 1));
+        SEED_MINCNT = (int)floor((100 + 10 - SIM_PERC) / pow(SHANNON_INFO_PER_LETTER, seedlen_diff1) * ((1 != SEQTYPE) ? 3 : 1));
         
         std::cerr << "Command-line parameter values after adjustment with SEED_EVALUE = " << SEED_EVALUE << ":" << std::endl;
         std::cerr << "\tSEED_LENGTH = " << SEED_LENGTH << std::endl;

@@ -51,10 +51,16 @@ int main(int argc, char **argv) {
     std::cerr << "GITCOMMIT = " << GITCOMMIT << std::endl;
     std::cerr << "CXXVERSION = " << CXXVERSION << std::endl;
 
-    bool israndom = true;
-    for (int i = 1; i < argc; i++) {
-        if (!strcmp("--israndom", argv[i])) {
-            israndom = atoi(argv[i+1]);
+    int PROCSEQS_ORDER = 1;
+    for (int i = 1; i + 1 < argc; i += 2) {
+        if (!strcmp("--procseqs-order", argv[i])) {
+            PROCSEQS_ORDER = atoi(argv[i+1]);
+        } else {
+            std::cerr << "Program : " << argv[0] << std::endl;
+            std::cerr << "  version " << GITCOMMIT << " compiled by " << CXXVERSION << std::endl;
+            std::cerr << "Command-line arguments with [default-values]:" << std::endl;
+            std::cerr << "  --procseqs-order\t1 and 2 mean by pseudorandom order and by decreasing sequence length, respectively. [" << PROCSEQS_ORDER << "]" << std::endl;
+            exit(-1);
         }
     }
     kseq_t *kseq = kseq_init(fileno(stdin));
@@ -70,10 +76,10 @@ int main(int argc, char **argv) {
         std::cerr << "ERROR: the input fasta file has no sequence!" << std::endl;
         return -1;
     }
-    if (israndom) {
+    if (1 == PROCSEQS_ORDER) {
         std::mt19937 g(7);
         std::shuffle(seqs.begin(), seqs.end(), g);
-    } else {
+    } else if (2 == PROCSEQS_ORDER) {
         std::sort(seqs.begin(), seqs.end(), customLess);
     }
     for (auto seq : seqs)

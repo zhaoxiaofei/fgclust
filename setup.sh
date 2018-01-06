@@ -4,14 +4,15 @@ ROOTDIR=$(dirname `which $0`)
 
 IN=$1 ; OUT=$2 ; mkdir -p ${OUT}/
 
-cat "${IN}/Rfam.seed.fna" | "${ROOTDIR}/bin/len-revname-sort.out" > "${OUT}/Rfam.seed_shuf.fna"
+cat "${IN}/Rfam.seed.fna" | "${ROOTDIR}/bin/procseqs.out" --procseqs-order 1 > "${OUT}/Rfam.seed_shuf.fna"
+cat "${IN}/Rfam.seed.fna" | "${ROOTDIR}/bin/procseqs.out" --procseqs-order 2 > "${OUT}/Rfam.seed_sort.fna"
 
 ## find "${IN}/pdbents/" -type f | python "${ROOTDIR}/benchmark/src/pdbents-to-seqres.py" > ${IN}/pdbent-seqres.faa
 
 for faafile in pdbent-seqres Pfam-A.seed uniref100-02 uniref100-12 uniref100-2011-01 uniref100-2014-01 uniref100-2017-01; do
 #for faafile in uniref100-2; do
-    date; cat "${IN}/${faafile}.faa" | "${ROOTDIR}/bin/len-revname-sort.out" --israndom 1 > "${OUT}/${faafile}_shuf.faa"
-    date; cat "${IN}/${faafile}.faa" | "${ROOTDIR}/bin/len-revname-sort.out" --israndom 0 > "${OUT}/${faafile}_sort.faa"
+    date; cat "${IN}/${faafile}.faa" | "${ROOTDIR}/bin/procseqs.out" --procseqs-order 1 > "${OUT}/${faafile}_shuf.faa"
+    date; cat "${IN}/${faafile}.faa" | "${ROOTDIR}/bin/procseqs.out" --procseqs-order 2 > "${OUT}/${faafile}_sort.faa"
     date; "${ROOTDIR}/benchmark/bin/mmseqs" createdb "${OUT}/${faafile}_shuf.faa" "${OUT}/${faafile}_shuf.mmseqs-db" ;
     date
 done
