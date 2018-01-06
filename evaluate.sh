@@ -2,17 +2,17 @@
 set -evx
 
 if [ -n "$SGE_TASK_ID" ]; then
-    INPREF="${qsubINPREF}"
-    OUTDIR="${qsubOUTDIR}"
-    CSVSIM="${qsubCSVSIM}"
-    PROG="${qsubPROG}" #$4
-    PARAMS="${qsubPARAMS}"
+    #INPREF="${qsubINPREF}"
+    #OUTDIR="${qsubOUTDIR}"
+    #USVSIM="${qsubUSVSIM}"
+    #PROG="${qsubPROG}" #$4
+    #PARAMS="${qsubPARAMS}"
 else
     ROOTDIR=$(dirname `which $0`)
     INPREF="$1"
     OUTDIR="$2"
     PROG="$3"
-    CSVSIM="$4"
+    USVSIM="$4"
     PARAMS="${qsubPARAMS}"
 fi
 
@@ -130,7 +130,7 @@ function run_cdhitest_with_infastafile_seqid() {
     } } 2>&1 | tee "$2-$3.cdhitest.time"
 }
 
-for SIM in $(echo $CSVSIM | sed "s/,/ /g"); do
+for SIM in $(echo $USVSIM | sed "s/_/ /g"); do
  
     function gen_fam_metrics() {
         cat "$1.tsv" | "${ROOTDIR}"/benchmark/src/pfam-clstr-to-metrics.py | tee "$1.fam-metrics"
@@ -166,7 +166,7 @@ for SIM in $(echo $CSVSIM | sed "s/,/ /g"); do
 
 done
 
-for SIM in $(echo $CSVSIM | sed "s/,/ /g"); do
+for SIM in $(echo $USVSIM | sed "s/_/ /g"); do
 
     # skip the rest if sim is either 60 or 80 
     if [[ "60,80" == *"$SIM"* ]]; then continue; fi
