@@ -91,7 +91,7 @@ int ATTEMPT_INC = 50; //50;
 int ATTEMPT_MAX = 50; //50;
 
 double COV_SRC_ADA = -1; // 0.005;
-unsigned int COV_SRC_MAX = 5; // 5+1; // 8; // 5;
+unsigned int COV_SRC_MAX = 0; // 5+1; // 8; // 5;
 unsigned int COV_SNK_MAX = INT_MAX;
 
 unsigned int DBFILT_MINSEED = INT_MAX; // 1000*1000; lower -> more filtering, more time saving later
@@ -99,7 +99,7 @@ int DBFILT_SUBSAMP = 10*1000; // 50*50; // 800; // lower -> less filtering accur
 // int DBFILT_ATTEMPT = 50; // 10; // lower -> less filtering accuracy, less time // not useful because same as ATTEMPT_* 
 int DBFILT_TIMEFAC = 10*1000; // (50*50-1)/100; // 5; // lower -> less filtering accuracy
 
-unsigned int IDXENTRY_ITMAX = 10000; // similar to http://bio-bwa.sourceforge.net/bwa.shtml parameter -c
+unsigned int IDXENTRY_ITMAX = 0; // similar to http://bio-bwa.sourceforge.net/bwa.shtml parameter -c
 
 int LEN_PERC_SRC = -1;
 int LEN_PERC_SNK = -1;
@@ -218,7 +218,7 @@ void show_usage(const int argc, const char *const *const argv) {
 
     std::cerr << "  --zval-as-sim   \t: used the sim-zval as similarity threshold [" << ZVAL_AS_SIM   << "]" << std::endl;
 
-    std::cerr << "Note: default value of -1 means dependence to other parameters or to the input." << std::endl;
+    std::cerr << "Note: illegal values such as 0 and 1 (depending on context) mean dependence to other parameters or to the input." << std::endl;
     exit(-1);
 }
 
@@ -596,8 +596,7 @@ void PARAMS_init(const int argc, const char *const *const argv) {
         else if (!strcmp("--dbfilt-subsamp", argv[i])) { DBFILT_SUBSAMP        = atoi(argv[i+1]); } 
         // else if (!strcmp("--dbfilt-attempt", argv[i])) { DBFILT_ATTEMPT        = atoi(argv[i+1]); } 
         else if (!strcmp("--dbfilt-timefac", argv[i])) { DBFILT_TIMEFAC        = atoi(argv[i+1]); } 
-        else if (!strcmp("--idxentry-itmax", argv[i])) { IDXENTRY_ITMAX        = atoi(argv[i+1]); }
-        
+                
         else if (!strcmp("--len-perc-src",   argv[i])) { LEN_PERC_SRC          = atoi(argv[i+1]); } 
         else if (!strcmp("--len-perc-snk",   argv[i])) { LEN_PERC_SNK          = atoi(argv[i+1]); } 
         
@@ -632,11 +631,13 @@ void PARAMS_init(const int argc, const char *const *const argv) {
     }
 
     COV_SRC_MAX = 1 + (100 - MIN(LEN_PERC_SRC, SIM_PERC)) / 7;
+    IDXENTRY_ITMAX = 1000 * COV_SRC_MAX;
 
     for (int i = 1; i+1 < argc; i += 2) {
         int is_arg_parsed = 1;
-        if (!strcmp("--sign-length", argv[i]))         { SIGN_LENGTH           = atoi(argv[i+1]); }
-        else if (!strcmp("--cov-src-max",    argv[i])) { COV_SRC_MAX           = atoi(argv[i+1]); }
+        if      (!strcmp("--cov-src-max",    argv[i])) { COV_SRC_MAX           = atoi(argv[i+1]); }
+        else if (!strcmp("--idxentry-itmax", argv[i])) { IDXENTRY_ITMAX        = atoi(argv[i+1]); }
+        else if (!strcmp("--sign-length",    argv[i])) { SIGN_LENGTH           = atoi(argv[i+1]); }
         else if (!strcmp("--sim-diff",       argv[i])) { SIM_DIFF              = atoi(argv[i+1]); }
         else { is_arg_parsed = 0; }
         are_args_parsed[i]   += is_arg_parsed;
