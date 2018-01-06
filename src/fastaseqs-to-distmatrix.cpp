@@ -99,7 +99,7 @@ int DBFILT_SUBSAMP = 10*1000; // 50*50; // 800; // lower -> less filtering accur
 // int DBFILT_ATTEMPT = 50; // 10; // lower -> less filtering accuracy, less time // not useful because same as ATTEMPT_* 
 int DBFILT_TIMEFAC = 10*1000; // (50*50-1)/100; // 5; // lower -> less filtering accuracy
 
-unsigned int IDXENTRY_ITMAX = 2048;
+unsigned int IDXENTRY_ITMAX = 10000; // similar to http://bio-bwa.sourceforge.net/bwa.shtml parameter -c
 
 int IS_INPUT_NUC = -1; // guessed
 
@@ -531,23 +531,43 @@ void PARAMS_init(const int argc, const char *const *const argv) {
             }
         }
     }
-    LEN_PERC_SRC = LEN_PERC_SNK = 80;
-    SIM_BASE = 25;
     if (aa_cnt * 4 > nb_cnt) {
         IS_INPUT_NUC = 0;
-        SIM_PERC = 50;
-        SEED_N_PER_SEQ = 10;
     } else {
         if (baseTcnt < baseUcnt) {
             IS_INPUT_NUC = 1;
-            SIM_PERC = 70;
         } else {
             IS_INPUT_NUC = 2;
-            LEN_PERC_SRC = LEN_PERC_SNK = 0;
-            SIM_PERC = 90;
-            SIM_BASE = 0;
         }
+    }
+    
+    std::vector<int> are_args_parsed(argc);
+    std::fill(are_args_parsed.begin(), are_args_parsed.end(), 0);
+
+    for (int i = 1; i+1 < argc; i += 2) {
+        int is_arg_parsed = 1;
+        if (!strcmp("--is-input-nuc", argv[i])) { IS_INPUT_NUC = atoi(argv[i+1]); } 
+        else { is_arg_parsed = 0; }
+        are_args_parsed[i]   += is_arg_parsed;
+        are_args_parsed[i+1] += is_arg_parsed;
+    }
+
+    LEN_PERC_SRC = LEN_PERC_SNK = 80;
+    SIM_BASE = 25;
+    if (0 == IS_INPUT_NUC) {
+        SIM_PERC = 50;
+        SEED_N_PER_SEQ = 10;
+    } else if (1 == IS_INPUT_NUC) {
+        SIM_PERC = 70;
         SEED_N_PER_SEQ = 10 * 3;
+    } else if (2 == IS_INPUT_NUC) {
+        LEN_PERC_SRC = LEN_PERC_SNK = 0;
+        SIM_PERC = 90;
+        SIM_BASE = 0;
+        SEED_N_PER_SEQ = 10 * 3;
+    } else {
+        std::cerr << "The value of " << IS_INPUT_NUC << " is invalid for the parameter --is-input-nuc." << std::endl;
+        show_usage(argc, argv);
     }
     
     for (int i = 0; i < 256; i++) {
@@ -555,10 +575,8 @@ void PARAMS_init(const int argc, const char *const *const argv) {
             ALPHA_TYPE_TO_CHAR_TO_REDUCED[j][i] = (char)i;
         }
     }
-    std::vector<int> are_args_parsed(argc+1);
-    std::fill(are_args_parsed.begin(), are_args_parsed.end(), 0);
-
-    for (int i = 1; i < argc; i += 2) {
+    
+    for (int i = 1; i+1 < argc; i += 2) {
         int is_arg_parsed = 1;
         if      (!strcmp("--israndom",       argv[i])) { /* pass */ } 
 
@@ -571,7 +589,6 @@ void PARAMS_init(const int argc, const char *const *const argv) {
         else if (!strcmp("--attempt-max",    argv[i])) { ATTEMPT_MAX           = atoi(argv[i+1]); } 
         
         else if (!strcmp("--cov-src-ada",    argv[i])) { COV_SRC_ADA           = atof(argv[i+1]); }
-        else if (!strcmp("--cov-src-max",    argv[i])) { COV_SRC_MAX           = atoi(argv[i+1]); } 
         else if (!strcmp("--cov-snk-max",    argv[i])) { COV_SNK_MAX           = atoi(argv[i+1]); } 
         
         else if (!strcmp("--dbfilt-minseed", argv[i])) { DBFILT_MINSEED        = atoi(argv[i+1]); } 
@@ -579,8 +596,7 @@ void PARAMS_init(const int argc, const char *const *const argv) {
         // else if (!strcmp("--dbfilt-attempt", argv[i])) { DBFILT_ATTEMPT        = atoi(argv[i+1]); } 
         else if (!strcmp("--dbfilt-timefac", argv[i])) { DBFILT_TIMEFAC        = atoi(argv[i+1]); } 
         else if (!strcmp("--idxentry-itmax", argv[i])) { IDXENTRY_ITMAX        = atoi(argv[i+1]); }
-        else if (!strcmp("--is-input-nuc",   argv[i])) { IS_INPUT_NUC          = atoi(argv[i+1]); } 
-
+        
         else if (!strcmp("--len-perc-src",   argv[i])) { LEN_PERC_SRC          = atoi(argv[i+1]); } 
         else if (!strcmp("--len-perc-snk",   argv[i])) { LEN_PERC_SNK          = atoi(argv[i+1]); } 
         
@@ -614,9 +630,12 @@ void PARAMS_init(const int argc, const char *const *const argv) {
         SIM_DIFF = 0;
     }
 
-    for (int i = 1; i < argc; i += 2) {
+    COV_SRC_MAX = 1 + (100 - MIN(LEN_PERC_SRC, SIM_PERC)) / 7;
+
+    for (int i = 1; i+1 < argc; i += 2) {
         int is_arg_parsed = 1;
-        if (!strcmp("--sign-length", argv[i]))         { SIGN_LENGTH           = atoi(argv[i+1]); } 
+        if (!strcmp("--sign-length", argv[i]))         { SIGN_LENGTH           = atoi(argv[i+1]); }
+        else if (!strcmp("--cov-src-max",    argv[i])) { COV_SRC_MAX           = atoi(argv[i+1]); }
         else if (!strcmp("--sim-diff",       argv[i])) { SIM_DIFF              = atoi(argv[i+1]); }
         else { is_arg_parsed = 0; }
         are_args_parsed[i]   += is_arg_parsed;
@@ -628,7 +647,7 @@ void PARAMS_init(const int argc, const char *const *const argv) {
     double mean = NUM_SIGNATURES * p;
     SIGN_SHARED_CNT_MIN = MAX(floor(mean - sd * 3), 1); // three standard deviations below the normal distribution of true positives.
 
-    for (int i = 1; i < argc; i += 2) {
+    for (int i = 1; i+1 < argc; i += 2) {
         int is_arg_parsed = 1;
         if (!strcmp("--sign-shared-cnt-min", argv[i])) { SIGN_SHARED_CNT_MIN = atoi(argv[i+1]); } 
         else { is_arg_parsed = 0; } 
@@ -642,7 +661,7 @@ void PARAMS_init(const int argc, const char *const *const argv) {
             show_usage(argc, argv);
         }
         assert(1 == are_args_parsed[i] 
-               || !(std::cerr << "Parse command-line parameter " << argv[i] << " at position " << i << " " 
+               || !(std::cerr << "Parsed command-line parameter " << argv[i] << " at position " << i << " " 
                               << are_args_parsed[i] << " times!" << std::endl));
     }
     
