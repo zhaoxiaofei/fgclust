@@ -6,17 +6,25 @@ if [ -n "$SGE_TASK_ID" ]; then
     OUTDIR="${qsubOUTDIR}"
     CSVSIM="${qsubCSVSIM}"
     PROG="${qsubPROG}" #$4
-    SRCCOVMAX="${qsubSRCCOVMAX}"
+    COVSRCMAX="${qsubCOVSRCMAX}"
+    IDXENTRYITMAX="${qsubIDXENTRYITMAX}"
 else
     ROOTDIR=$(dirname `which $0`)
     INPREF="$1"
     OUTDIR="$2"
     CSVSIM="$3"
     PROG="$4"
-    SRCCOVMAX=$5
+    COVSRCMAX=$5
+    IDXENTRYITMAX=$6
 fi
 
 mkdir -p "${OUTDIR}"
+FGCLUST="${OUTDIR}/fgclust-bin/"
+
+if [ ! -d "${FGCLUST}" ]; then
+    mkdir "${FGCLUST}" || true
+    cp "${ROOTDIR}/bin/"*.out "${FGCLUST}"
+fi
 
 function resetfile() {
     timeoutret=$?
@@ -34,12 +42,13 @@ function resetfile() {
 
 function run_mine_with_infastafile_seqid() {
     if [ -n "$5" ]; then cov=" --cov-src-max $5 "; else cov=""; fi
+    if [ -n "$6" ]; then iit=" --idxentry-itmax $6 "; else iit=""; fi
     if [ -f "$1.faa" ]; then db="$1.faa"; else db="$1.fna"; fi
     { time -p {
         echo "run_mine_with_infastafile_seqid($1, $2, $3, $4) eval-began-at $(date)"
-        date; cat "${db}"             | "${FGCLUST}"/fastaseqs-to-distmatrix.out --sim-perc $3 $cov > "$2-$3.distmatrix"
-        date; cat "$2-$3.distmatrix"  | "${FGCLUST}"/linsetcover.out                                > "$2-$3.ordsetcover"
-        date; cat "$2-$3.ordsetcover" | "${FGCLUST}"/setcover-ords-to-hdrs.out "${db}"              > "$2-$3.hdrsetcover-clu.tsv"
+        date; cat "${db}"             | "${FGCLUST}"/fastaseqs-to-distmatrix.out --sim-perc $3 $cov $iit > "$2-$3.distmatrix"
+        date; cat "$2-$3.distmatrix"  | "${FGCLUST}"/linsetcover.out                                     > "$2-$3.ordsetcover"
+        date; cat "$2-$3.ordsetcover" | "${FGCLUST}"/setcover-ords-to-hdrs.out "${db}"                   > "$2-$3.hdrsetcover-clu.tsv"
         echo "run_mine_with_infastafile_seqid($1, $2, $3) eval-ended-at $(date)"
     } } 2>&1 | tee "$2-$3.mine.time"
 }
@@ -126,12 +135,6 @@ function run_cdhitest_with_infastafile_seqid() {
 }
 
 for SIM in $(echo $CSVSIM | sed "s/,/ /g"); do
-    FGCLUST="${OUTDIR}/${SIM}-fgclust-bin/"
-    if [[ "${PROG}" == *"mine"* ]]; then mkdir -p "${FGCLUST}"; cp "${ROOTDIR}/bin/"*.out "${FGCLUST}"; fi
-done
-
-for SIM in $(echo $CSVSIM | sed "s/,/ /g"); do
-    FGCLUST="${OUTDIR}/${SIM}-fgclust-bin/"
  
     function gen_fam_metrics() {
         cat "$1.tsv" | "${ROOTDIR}"/benchmark/src/pfam-clstr-to-metrics.py | tee "$1.fam-metrics"
@@ -139,22 +142,22 @@ for SIM in $(echo $CSVSIM | sed "s/,/ /g"); do
 
     ## run Rfam.seed
     
-    if [[ "${PROG}" == *"testgiu"* ]]; then run_mine_with_infastafile_seqid     "${INPREF}/Rfam.seed_sort" "${OUTDIR}/Rfam.seed_sortcov${SRCCOVMAX}" $SIM 3334 $SRCCOVMAX; fi
-    if [[ "${PROG}" == *"testcov"* ]]; then run_mine_with_infastafile_seqid     "${INPREF}/Rfam.seed_shuf" "${OUTDIR}/Rfam.seed_normcov${SRCCOVMAX}" $SIM 3334 $SRCCOVMAX; fi
+    if [[ "${PROG}" == *"testgiu"* ]]; then run_mine_with_infastafile_seqid     "${INPREF}/Rfam.seed_sort" "${OUTDIR}/Rfam.seed_sort_cov${COVSRCMAX}-idxentry${IDXENTRYITMAX}" $SIM 3334 ${COVSRCMAX} ${IDXENTRYITMAX}; fi
+    if [[ "${PROG}" == *"testcov"* ]]; then run_mine_with_infastafile_seqid     "${INPREF}/Rfam.seed_shuf" "${OUTDIR}/Rfam.seed_shuf_cov${COVSRCMAX}-idxentry${IDXENTRYITMAX}" $SIM 3334 ${COVSRCMAX} ${IDXENTRYITMAX}; fi
     if [[ "${PROG}" == *"mine"* ]];    then run_mine_with_infastafile_seqid     "${INPREF}/Rfam.seed_shuf" "${OUTDIR}/Rfam.seed_shuf" $SIM 3334; fi
     if [[ "${PROG}" == *"vsearch"* ]]; then run_vsearch_with_infastafile_seqid  "${INPREF}/Rfam.seed_shuf" "${OUTDIR}/Rfam.seed_shuf" $SIM 3334; fi
     if [[ "${PROG}" == *"cdhit"* ]];   then run_cdhitest_with_infastafile_seqid "${INPREF}/Rfam.seed_shuf" "${OUTDIR}/Rfam.seed_shuf" $SIM 3334; fi
 
     if [[ "${PROG}" == *"testgiu"* ]]; then gen_fam_metrics "${OUTDIR}/Rfam.seed_sort-${SIM}.hdrsetcover-clu"; fi
-    if [[ "${PROG}" == *"testcov"* ]]; then gen_fam_metrics "${OUTDIR}/Rfam.seed_normcov${SRCCOVMAX}-${SIM}.hdrsetcover-clu"; fi
+    if [[ "${PROG}" == *"testcov"* ]]; then gen_fam_metrics "${OUTDIR}/Rfam.seed_shuf_cov${COVSRCMAX}-idxentry${IDXENTRYITMAX}-${SIM}.hdrsetcover-clu"; fi
     if [[ "${PROG}" == *"mine"* ]];    then gen_fam_metrics "${OUTDIR}/Rfam.seed_shuf-${SIM}.hdrsetcover-clu"; fi
     if [[ "${PROG}" == *"vsearch"* ]]; then gen_fam_metrics "${OUTDIR}/Rfam.seed_shuf_vsearch-${SIM}-clu"    ; fi
     if [[ "${PROG}" == *"cdhit"* ]];   then gen_fam_metrics "${OUTDIR}/Rfam.seed_shuf-${SIM}.cdhitest-clu"   ; fi
 
     ## run Pfam-A.seed
     
-    if [[ "${PROG}" == *"testgiu"* ]];  then run_mine_with_infastafile_seqid     "${INPREF}/Pfam-A.seed_sort" "${OUTDIR}/Pfam-A.seed_sortcov${SRCCOVMAX}" $SIM 3334 $SRCCOVMAX; fi
-    if [[ "${PROG}" == *"testcov"* ]];  then run_mine_with_infastafile_seqid     "${INPREF}/Pfam-A.seed_shuf" "${OUTDIR}/Pfam-A.seed_normcov${SRCCOVMAX}" $SIM 3334 $SRCCOVMAX; fi
+    if [[ "${PROG}" == *"testgiu"* ]];  then run_mine_with_infastafile_seqid     "${INPREF}/Pfam-A.seed_sort" "${OUTDIR}/Pfam-A.seed_sort_cov${COVSRCMAX}-idxentry${IDXENTRYITMAX}" $SIM 3334 ${COVSRCMAX} ${IDXENTRYITMAX}; fi
+    if [[ "${PROG}" == *"testcov"* ]];  then run_mine_with_infastafile_seqid     "${INPREF}/Pfam-A.seed_shuf" "${OUTDIR}/Pfam-A.seed_shuf_cov${COVSRCMAX}-idxentry${IDXENTRYITMAX}" $SIM 3334 ${COVSRCMAX} ${IDXENTRYITMAX}; fi
     if [[ "${PROG}" == *"mine"* ]];     then run_mine_with_infastafile_seqid     "${INPREF}/Pfam-A.seed_shuf" "${OUTDIR}/Pfam-A.seed_shuf" $SIM 3334; fi
     if [[ "${PROG}" == *"linclust"* ]]; then run_linclust_with_infastafile_seqid "${INPREF}/Pfam-A.seed_shuf" "${OUTDIR}/Pfam-A.seed_shuf" $SIM 3334; fi
     if [[ "${PROG}" == *"quaclust"* ]]; then run_quaclust_with_infastafile_seqid "${INPREF}/Pfam-A.seed_shuf" "${OUTDIR}/Pfam-A.seed_shuf" $SIM 3334; fi
@@ -162,7 +165,7 @@ for SIM in $(echo $CSVSIM | sed "s/,/ /g"); do
     if [[ "${PROG}" == *"kclust"* ]];   then run_kclust_with_infastafile_seqid   "${INPREF}/Pfam-A.seed_shuf" "${OUTDIR}/Pfam-A.seed_shuf" $SIM 3334; fi
     
     if [[ "${PROG}" == *"testgiu"* ]];  then gen_fam_metrics "${OUTDIR}/Pfam-A.seed_sort-${SIM}.hdrsetcover-clu"; fi
-    if [[ "${PROG}" == *"testcov"* ]];  then gen_fam_metrics "${OUTDIR}/Pfam-A.seed_normcov${SRCCOVMAX}-${SIM}.hdrsetcover-clu"; fi
+    if [[ "${PROG}" == *"testcov"* ]];  then gen_fam_metrics "${OUTDIR}/Pfam-A.seed_shuf_cov${COVSRCMAX}-idxentry${IDXENTRYITMAX}-${SIM}.hdrsetcover-clu"; fi
     if [[ "${PROG}" == *"mine"* ]];     then gen_fam_metrics "${OUTDIR}/Pfam-A.seed_shuf-${SIM}.hdrsetcover-clu"; fi
     if [[ "${PROG}" == *"linclust"* ]]; then gen_fam_metrics "${OUTDIR}/Pfam-A.seed_shuf-${SIM}.linclust-clu"   ; fi
     if [[ "${PROG}" == *"quaclust"* ]]; then gen_fam_metrics "${OUTDIR}/Pfam-A.seed_shuf-${SIM}.quaclust-clu"   ; fi
@@ -172,15 +175,14 @@ for SIM in $(echo $CSVSIM | sed "s/,/ /g"); do
 done
 
 for SIM in $(echo $CSVSIM | sed "s/,/ /g"); do
-    FGCLUST="${OUTDIR}/${SIM}-fgclust-bin/"
 
     # skip the rest if sim is either 60 or 80 
     if [[ "60,80" == *"$SIM"* ]]; then continue; fi
 
     ## run pdb 
     (
-        if [[ "${PROG}" == *"testgiu"* ]];  then run_mine_with_infastafile_seqid     "${INPREF}/pdbent-seqres_sort" "${OUTDIR}/pdbent-seqres_sortcov${SRCCOVMAX}" $SIM 3334 $SRCCOVMAX; fi 
-        if [[ "${PROG}" == *"testcov"* ]];  then run_mine_with_infastafile_seqid     "${INPREF}/pdbent-seqres_shuf" "${OUTDIR}/pdbent-seqres_normcov${SRCCOVMAX}" $SIM 3334 $SRCCOVMAX; fi 
+        if [[ "${PROG}" == *"testgiu"* ]];  then run_mine_with_infastafile_seqid     "${INPREF}/pdbent-seqres_sort" "${OUTDIR}/pdbent-seqres_sort_cov${COVSRCMAX}-idxentry${IDXENTRYITMAX}" $SIM 3334 ${COVSRCMAX} ${IDXENTRYITMAX}; fi 
+        if [[ "${PROG}" == *"testcov"* ]];  then run_mine_with_infastafile_seqid     "${INPREF}/pdbent-seqres_shuf" "${OUTDIR}/pdbent-seqres_shuf_cov${COVSRCMAX}-idxentry${IDXENTRYITMAX}" $SIM 3334 ${COVSRCMAX} ${IDXENTRYITMAX}; fi 
         if [[ "${PROG}" == *"mine"* ]];     then run_mine_with_infastafile_seqid     "${INPREF}/pdbent-seqres_shuf" "${OUTDIR}/pdbent-seqres_shuf" $SIM 3334; fi
         if [[ "${PROG}" == *"linclust"* ]]; then run_linclust_with_infastafile_seqid "${INPREF}/pdbent-seqres_shuf" "${OUTDIR}/pdbent-seqres_shuf" $SIM 3334; fi
         if [[ "${PROG}" == *"quaclust"* ]]; then run_quaclust_with_infastafile_seqid "${INPREF}/pdbent-seqres_shuf" "${OUTDIR}/pdbent-seqres_shuf" $SIM 3334; fi
@@ -193,7 +195,7 @@ for SIM in $(echo $CSVSIM | sed "s/,/ /g"); do
             benchmark/src/gen-pdbent-cdf.py "$1".tms | tee "$1".cdf;
         }
         if [[ "${PROG}" == *"testgiu"* ]];  then clu_tsv_to_tms "${OUTDIR}/pdbent-seqres_sort-${SIM}.hdrsetcover-clu.tsv" ; fi
-        if [[ "${PROG}" == *"testcov"* ]];  then clu_tsv_to_tms "${OUTDIR}/pdbent-seqres_normcov${SRCCOVMAX}-${SIM}.hdrsetcover-clu.tsv" ; fi
+        if [[ "${PROG}" == *"testcov"* ]];  then clu_tsv_to_tms "${OUTDIR}/pdbent-seqres_shuf_cov${COVSRCMAX}-idxentry${IDXENTRYITMAX}-${SIM}.hdrsetcover-clu.tsv" ; fi
         if [[ "${PROG}" == *"mine"* ]];     then clu_tsv_to_tms "${OUTDIR}/pdbent-seqres_shuf-${SIM}.hdrsetcover-clu.tsv" ; fi
         if [[ "${PROG}" == *"linclust"* ]]; then clu_tsv_to_tms "${OUTDIR}/pdbent-seqres_shuf-${SIM}.linclust-clu.tsv"    ; fi
         if [[ "${PROG}" == *"quaclust"* ]]; then clu_tsv_to_tms "${OUTDIR}/pdbent-seqres_shuf-${SIM}.quaclust-clu.tsv"    ; fi
@@ -213,8 +215,8 @@ for SIM in $(echo $CSVSIM | sed "s/,/ /g"); do
     if [[ "${PROG}" == *"kclust"* ]]  ; then kclustnext=true  ; else kclustnext=false  ; fi 
     #for uniref in down32x-uniref100-2017-01 down16x-uniref100-2017-01 down8x-uniref100-2017-01 down4x-uniref100-2017-01 down2x-uniref100-2017-01 uniref100-2017-01; do
     for uniref in uniref100-02 uniref100-12 uniref100-2011-01 uniref100-2014-01 uniref100-2017-01; do    
-        if $testgiunext ; then run_mine_with_infastafile_seqid     "${INPREF}/${uniref}_sort" "${OUTDIR}/${uniref}_sortcov${SRCCOVMAX}" $SIM $timelim $SRCCOVMAX; fi
-        if $testcovnext ; then run_mine_with_infastafile_seqid     "${INPREF}/${uniref}_shuf" "${OUTDIR}/${uniref}_normcov${SRCCOVMAX}" $SIM $timelim $SRCCOVMAX; fi
+        if $testgiunext ; then run_mine_with_infastafile_seqid     "${INPREF}/${uniref}_sort" "${OUTDIR}/${uniref}_sort_cov${COVSRCMAX}-idxentry${IDXENTRYITMAX}" $SIM $timelim ${COVSRCMAX} ${IDXENTRYITMAX}; fi
+        if $testcovnext ; then run_mine_with_infastafile_seqid     "${INPREF}/${uniref}_shuf" "${OUTDIR}/${uniref}_shuf_cov${COVSRCMAX}-idxentry${IDXENTRYITMAX}" $SIM $timelim ${COVSRCMAX} ${IDXENTRYITMAX}; fi
         if $minenext    ; then run_mine_with_infastafile_seqid     "${INPREF}/${uniref}_shuf" "${OUTDIR}/${uniref}_shuf" $SIM $timelim; fi
         if $linclustnext; then run_linclust_with_infastafile_seqid "${INPREF}/${uniref}_shuf" "${OUTDIR}/${uniref}_shuf" $SIM $timelim; fi
         if $quaclustnext; then run_quaclust_with_infastafile_seqid "${INPREF}/${uniref}_shuf" "${OUTDIR}/${uniref}_shuf" $SIM $timelim; fi
