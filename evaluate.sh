@@ -7,6 +7,7 @@ if [ -n "$SGE_TASK_ID" ]; then
     #USVSIM="${qsubUSVSIM}"
     #PROG="${qsubPROG}" #$4
     #PARAMS="${qsubPARAMS}"
+    echo "SGE_TASK_ID=$SGE_TASK_ID"
 else
     ROOTDIR=$(dirname `which $0`)
     INPREF="$1"
