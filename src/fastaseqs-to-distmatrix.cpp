@@ -81,6 +81,7 @@ const uint64_t SIGN_MOD   = (0x1L << 31L) - 1L;
 uint64_t SEED_POWER = 0; 
 uint64_t SIGN_POWER = 0; 
 char ALPHA_TYPE_TO_CHAR_TO_REDUCED[3][256]; // derived from ALPHA_TYPE_TO_SIZE
+int SIGN_SD_CNTMINS[NUM_SIGNATURES+1];
 
 // variables that are initialized from command line args
 
@@ -113,7 +114,8 @@ int SEQTYPE = 0; // guessed from input by default
 
 int SIGN_CHCOV_MAX = 8;
 int SIGN_LENGTH = -1;
-int SIGN_CNTMIN = -1; 
+int SIGN_CNTMIN = 1; 
+int SIGN_ZVAL = 3;
 
 int SIM_PERC = -1;
 int SIM_BASE = -1; // 0; // 25;
@@ -161,9 +163,10 @@ void showparams() {
     std::cerr << "\tSEQTYPE = " << SEQTYPE << std::endl;
 
     std::cerr << "\tSIGN_CHCOV_MAX = " << SIGN_CHCOV_MAX << std::endl;
-    std::cerr << "\tSIGN_LENGTH = " << SIGN_LENGTH    << std::endl;
-    std::cerr << "\tSIGN_CNTMIN = " << SIGN_CNTMIN      << std::endl;
-    
+    std::cerr << "\tSIGN_LENGTH = " << SIGN_LENGTH       << std::endl;
+    std::cerr << "\tSIGN_CNTMIN = " << SIGN_CNTMIN       << std::endl;
+    std::cerr << "\tSIGN_ZVAL = "   << SIGN_ZVAL         << std::endl;
+
     std::cerr << "\tSIM_PERC = " << (int)SIM_PERC << std::endl;
     std::cerr << "\tSIM_BASE = " << (int)SIM_BASE << std::endl;
     std::cerr << "\tSIM_DIFF = " << (int)SIM_DIFF << std::endl;
@@ -209,6 +212,7 @@ void show_usage(const int argc, const char *const *const argv) {
     std::cerr << "  --sign-chcov-max\t: max ratio of sequence length to number of minhash values ["         << SIGN_CHCOV_MAX      << "]" << std::endl;
     std::cerr << "  --sign-length   \t: length of k-mers for computing minhash values. ["                      << SIGN_LENGTH         << "]" << std::endl;
     std::cerr << "  --sign-cntmin   \t: minimum number of minhash values to trigger sequence search [" << SIGN_CNTMIN << "]" << std::endl; 
+    std::cerr << "  --sign-zval     \t: minimum number of minhash values to trigger sequence search [" << SIGN_ZVAL << "]" << std::endl; 
 
     std::cerr << "  --sim-zval      \t: percent of standard deviations above similarity by chance for a sequence to cover another ["   << SIM_ZVAL << "]" << std::endl;
     std::cerr << "                  \t: the effective value is 0.2 to 0.4 times less than this set value due to normal approximation of skewed binomial." << std::endl;
@@ -314,13 +318,13 @@ const bool fail_len_cutoff(const seq_t *src, const seq_t *snk) {
 static const int comp_perc_seq_sim_editdist(const seq_t *src, const seq_t *snk, const double matchprob, const double *chprobs) {
     
     int maxEditDist = snk->seqlen - ceil((1 - DBL_EPSILON) * (sqrt(SQUARE((double)SIM_BASE) + SQUARE((double)(snk->seqlen * (SIM_PERC - SIM_DIFF)) / 100.0))));
-    if (maxEditDist < 0) { return 0; }
+    if (maxEditDist < 0) { return -1; }
     
     unsigned int i;
     for (i = 0; i < snk->seqlen; i++) {
         if (chprobs[(int)snk->seq[i]]) { break; }
     }
-    if (snk->seqlen == i) { return 0; }
+    if (snk->seqlen == i) { return -2; }
 
     EdlibAlignResult result;
     int editdist;
@@ -638,23 +642,19 @@ void PARAMS_init(const int argc, const char *const *const argv) {
         if      (!strcmp("--cov-src-max",    argv[i])) { COV_SRC_MAX           = atoi(argv[i+1]); }
         else if (!strcmp("--idxentry-itmax", argv[i])) { IDXENTRY_ITMAX        = atoi(argv[i+1]); }
         else if (!strcmp("--sign-length",    argv[i])) { SIGN_LENGTH           = atoi(argv[i+1]); }
+        else if (!strcmp("--sign-cntmin",    argv[i])) { SIGN_CNTMIN           = atoi(argv[i+1]); } 
+        else if (!strcmp("--sign-zval",      argv[i])) { SIGN_ZVAL             = atoi(argv[i+1]); }
         else if (!strcmp("--sim-diff",       argv[i])) { SIM_DIFF              = atoi(argv[i+1]); }
         else { is_arg_parsed = 0; }
         are_args_parsed[i]   += is_arg_parsed;
         are_args_parsed[i+1] += is_arg_parsed;
     }
     
-    double p = pow((1 - DBL_EPSILON) * SIM_PERC / 100, SIGN_LENGTH);
-    double sd = sqrt(NUM_SIGNATURES * p * (1-p));
-    double mean = NUM_SIGNATURES * p;
-    SIGN_CNTMIN = MAX(floor(mean - sd * 3), 1); // three standard deviations below the normal distribution of true positives.
-
-    for (int i = 1; i+1 < argc; i += 2) {
-        int is_arg_parsed = 1;
-        if (!strcmp("--sign-cntmin", argv[i])) { SIGN_CNTMIN = atoi(argv[i+1]); } 
-        else { is_arg_parsed = 0; } 
-        are_args_parsed[i]   += is_arg_parsed;
-        are_args_parsed[i+1] += is_arg_parsed;
+    for (int i = 1; i <= NUM_SIGNATURES; i++) {
+        double p = pow((1 - DBL_EPSILON) * SIM_PERC / 100, SIGN_LENGTH);
+        double sd = sqrt((i) * p * (1-p)) * NUM_SIGNATURES / i;
+        double mean = i * p;
+        SIGN_SD_CNTMINS[i] = MAX(ceil(mean - sd * SIGN_ZVAL), 0); // three standard deviations below the normal distribution of true positives.
     }
     
     for (int i = 1; i < argc; i++) {
@@ -983,8 +983,10 @@ int main(const int argc, const char *const *const argv) {
 #endif
                 if (!fail_len_cutoff(&seq_arrlist.data[srcidx], &seq_arrlist.data[snkidx])) {
                     std::vector<uint64_t> src_shortwords;
-                    int nsharedsigns = comp_n_shared_signatures(src_shortwords, &seq_arrlist.data[srcidx], &seq_arrlist.data[snkidx]); 
-                    nsigns_to_srcsnk_idx_pairs[nsharedsigns].insert(std::make_pair(srcidx, snkidx));
+                    int nsharedsigns = comp_n_shared_signatures(src_shortwords, &seq_arrlist.data[srcidx], &seq_arrlist.data[snkidx]);
+                    if (nsharedsigns >= SIGN_SD_CNTMINS[MIN((unsigned int)NUM_SIGNATURES, seqlen_to_n_varsigns(seq_arrlist.data[snkidx].seqlen))]) {
+                        nsigns_to_srcsnk_idx_pairs[nsharedsigns].insert(std::make_pair(srcidx, snkidx));
+                    }
                 }
             }
             int nhits = 0;
@@ -1013,7 +1015,7 @@ int main(const int argc, const char *const *const argv) {
                         attemptcnt = MIN(attemptcnt + ATTEMPT_INC, ATTEMPT_MAX);
                         nhits++;
                         if (!(nhits <= minhits)) { break; }
-                    } else { 
+                    } else if (0 <= sim) { 
                         attemptcnt--;
                         if (!(attemptcnt > 0)) { break; }
                     }
