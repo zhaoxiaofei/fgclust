@@ -19,6 +19,9 @@
 #include <time.h> 
 #include <unistd.h>
 
+#ifndef SHORTWORD
+#define SHORTWORD 0
+#endif
 #ifndef ENTROHASH
 #define ENTROHASH 0
 #endif
@@ -30,7 +33,9 @@
 #endif
 
 #ifndef NUM_SIGNATURES
-#if ENTROHASH
+#if SHORTWORD
+#define NUM_SIGNATURES (100)
+#elif ENTROHASH
 #define NUM_SIGNATURES (256)
 #elif VARSIGN
 #define NUM_SIGNATURES (64)
@@ -298,7 +303,7 @@ typedef struct {
     uint64_t compressedsign4;
 #elif VARSIGN
     uint16_t *varsigns;
-#else
+#elif !SHORTWORD
     uint16_t signatures[NUM_SIGNATURES];
 #endif
     uint32_t coveredcnt;
@@ -373,7 +378,7 @@ void comp_store_short_words(std::vector<uint64_t> &signs, const seq_t *seq_ptr) 
     }
 }
 
-int __attribute__((noinline)) comp_n_shared_shortwords(std::vector<uint64_t> &src_shortwords, const seq_t *src, const seq_t *snk) {
+int comp_n_shared_shortwords(std::vector<uint64_t> &src_shortwords, const seq_t *src, const seq_t *snk) {
     if (0 == src_shortwords.size()) {
         comp_store_short_words(src_shortwords, src);
     }
@@ -401,7 +406,9 @@ int __attribute__((noinline)) comp_n_shared_shortwords(std::vector<uint64_t> &sr
 
 int comp_n_shared_signatures(std::vector<uint64_t> &src_shortwords, const seq_t *src, const seq_t *snk) {
 
-#if ENTROHASH
+#if SHORTWORD
+    return comp_n_shared_shortwords(src_shortwords, src, snk);
+#elif ENTROHASH
     uint64_t r1 = src->compressedsign  ^ snk->compressedsign;
     uint64_t r2 = src->compressedsign2 ^ snk->compressedsign2;
     uint64_t r3 = src->compressedsign3 ^ snk->compressedsign3;
@@ -423,8 +430,9 @@ int comp_n_shared_signatures(std::vector<uint64_t> &src_shortwords, const seq_t 
     unsigned long j = 0;
     const unsigned long ni = seqlen_to_n_varsigns(src->seqlen);
     const unsigned long nj = seqlen_to_n_varsigns(snk->seqlen);
-    const unsigned long imax = MIN(ni, (unsigned long)NUM_SIGNATURES * 100UL*9999UL / ((unsigned long)LEN_PERC_SRC * 9999UL + 1UL));
-    const unsigned long jmax = MIN(nj, (unsigned long)NUM_SIGNATURES);
+    unsigned long minsigns = (unsigned long) MAX((unsigned int)NUM_SIGNATURES, MIN(src->seqlen, snk->seqlen) / 128);
+    const unsigned long imax = MIN(ni, minsigns * 100UL*9999UL / ((unsigned long)LEN_PERC_SRC * 9999UL + 1UL));
+    const unsigned long jmax = MIN(nj, minsigns);
     unsigned long ret = 0;
     while (i != imax && j != jmax) {
         if (src->varsigns[i] == snk->varsigns[j]) {
@@ -440,6 +448,9 @@ int comp_n_shared_signatures(std::vector<uint64_t> &src_shortwords, const seq_t 
     
     // return ret / (j * snk->seqlen / nj / src->seqlen * ni);
     unsigned long ret2 = (unsigned long)NUM_SIGNATURES * (ret * nj * (unsigned long)src->seqlen) / (ni * (unsigned long)snk->seqlen * (unsigned long)j + 1UL);
+    
+    // std::cerr << src->name << " and " << snk->name << " share " << ret << " " << ret2 << "/" << NUM_SIGNATURES << " minhash-values out of " << imax << " and " << jmax << std::endl;
+    
     return (int)MIN(ret2, (unsigned long)NUM_SIGNATURES);
 #else
     // The value 75 is an empirical threshold that works well in practice. O
@@ -622,7 +633,7 @@ void PARAMS_init(const int argc, const char *const *const argv) {
     }
     LEN_PERC_SNK = MAX(LEN_PERC_SNK, SIM_PERC);
     
-    if (1 == SEQTYPE) {
+    if (1 != SEQTYPE) {
         SIGN_LENGTH = (SIM_PERC + 900) / (200 - SIM_PERC); // heuristic values from cd-hit manual page
     } else {
         SIGN_LENGTH = (SIM_PERC + 360) / (150 - SIM_PERC); // heuristic values from cd-hit manual page
@@ -699,6 +710,7 @@ void seq_longword_init(seq_t *const seq_ptr, int idx) {
 }
 
 void seq_signatures_init(seq_t *const seq_ptr) {
+#if !SHORTWORD
 #if ENTROHASH  
     seq_ptr->compressedsign = 0;
     seq_ptr->compressedsign2 = 0;
@@ -786,6 +798,7 @@ void seq_signatures_init(seq_t *const seq_ptr) {
         seq_ptr->compressedsign |= (0x1L << ((seq_ptr->signatures[i] * 23) % 64));
     }
     */
+#endif
 }
 
 void seed_cov(const seed_t *seed, const uint32_t coveringidx, std::set<uint32_t> & visited) {
@@ -1057,6 +1070,7 @@ int main(const int argc, const char *const *const argv) {
             int distcompcnt = 0;
             int max_attempts = ATTEMPT_INI;
             int max_attempts_arg = 0;
+            int nsigns = -1;
             if (seq_arrlist.data[i].coveredcnt < cov_src_max && (int)(seq_arrlist.data[i].seqlen) >= (int)SEED_LENGTH) {
                 double matchprob = 0;
                 double chprobs[256];
@@ -1083,11 +1097,11 @@ int main(const int argc, const char *const *const argv) {
                         nsharedsigns_to_coveredidxs_vec.at(n_shared_signatures).push_back(coveredidx);
                     }
                 }
-                for (int nsigns = NUM_SIGNATURES; nsigns >= SIGN_CNTMIN; nsigns--) {
+                for (nsigns = NUM_SIGNATURES; nsigns >= SIGN_CNTMIN; nsigns--) {
                     filteredcnt += nsharedsigns_to_coveredidxs_vec.at(nsigns).size();
                 } 
                 int attempts = ATTEMPT_INI;
-                for (int nsigns = NUM_SIGNATURES; nsigns >= SIGN_CNTMIN && attempts > 0 && attempts > max_attempts - ATTEMPT_MAX; nsigns--) {
+                for (nsigns = NUM_SIGNATURES; nsigns >= SIGN_CNTMIN && attempts > 0 && attempts > max_attempts - ATTEMPT_MAX; nsigns--) {
                     for (auto coveredidx : nsharedsigns_to_coveredidxs_vec.at(nsigns)) {
                         seq_t *coveringseq = &seq_arrlist.data[i];
                         seq_t *coveredseq = &seq_arrlist.data[coveredidx];
@@ -1115,9 +1129,9 @@ int main(const int argc, const char *const *const argv) {
             if (nextprint == i) {
                 time(&endtime);
                 fprintf(stderr, "In %.f secs processed %u seqs\th1to4: %lu %i %i %lu\t"
-                        "max_attempts: %i at %i\tseqlen: %u\tcoveredcnt: %u coveringcnt: %u batchsize: %u\n", 
+                        "max_attempts: %i at %i\tseqlen: %u\tcoveredcnt: %u coveringcnt: %u batchsize: %u nsigns: %d\n", 
                         difftime(endtime, begtime), i+1, coveredarr[i-iter].size(), distcompcnt, filteredcnt, visited.size(), 
-                        max_attempts, max_attempts_arg, seq_arrlist.data[i].seqlen, seq_arrlist.data[i].coveredcnt, seq_arrlist.data[i].coveringcnt, batchsize);
+                        max_attempts, max_attempts_arg, seq_arrlist.data[i].seqlen, seq_arrlist.data[i].coveredcnt, seq_arrlist.data[i].coveringcnt, batchsize, nsigns);
                 nextprint = MAX(nextprint * 21 / 20, itermax);
             }
         }
