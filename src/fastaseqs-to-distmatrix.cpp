@@ -634,7 +634,7 @@ void PARAMS_init(const int argc, const char *const *const argv) {
         SIM_DIFF = 0;
     }
 
-    COV_SRC_MAX = 1 + (100 - MIN(LEN_PERC_SRC, SIM_PERC)) / 7;
+    COV_SRC_MAX = (120 - SIM_PERC) / 10;
     IDXENTRY_ITMAX = 1000 * COV_SRC_MAX;
 
     for (int i = 1; i+1 < argc; i += 2) {
@@ -917,7 +917,7 @@ int main(const int argc, const char *const *const argv) {
         int    seedlen_floor = (int)floor(seedlen_fract);
         double seedlen_diff1 = seedlen_fract - seedlen_floor;
         SEED_LENGTH = MIN(MAX(seedlen_floor, 4), 25);
-        SEED_MINCNT = (int)floor((100 + 10 - SIM_PERC) / pow(SHANNON_INFO_PER_LETTER, seedlen_diff1) * ((1 != SEQTYPE) ? 3 : 1));
+        SEED_MINCNT = (int)floor((120 - SIM_PERC) / pow(SHANNON_INFO_PER_LETTER, seedlen_diff1) * ((1 != SEQTYPE) ? 2 : 1));
         
         std::cerr << "Command-line parameter values after adjustment with SEED_EVALUE = " << SEED_EVALUE << ":" << std::endl;
         std::cerr << "\tSEED_LENGTH = " << SEED_LENGTH << std::endl;
