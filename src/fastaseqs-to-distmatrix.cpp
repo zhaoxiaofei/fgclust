@@ -33,7 +33,7 @@
 #if ENTROHASH
 #define NUM_SIGNATURES (256)
 #elif VARSIGN
-#define NUM_SIGNATURES (32)
+#define NUM_SIGNATURES (64)
 #else
 #define NUM_SIGNATURES (32)
 #endif
@@ -105,7 +105,7 @@ int LEN_PERC_SRC = -1;
 int LEN_PERC_SNK = -1;
 
 uint64_t SEED_N_PER_SEQ = 0;
-double SEED_EVALUE = 1;
+double SEED_EVALUE = 10;
 int SEED_LENGTH = 10; // can be overriden after determination of db size 
 int SEED_MINCNT = 10; // can be overriden after determination of db size
 
@@ -561,12 +561,12 @@ void PARAMS_init(const int argc, const char *const *const argv) {
         SEED_N_PER_SEQ = 10;
     } else if (2 == SEQTYPE) {
         SIM_PERC = 70;
-        SEED_N_PER_SEQ = 10 * 3;
+        SEED_N_PER_SEQ = 10 * 2;
     } else if (3 == SEQTYPE) {
         LEN_PERC_SRC = LEN_PERC_SNK = 0;
         SIM_PERC = 90;
         SIM_BASE = 0;
-        SEED_N_PER_SEQ = 10 * 3;
+        SEED_N_PER_SEQ = 10 * 2;
     } else {
         std::cerr << "The value of " << SEQTYPE << " is invalid for the parameter --seqtype." << std::endl;
         show_usage(argc, argv);
