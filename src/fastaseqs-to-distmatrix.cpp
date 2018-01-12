@@ -116,6 +116,7 @@ int LEN_PERC_SNK = -1;
 
 uint64_t SEED_N_PER_SEQ = 0;
 double SEED_EVALUE = 1; // 20;
+double SEED_BORDER = 0.02;
 int SEED_LENGTH = 10; // can be overriden after determination of db size 
 int SEED_MINCNT = 10; // can be overriden after determination of db size
 
@@ -166,6 +167,7 @@ void showparams() {
 
     std::cerr << "\tSEED_N_PER_SEQ = " << SEED_N_PER_SEQ << std::endl;
     std::cerr << "\tSEED_EVALUE = "    << SEED_EVALUE    << std::endl;
+    std::cerr << "\tSEED_BORDER = "    << SEED_BORDER    << std::endl;
     std::cerr << "\tSEED_LENGTH = "    << SEED_LENGTH    << std::endl;
     std::cerr << "\tSEED_MINCNT = "    << SEED_MINCNT    << std::endl;
     
@@ -215,6 +217,7 @@ void show_usage(const int argc, const char *const *const argv) {
     
     std::cerr << "  --seed-n-per-seq\t: number of seed hashtable entries per sequence (by default 10 for protein 30 for nucleotides). [" << SEED_N_PER_SEQ << "]" << std::endl;
     std::cerr << "  --seed-evalue   \t: evalue for seed hit. 0 or negative value means do not use this parameter [" << SEED_EVALUE << "]" << std::endl;
+    std::cerr << "  --seed-border   \t: fraction of sequences that are on the borderline of clustering cutoff. ["   << SEED_BORDER << "]" << std::endl;
     std::cerr << "  --seed-length   \t: length of an indexed seed. Overwritten by nonzero seed-evalue. ["           << SEED_LENGTH << "]" << std::endl;
     std::cerr << "  --seed-mincnt   \t: minimum number of seeds per sequence. Overwritten by nonzero seed-evalue [" << SEED_MINCNT << "]" << std::endl;
     
@@ -684,6 +687,7 @@ void PARAMS_init(const int argc, const char *const *const argv) {
         
         else if (!strcmp("--seed-n-per-seq", argv[i])) { SEED_N_PER_SEQ        = atoi(argv[i+1]);} 
         else if (!strcmp("--seed-evalue",    argv[i])) { SEED_EVALUE           = atof(argv[i+1]); } 
+        else if (!strcmp("--seed-border",    argv[i])) { SEED_BORDER           = atof(argv[i+1]); } 
         else if (!strcmp("--seed-length",    argv[i])) { SEED_LENGTH           = atoi(argv[i+1]); } 
         else if (!strcmp("--sign-chcov-max", argv[i])) { SIGN_CHCOV_MAX        = atoi(argv[i+1]); }
         else if (!strcmp("--seed-mincnt",    argv[i])) { SEED_MINCNT           = atoi(argv[i+1]); }
@@ -993,7 +997,10 @@ int main(const int argc, const char *const *const argv) {
     std::cerr << "Recommended similarity-threshold for detecting homology = " << 1 / SHANNON_INFO_PER_LETTER << " , actual similarity-threshold = " << SIM_PERC << std::endl;
 
     if (SEED_EVALUE > 0) {
-        double seedlen_fract = log((double)num_residues / SEED_EVALUE + INFO_PER_LETTER) / log(INFO_PER_LETTER);
+        double min_info_per_le = (double)(100+1) / (double)SIM_PERC;
+        double seedlen_fract1 = log((double)num_residues / SEED_EVALUE + INFO_PER_LETTER) / log(INFO_PER_LETTER);
+        double seedlen_fract2 = log((double)num_residues / SEED_EVALUE + min_info_per_le) / log(min_info_per_le);
+        double seedlen_fract = seedlen_fract1 * (1 - SEED_BORDER) + seedlen_fract2 * SEED_BORDER;
         int    seedlen_floor = (int)floor(seedlen_fract);
         double seedlen_diff1 = seedlen_fract - seedlen_floor;
         SEED_LENGTH = MIN(MAX(seedlen_floor, 4), 25);
