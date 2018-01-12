@@ -1,4 +1,4 @@
-#include "edlib.h"
+//#include "edlib.h"
 #include "kseq.h"
 
 #include <algorithm>
@@ -18,6 +18,8 @@
 #include <string.h>
 #include <time.h> 
 #include <unistd.h>
+
+#include "edlib.h"
 
 #ifndef INDEXWORD
 #define INDEXWORD 1
