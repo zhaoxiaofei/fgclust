@@ -117,7 +117,7 @@ int LEN_PERC_SRC = -1;
 int LEN_PERC_SNK = -1;
 
 uint64_t SEED_N_PER_SEQ = 0;
-double SEED_EVALUE = 10; // 1; // 20;
+double SEED_EVALUE = 5; // 1; // 20;
 double SEED_BORDER = 0.02; // not used
 int SEED_LENGTH = 10; // can be overriden after determination of db size 
 int SEED_MINCNT = 10; // can be overriden after determination of db size
@@ -1218,7 +1218,7 @@ int main(const int argc, const char *const *const argv) {
                                 if (attempts > max_attempts) {
                                     max_attempts = attempts;
                                     max_attempts_arg = distcompcnt + 1;
-                                    max_attempts_nsigns = NUMSIGNS;
+                                    max_attempts_nsigns = nsigns;
                                 }
                             } else {
                                 attempts -= 1;
