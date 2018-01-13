@@ -719,7 +719,7 @@ void PARAMS_init(const int argc, const char *const *const argv) {
     }
 
     COV_SRC_MAX = (120 - SIM_PERC) / 10;
-    IDXENTRY_ITMAX = 100 * COV_SRC_MAX;
+    IDXENTRY_ITMAX = 200 * MAX(1, SEED_EVALUE);
 
     for (int i = 1; i+1 < argc; i += 2) {
         int is_arg_parsed = 1;
