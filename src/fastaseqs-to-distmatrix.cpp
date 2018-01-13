@@ -907,6 +907,14 @@ void print_seedsize_histogram(const int hist1[], const int hist2[]) {
             std::cerr << "\t" << lowerlim << "\t" << upperlim << "\t" << hist1[i] << "\t" << hist2[i] << std::setprecision(15) << std::endl;
         }
     }
+    uint64_t n_pairwise_cmp_1 = 0;
+    uint64_t n_pairwise_cmp_2 = 0;
+    for (unsigned int i = 0 ; i < DBENTRY_CNT; i++) {
+        n_pairwise_cmp_1 += seeds[i].size * seeds[i].size;
+        n_pairwise_cmp_2 += seeds[i].size * MIN(seeds[i].size, IDXENTRY_ITMAX);
+    }
+    std::cerr << "Comparison-counts-totaled: unlimited = " << n_pairwise_cmp_1 << " and limited = " << n_pairwise_cmp_2 << std::endl;
+    std::cerr << "Comparison-counts-per-seq: unlimited = " << n_pairwise_cmp_1 / seq_arrlist.size << " and limited = " << n_pairwise_cmp_2 / seq_arrlist.size << std::endl; 
 }
 
 int main(const int argc, const char *const *const argv) {
@@ -1009,8 +1017,8 @@ int main(const int argc, const char *const *const argv) {
         SEED_MINCNT = (int)floor((120 - SIM_PERC) / pow(SHANNON_INFO_PER_LETTER, seedlen_diff1) * ((1 != SEQTYPE) ? 2 : 1));
         
         std::cerr << "Command-line parameter values after adjustment with SEED_EVALUE = " << SEED_EVALUE << ":" << std::endl;
-        std::cerr << "\tSEED_LENGTH = " << SEED_LENGTH << std::endl;
-        std::cerr << "\tSEED_MINCNT = " << SEED_MINCNT << std::endl;
+        std::cerr << "\tadjusted SEED_LENGTH = " << SEED_LENGTH << std::endl;
+        std::cerr << "\tadjusted SEED_MINCNT = " << SEED_MINCNT << std::endl;
     } else {
         std::cerr << "No adjustment made because SEED_EVALUE = " << SEED_EVALUE << std::endl;
     }
