@@ -38,7 +38,7 @@ static const int calc_perc_seq_sim_editdist(const char *s1, const char *s2) {
     edlibFreeAlignResult(result);    
 
     if (-1 == editdist) { return 0; }
-    int ret = 1000 * ( (alnlen * 1 + strlen(s1) * 0) - editdist) / ( strlen(s1) /*strlen(s1) + 18 */);
+    int ret = 1000 * ( (alnlen * 0 + strlen(s1) * 1) - editdist) / ( strlen(s1) /*strlen(s1) + 18 */);
     assert (ret >= 0);
     if (ret <= PERC_SIM) {return 0;}
     return ret;
