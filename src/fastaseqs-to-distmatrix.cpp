@@ -117,7 +117,7 @@ int LEN_PERC_SRC = -1;
 int LEN_PERC_SNK = -1;
 
 uint64_t SEED_N_PER_SEQ = 0;
-double SEED_EVALUE = 1; // 20;
+double SEED_EVALUE = 5; // 1; // 20;
 double SEED_BORDER = 0.02;
 int SEED_LENGTH = 10; // can be overriden after determination of db size 
 int SEED_MINCNT = 10; // can be overriden after determination of db size
