@@ -137,8 +137,9 @@ for SIM in $(echo $USVSIM | sed "s/_/ /g"); do
         cat "$1.tsv" | "${ROOTDIR}"/benchmark/src/pfam-clstr-to-metrics.py | tee "$1.fam-metrics"
     }
 
+if [[ "${PROG}" == *"rfam"* ]]; then
     ## run Rfam.seed
-    
+
     if [[ "${PROG}" == *"testgiu"* ]]; then run_mine_with_infastafile_seqid     "${INPREF}/Rfam.seed_sort" "${OUTDIR}/Rfam.seed_sort" "${SIM}" 3334 ; fi
     if [[ "${PROG}" == *"mine"* ]];    then run_mine_with_infastafile_seqid     "${INPREF}/Rfam.seed_shuf" "${OUTDIR}/Rfam.seed_shuf" "${SIM}" 3334; fi
     if [[ "${PROG}" == *"vsearch"* ]]; then run_vsearch_with_infastafile_seqid  "${INPREF}/Rfam.seed_shuf" "${OUTDIR}/Rfam.seed_shuf" "${SIM}" 3334; fi
@@ -148,9 +149,11 @@ for SIM in $(echo $USVSIM | sed "s/_/ /g"); do
     if [[ "${PROG}" == *"mine"* ]];    then gen_fam_metrics "${OUTDIR}/Rfam.seed_shuf-${SIM}.hdrsetcover-clu"; fi
     if [[ "${PROG}" == *"vsearch"* ]]; then gen_fam_metrics "${OUTDIR}/Rfam.seed_shuf_vsearch-${SIM}-clu"    ; fi
     if [[ "${PROG}" == *"cdhit"* ]];   then gen_fam_metrics "${OUTDIR}/Rfam.seed_shuf-${SIM}.cdhitest-clu"   ; fi
-
-    ## run Pfam-A.seed
+fi
     
+if [[ "${PROG}" == *"pfam"* ]]; then
+    ## run Pfam-A.seed
+
     if [[ "${PROG}" == *"testgiu"* ]];  then run_mine_with_infastafile_seqid     "${INPREF}/Pfam-A.seed_sort" "${OUTDIR}/Pfam-A.seed_sort" "${SIM}" 3334 ; fi
     if [[ "${PROG}" == *"mine"* ]];     then run_mine_with_infastafile_seqid     "${INPREF}/Pfam-A.seed_shuf" "${OUTDIR}/Pfam-A.seed_shuf" "${SIM}" 3334; fi
     if [[ "${PROG}" == *"linclust"* ]]; then run_linclust_with_infastafile_seqid "${INPREF}/Pfam-A.seed_shuf" "${OUTDIR}/Pfam-A.seed_shuf" "${SIM}" 3334; fi
@@ -164,6 +167,7 @@ for SIM in $(echo $USVSIM | sed "s/_/ /g"); do
     if [[ "${PROG}" == *"quaclust"* ]]; then gen_fam_metrics "${OUTDIR}/Pfam-A.seed_shuf-${SIM}.quaclust-clu"   ; fi
     if [[ "${PROG}" == *"cdhit"* ]];    then gen_fam_metrics "${OUTDIR}/Pfam-A.seed_shuf-${SIM}.cdhit-clu"      ; fi
     if [[ "${PROG}" == *"kclust"* ]];   then gen_fam_metrics "${OUTDIR}/Pfam-A.seed_shuf-${SIM}.kclust-clu"     ; fi
+fi
 
 done
 
@@ -172,6 +176,7 @@ for SIM in $(echo $USVSIM | sed "s/_/ /g"); do
     # skip the rest if sim is either 60 or 80 
     if [[ "60,80" == *"$SIM"* ]]; then continue; fi
 
+if [[ "${PROG}" == *"pdb"* ]]; then
     ## run pdb 
     (
         if [[ "${PROG}" == *"testgiu"* ]];  then run_mine_with_infastafile_seqid     "${INPREF}/pdbent-seqres_sort" "${OUTDIR}/pdbent-seqres_sort" "${SIM}" 3334 ; fi 
@@ -193,7 +198,9 @@ for SIM in $(echo $USVSIM | sed "s/_/ /g"); do
         if [[ "${PROG}" == *"cdhit"* ]];    then clu_tsv_to_tms "${OUTDIR}/pdbent-seqres_shuf-${SIM}.cdhit-clu.tsv"       ; fi
         if [[ "${PROG}" == *"kclust"* ]];   then clu_tsv_to_tms "${OUTDIR}/pdbent-seqres_shuf-${SIM}.kclust-clu.tsv"      ; fi 
     ) 200> "${INPREF}/pdbent-seqres_tmscore-lookup-table.flockfile"
+fi
 
+if [[ "${PROG}" == *"uniref"* ]]; then
     ## run uniprot
 
     timelim=$((3600*50))
@@ -212,5 +219,7 @@ for SIM in $(echo $USVSIM | sed "s/_/ /g"); do
         if $cdhitnext;    then run_cdhit_with_infastafile_seqid    "${INPREF}/${uniref}_shuf" "${OUTDIR}/${uniref}_shuf" "${SIM}" $timelim; fi
         if $kclustnext;   then run_kclust_with_infastafile_seqid   "${INPREF}/${uniref}_shuf" "${OUTDIR}/${uniref}_shuf" "${SIM}" $timelim; fi
     done
+fi
+
 done
 
