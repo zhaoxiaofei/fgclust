@@ -98,9 +98,10 @@ int SIGN_SD_CNTMINS[NUM_SIGNATURES+1];
 
 int ALPHA_TYPE_TO_SIZE[] = {10, 10, 10};
 
-int ATTEMPT_INI = 50; //50;
-int ATTEMPT_INC = 50; //50;
-int ATTEMPT_MAX = 50; //50;
+int ATTEMPT_BASE = 0;
+double ATTEMPT_INI = 0.05; //50;
+double ATTEMPT_INC = 0.05; //50;
+double ATTEMPT_MAX = 0.05; //50;
 
 double COV_SRC_ADA = -1; // 0.005;
 unsigned int COV_SRC_MAX = 0; // 5+1; // 8; // 5;
@@ -116,11 +117,11 @@ unsigned int IDXENTRY_ITMAX = 0; // similar to http://bio-bwa.sourceforge.net/bw
 int LEN_PERC_SRC = -1;
 int LEN_PERC_SNK = -1;
 
-uint64_t SEED_N_PER_SEQ = 0;
-double SEED_EVALUE = 5; // 1; // 20;
+uint64_t SEED_N_PER_SEQ = 10;
+double SEED_EVALUE = 10; // 1; // 20;
 double SEED_BORDER = 0.02; // not used
 int SEED_LENGTH = 10; // can be overriden after determination of db size 
-int SEED_MINCNT = 10; // can be overriden after determination of db size
+int SEED_MINCNT = 30; // cannot be overriden after determination of db size
 
 int SEQTYPE = 0; // guessed from input by default
 
@@ -197,9 +198,10 @@ void show_usage(const int argc, const char *const *const argv) {
     std::cerr << "  --alphasize-sign\t: alphabet size for computation of sign ["                << ALPHA_TYPE_TO_SIZE[1] << "]" << std::endl;
     std::cerr << "  --alphasize-sim \t: alphabet size for computation of sequence similarity ["  << ALPHA_TYPE_TO_SIZE[2] << "]" << std::endl;
     
-    std::cerr << "  --attempt-ini   \t: initial number of attempts. ["                             << ATTEMPT_INI << "]" << std::endl;
-    std::cerr << "  --attempt-inc   \t: number of attempts incremented per true positive hits. ["  << ATTEMPT_INC << "]" << std::endl;
-    std::cerr << "  --attempt-max   \t: number of attempts capped at this maximum value. ["        << ATTEMPT_MAX << "]" << std::endl;
+    std::cerr << "  --attempt-base  \t: initial number of attempts. ["                             << ATTEMPT_BASE << "]" << std::endl;
+    std::cerr << "  --attempt-ini   \t: initial percent of attempts. ["                            << ATTEMPT_INI << "]" << std::endl;
+    std::cerr << "  --attempt-inc   \t: percent of attempts incremented per true positive hits. [" << ATTEMPT_INC << "]" << std::endl;
+    std::cerr << "  --attempt-max   \t: percent of attempts capped at this maximum value. ["       << ATTEMPT_MAX << "]" << std::endl;
     
     std::cerr << "  --cov-src-ada   \t: fraction of change to cov-src-max per observation. <0 means no change. [" << COV_SRC_ADA << "]" << std::endl;
     std::cerr << "  --cov-snk-max   \t: max number of times that the covered sequence can be covered.["           << COV_SNK_MAX << "]" << std::endl;
@@ -217,7 +219,7 @@ void show_usage(const int argc, const char *const *const argv) {
     std::cerr << "  --len-perc-src  \t: A cannot cover B if len(A) * len-perc-src > len(B) * 100. [" << LEN_PERC_SRC << "]" << std::endl; 
     std::cerr << "  --len-perc-snk  \t: A cannot cover B if len(B) * len-perc-snk > len(A) * 100. [" << LEN_PERC_SNK << "]" << std::endl; 
     
-    std::cerr << "  --seed-n-per-seq\t: number of seed hashtable entries per sequence (by default 10 for protein 30 for nucleotides). [" << SEED_N_PER_SEQ << "]" << std::endl;
+    std::cerr << "  --seed-n-per-seq\t: number of seed hashtable entries per sequence. [" << SEED_N_PER_SEQ << "]" << std::endl;
     std::cerr << "  --seed-evalue   \t: evalue for seed hit. 0 or negative value means do not use this parameter [" << SEED_EVALUE << "]" << std::endl;
     std::cerr << "  --seed-border   \t: fraction of sequences that are on the borderline of clustering cutoff (not used). ["   << SEED_BORDER << "]" << std::endl;
     std::cerr << "  --seed-length   \t: length of an indexed seed. Overwritten by nonzero seed-evalue. ["           << SEED_LENGTH << "]" << std::endl;
@@ -645,15 +647,15 @@ void PARAMS_init(const int argc, const char *const *const argv) {
     SIM_BASE = 25;
     if (1 == SEQTYPE) {
         SIM_PERC = 50;
-        SEED_N_PER_SEQ = 10;
+        //SEED_N_PER_SEQ = 10;
     } else if (2 == SEQTYPE) {
         SIM_PERC = 70;
-        SEED_N_PER_SEQ = 10 * 2;
+        //SEED_N_PER_SEQ = 10;// * 2;
     } else if (3 == SEQTYPE) {
         LEN_PERC_SRC = LEN_PERC_SNK = 0;
         SIM_PERC = 90;
         SIM_BASE = 0;
-        SEED_N_PER_SEQ = 10 * 2;
+        //SEED_N_PER_SEQ = 10;// * 2;
     } else {
         std::cerr << "The value of " << SEQTYPE << " is invalid for the parameter --seqtype." << std::endl;
         show_usage(argc, argv);
@@ -671,10 +673,11 @@ void PARAMS_init(const int argc, const char *const *const argv) {
         if      (!strcmp("--alphasize-seed", argv[i])) { ALPHA_TYPE_TO_SIZE[0] = atoi(argv[i+1]); } 
         else if (!strcmp("--alphasize-sign", argv[i])) { ALPHA_TYPE_TO_SIZE[1] = atoi(argv[i+1]); } 
         else if (!strcmp("--alphasize-sim",  argv[i])) { ALPHA_TYPE_TO_SIZE[2] = atoi(argv[i+1]); } 
-
-        else if (!strcmp("--attempt-ini",    argv[i])) { ATTEMPT_INI           = atoi(argv[i+1]); } 
-        else if (!strcmp("--attempt-inc",    argv[i])) { ATTEMPT_INC           = atoi(argv[i+1]); } 
-        else if (!strcmp("--attempt-max",    argv[i])) { ATTEMPT_MAX           = atoi(argv[i+1]); } 
+        
+        else if (!strcmp("--attempt-base",   argv[i])) { ATTEMPT_BASE          = atoi(argv[i+1]); } 
+        else if (!strcmp("--attempt-ini",    argv[i])) { ATTEMPT_INI           = atof(argv[i+1]); } 
+        else if (!strcmp("--attempt-inc",    argv[i])) { ATTEMPT_INC           = atof(argv[i+1]); } 
+        else if (!strcmp("--attempt-max",    argv[i])) { ATTEMPT_MAX           = atof(argv[i+1]); } 
         
         else if (!strcmp("--cov-src-ada",    argv[i])) { COV_SRC_ADA           = atof(argv[i+1]); }
         else if (!strcmp("--cov-snk-max",    argv[i])) { COV_SNK_MAX           = atoi(argv[i+1]); } 
@@ -1007,15 +1010,15 @@ int main(const int argc, const char *const *const argv) {
     std::cerr << "Recommended similarity-threshold for detecting homology = " << 1 / SHANNON_INFO_PER_LETTER << " , actual similarity-threshold = " << SIM_PERC << std::endl;
 
     if (SEED_EVALUE > 0) {
-        double seedlen_multi = (double)(100 + MAX(SIM_PERC, 100 / SHANNON_INFO_PER_LETTER)) / (double)(100 + 100 / SHANNON_INFO_PER_LETTER);
+        double seedlen_multi = (double)(50 + MAX(SIM_PERC, 100 / SHANNON_INFO_PER_LETTER)) / (double)(50 + 100 / SHANNON_INFO_PER_LETTER);
         double seedlen_fract = log((double)num_residues / SEED_EVALUE + INFO_PER_LETTER) / log(INFO_PER_LETTER) * seedlen_multi; 
         int    seedlen_floor = (int)floor(seedlen_fract);
         // double seedlen_diff1 = seedlen_fract - seedlen_floor;
         SEED_LENGTH = MIN(MAX(seedlen_floor, 3), 30);
-        SEED_MINCNT = (int)floor((120 - SIM_PERC) 
+        //SEED_MINCNT = (int)floor((120 - SIM_PERC) 
                       // / pow(SHANNON_INFO_PER_LETTER, seedlen_diff1 / seedlen_multi) 
                       // / (1 + (seedlen_fract - seedlen_floor) * (100 - SIM_PERC) / SIM_PERC)
-                      * ((1 != SEQTYPE) ? 2 : 1));
+        //              * ((1 != SEQTYPE) ? 2 : 1));
         
         std::cerr << "Command-line parameter values after adjustment with SEED_EVALUE = " << SEED_EVALUE << ":" << std::endl;
         std::cerr << "\tadjusted SEED_LENGTH = " << SEED_LENGTH << " from " << seedlen_fract << std::endl;
@@ -1062,6 +1065,7 @@ int main(const int argc, const char *const *const argv) {
 
     set_seedsize_histogram(seedsize_hist1);
     
+#if 0
     time(&begtime);
     #pragma omp parallel for schedule(dynamic, 9999*100) 
     for (unsigned int i = 0 ; i < DBENTRY_CNT; i++) {
@@ -1127,7 +1131,7 @@ int main(const int argc, const char *const *const argv) {
         }
     }
     time(&endtime);
-    
+#endif
     set_seedsize_histogram(seedsize_hist2);
 
     print_seedsize_histogram(seedsize_hist1, seedsize_hist2); 
@@ -1153,7 +1157,7 @@ int main(const int argc, const char *const *const argv) {
             std::set<uint32_t> visited;
             int filteredcnt = 0;
             int distcompcnt = 0;
-            int max_attempts = ATTEMPT_INI;
+            int max_attempts = 0;
             int max_attempts_arg = 0;
             int nsigns = -1;
             int max_attempts_nsigns = -1;
@@ -1204,8 +1208,12 @@ int main(const int argc, const char *const *const argv) {
                 for (nsigns = NUMSIGNS; nsigns >= SIGN_CNTMIN; nsigns--) {
                     filteredcnt += nsharedsigns_to_coveredidxs_vec.at(nsigns).size();
                 }
-                int attempts = ATTEMPT_INI;
-                for (nsigns = NUMSIGNS; nsigns >= SIGN_CNTMIN && attempts > 0 && attempts > max_attempts - ATTEMPT_MAX; nsigns--) {
+                int attempts    = (int)ceil(ATTEMPT_INI * filteredcnt + ATTEMPT_BASE);
+                int attempt_inc = (int)ceil(ATTEMPT_INC * filteredcnt + ATTEMPT_BASE);
+                int attempt_max = (int)ceil(ATTEMPT_MAX * filteredcnt + ATTEMPT_BASE);
+                
+                int max_attempts = attempts;
+                for (nsigns = NUMSIGNS; nsigns >= SIGN_CNTMIN && attempts > 0 && attempts > max_attempts - attempt_max; nsigns--) {
                     for (auto coveredidx : nsharedsigns_to_coveredidxs_vec.at(nsigns)) {
                         seq_t *coveringseq = &seq_arrlist.data[i];
                         seq_t *coveredseq = &seq_arrlist.data[coveredidx];
@@ -1214,7 +1222,7 @@ int main(const int argc, const char *const *const argv) {
 
                             if (sim >= SIM_PERC) {
                                 coveredarr[i-iter].push_back(std::make_pair(coveredidx, sim));
-                                attempts += ATTEMPT_INC;
+                                attempts += attempt_inc;
                                 if (attempts > max_attempts) {
                                     max_attempts = attempts;
                                     max_attempts_arg = distcompcnt + 1;
@@ -1225,7 +1233,7 @@ int main(const int argc, const char *const *const argv) {
                             }
                             distcompcnt++;
                         }
-                        //if (!(attempts > 0 && attempts > max_attempts - ATTEMPT_MAX)) { break; }
+                        if (!(attempts > 0 && attempts > max_attempts - attempt_max)) { break; }
                     }
                 }
                 
