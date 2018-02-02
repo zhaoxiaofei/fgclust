@@ -120,7 +120,7 @@ int LEN_PERC_SRC = -1;
 int LEN_PERC_SNK = -1;
 
 uint64_t SEED_N_PER_SEQ = 0;
-double SEED_EVALUE = 5; // 10; // 1; // 20;
+double SEED_EVALUE = 10; // 1; // 20;
 double SEED_BORDER = 0.02; // not used
 int SEED_LENGTH = 10; // can be overriden after determination of db size 
 int SEED_MINCNT = 30; // cannot be overriden after determination of db size
@@ -780,16 +780,18 @@ void PARAMS_init(const int argc, const char *const *const argv) {
 }
 
 void seq_longword_init(seq_t *const seq_ptr, int idx) {
-    if ((int)seq_ptr->seqlen >= (int)SEED_LENGTH) {
-        unsigned int interseed_gap = MAX((unsigned int)1, seq_ptr->seqlen / SEED_MINCNT);
-        uint64_t hash1 = hash_init(seq_ptr->seq, SEED_LENGTH);
-        uint64_t hash2 = hash_init(seq_ptr->seq, SEED_LENGTH + 1);
-        seed_add(hash1, idx);
-        for (int i = SEED_LENGTH; i < (int)seq_ptr->seqlen; i += 1) {
-            hash1 = hash_update(hash1, seq_ptr->seq[i-SEED_LENGTH], seq_ptr->seq[i], SEED_LENGTH);
-            hash2 = hash_update(hash2, seq_ptr->seq[i-SEED_LENGTH], seq_ptr->seq[i], SEED_LENGTH + 1);
-            if (0 == i % interseed_gap && 100 * i / (int)seq_ptr->seqlen >= SEED_HIGH_LEN_PERC) { seed_add(hash1, idx); }
-            if (0 == i % interseed_gap && 100 * i / (int)seq_ptr->seqlen <  SEED_HIGH_LEN_PERC) { seed_add(hash2, idx); }
+    for (int seedlen = SEED_LENGTH; seedlen <= SEED_LENGTH + 1; seedlen += 1) {
+        if ((int)seq_ptr->seqlen >= seedlen) {
+            unsigned int interseed_gap = MAX((unsigned int)1, (unsigned int)((1 + (int)seq_ptr->seqlen - seedlen) / SEED_MINCNT));
+            uint64_t hash1 = hash_init(seq_ptr->seq, seedlen);
+            if (seedlen == SEED_LENGTH) { seed_add(hash1, idx); }
+            for (int i = seedlen; i < (int)seq_ptr->seqlen; i += 1) {
+                hash1 = hash_update(hash1, seq_ptr->seq[i-seedlen], seq_ptr->seq[i], seedlen);
+                bool is_highlen = ((100 * (1 + i - seedlen) / (1 + (int)seq_ptr->seqlen - seedlen)) >= 100 - SEED_HIGH_LEN_PERC);
+                if ((0 == (1 + i - seedlen) % interseed_gap) && ((SEED_LENGTH == seedlen && !is_highlen) || (SEED_LENGTH == seedlen + 1 && is_highlen))) {
+                    seed_add(hash1, idx);
+                }
+            }
         }
     }
 }
@@ -1110,11 +1112,13 @@ int main(const int argc, const char *const *const argv) {
                 memset(snkhcounts, 0, sizeof(*snkhcounts));
                 memset(snkseqidxs, 0, sizeof(*snkseqidxs));
                 for (int seedlen = SEED_LENGTH; seedlen <= SEED_LENGTH + 1; seedlen += 1) {
-                    uint64_t hash = hash_init(seq_arrlist.data[i].seq, seedlen);
-                    seed_cov(&seeds[hash % DBENTRY_CNT], i, visited);
-                    for (unsigned int j = SEED_LENGTH; j < seq_arrlist.data[i].seqlen; j++) {
-                        hash = hash_update(hash, seq_arrlist.data[i].seq[j-SEED_LENGTH], seq_arrlist.data[i].seq[j], seedlen);
+                    if ((int)seq_arrlist.data[i].seqlen >= seedlen) {
+                        uint64_t hash = hash_init(seq_arrlist.data[i].seq, seedlen);
                         seed_cov(&seeds[hash % DBENTRY_CNT], i, visited);
+                        for (unsigned int j = seedlen; j < seq_arrlist.data[i].seqlen; j++) {
+                            hash = hash_update(hash, seq_arrlist.data[i].seq[j-seedlen], seq_arrlist.data[i].seq[j], seedlen);
+                            seed_cov(&seeds[hash % DBENTRY_CNT], i, visited);
+                        }
                     }
                 }
 #if !INDEXWORD
