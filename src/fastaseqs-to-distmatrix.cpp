@@ -123,7 +123,7 @@ uint64_t SEED_N_PER_SEQ = 0;
 double SEED_EVALUE = 10; // 1; // 20;
 double SEED_BORDER = 0.02; // not used
 int SEED_LENGTH = 10; // can be overriden after determination of db size 
-int SEED_MINCNT = 30; // cannot be overriden after determination of db size
+int SEED_MINCNT = 40; // 30; // cannot be overriden after determination of db size
 
 int SEQTYPE = 0; // guessed from input by default
 
@@ -694,7 +694,6 @@ void PARAMS_init(const int argc, const char *const *const argv) {
         else if (!strcmp("--len-perc-snk",   argv[i])) { LEN_PERC_SNK          = atoi(argv[i+1]); } 
         
         else if (!strcmp("--seed-n-per-seq", argv[i])) { SEED_N_PER_SEQ        = atoi(argv[i+1]);} 
-        else if (!strcmp("--seed-evalue",    argv[i])) { SEED_EVALUE           = atof(argv[i+1]); } 
         else if (!strcmp("--seed-border",    argv[i])) { SEED_BORDER           = atof(argv[i+1]); } 
         else if (!strcmp("--seed-length",    argv[i])) { SEED_LENGTH           = atoi(argv[i+1]); } 
         else if (!strcmp("--sign-chcov-max", argv[i])) { SIGN_CHCOV_MAX        = atoi(argv[i+1]); }
@@ -725,14 +724,14 @@ void PARAMS_init(const int argc, const char *const *const argv) {
 
     // ATTEMPT_BASE = 10 + SEED_EVALUE * 5;
     COV_SRC_MAX = (120 - SIM_PERC) / 10;
-    IDXENTRY_ITMAX = 100 * MAX(1, SEED_EVALUE);
-    SEED_MINCNT = 120 - SIM_PERC;
+    SEED_EVALUE = 1e6 / pow(10, 0.1 * SIM_PERC);
+    // SEED_MINCNT = 20 + SQUARE((100 - SIM_PERC) / 10);
 
     for (int i = 1; i+1 < argc; i += 2) {
         int is_arg_parsed = 1;
              if (!strcmp("--attempt-base",   argv[i])) { ATTEMPT_BASE          = atoi(argv[i+1]); } 
         else if (!strcmp("--cov-src-max",    argv[i])) { COV_SRC_MAX           = atoi(argv[i+1]); }
-        else if (!strcmp("--idxentry-itmax", argv[i])) { IDXENTRY_ITMAX        = atoi(argv[i+1]); }
+        else if (!strcmp("--seed-evalue",    argv[i])) { SEED_EVALUE           = atof(argv[i+1]); } 
         else if (!strcmp("--seed-mincnt",    argv[i])) { SEED_MINCNT           = atoi(argv[i+1]); }
         else if (!strcmp("--sign-length",    argv[i])) { SIGN_LENGTH           = atoi(argv[i+1]); }
         else if (!strcmp("--sign-cntmin",    argv[i])) { SIGN_CNTMIN           = atoi(argv[i+1]); } 
@@ -742,12 +741,22 @@ void PARAMS_init(const int argc, const char *const *const argv) {
         are_args_parsed[i]   += is_arg_parsed;
         are_args_parsed[i+1] += is_arg_parsed;
     }
+
+    IDXENTRY_ITMAX = floor(100 * (10 + SEED_EVALUE));
     
     for (int i = 1; i <= NUM_SIGNATURES; i++) {
         double p = pow((1 - DBL_EPSILON) * SIM_PERC / 100, SIGN_LENGTH);
         double sd = sqrt((i) * p * (1-p)) * NUM_SIGNATURES / i;
         double mean = i * p;
         SIGN_SD_CNTMINS[i] = MAX(ceil(mean - sd * SIGN_ZVAL), 0); // three standard deviations below the normal distribution of true positives.
+    }
+    
+    for (int i = 1; i+1 < argc; i += 2) {
+        int is_arg_parsed = 1;
+             if (!strcmp("--idxentry-itmax", argv[i])) { IDXENTRY_ITMAX        = atoi(argv[i+1]); } 
+        else { is_arg_parsed = 0; }
+        are_args_parsed[i]   += is_arg_parsed;
+        are_args_parsed[i+1] += is_arg_parsed;
     }
     
     for (int i = 1; i < argc; i++) {
@@ -788,7 +797,7 @@ void seq_longword_init(seq_t *const seq_ptr, int idx) {
             for (int i = seedlen; i < (int)seq_ptr->seqlen; i += 1) {
                 hash1 = hash_update(hash1, seq_ptr->seq[i-seedlen], seq_ptr->seq[i], seedlen);
                 bool is_highlen = ((100 * (1 + i - seedlen) / (1 + (int)seq_ptr->seqlen - seedlen)) >= 100 - SEED_HIGH_LEN_PERC);
-                if ((0 == (1 + i - seedlen) % interseed_gap) && ((SEED_LENGTH == seedlen && !is_highlen) || (SEED_LENGTH == seedlen + 1 && is_highlen))) {
+                if ((0 == (1 + i - seedlen) % interseed_gap) && ((SEED_LENGTH == seedlen && !is_highlen) || (SEED_LENGTH + 1 == seedlen && is_highlen))) {
                     seed_add(hash1, idx);
                 }
             }
@@ -924,11 +933,11 @@ void print_seedsize_histogram(const int hist1[]) {
     uint64_t n_pairwise_cmp_1 = 0;
     uint64_t n_pairwise_cmp_2 = 0;
     for (unsigned int i = 0 ; i < DBENTRY_CNT; i++) {
-        n_pairwise_cmp_1 += seeds[i].size * seeds[i].size;
-        n_pairwise_cmp_2 += seeds[i].size * MIN(seeds[i].size, IDXENTRY_ITMAX);
+        n_pairwise_cmp_1 += (uint64_t)seeds[i].size * (uint64_t)seeds[i].size;
+        n_pairwise_cmp_2 += (uint64_t)seeds[i].size * (uint64_t)MIN(seeds[i].size, IDXENTRY_ITMAX);
     }
     std::cerr << "Comparison-counts-totaled: unlimited = " << n_pairwise_cmp_1 << " and limited = " << n_pairwise_cmp_2 << std::endl;
-    std::cerr << "Comparison-counts-per-seq: unlimited = " << n_pairwise_cmp_1 / seq_arrlist.size << " and limited = " << n_pairwise_cmp_2 / seq_arrlist.size << std::endl; 
+    std::cerr << "Comparison-counts-per-seq: unlimited = " << n_pairwise_cmp_1 / seq_arrlist.size << " and limited = " << n_pairwise_cmp_2 / seq_arrlist.size << std::endl;
 }
 
 int main(const int argc, const char *const *const argv) {
@@ -980,7 +989,7 @@ int main(const int argc, const char *const *const argv) {
     for (unsigned int i = 0 ; i < seq_arrlist.size; i++) {
         num_residues += seq_arrlist.data[i].seqlen;
     }
-    DBENTRY_CNT = seq_arrlist.size * SEED_MINCNT / 5; // SEED_N_PER_SEQ;
+    DBENTRY_CNT = seq_arrlist.size * SEED_MINCNT / 3; // SEED_N_PER_SEQ;
     std::cerr << "Derived paramters: " << std::endl;
     std::cerr << "\tNUM_SEQS = " << seq_arrlist.size << std::endl;
     std::cerr << "\tNUM_RESIDUES = " << num_residues << std::endl;
@@ -1021,8 +1030,8 @@ int main(const int argc, const char *const *const argv) {
     std::cerr << "Recommended similarity-threshold for detecting homology = " << 1 / SHANNON_INFO_PER_LETTER << " , actual similarity-threshold = " << SIM_PERC << std::endl;
 
     if (SEED_EVALUE > 0) {
-        double seedlen_multi = (double)(50 + MAX(SIM_PERC, 100 / SHANNON_INFO_PER_LETTER)) / (double)(50 + 100 / SHANNON_INFO_PER_LETTER);
-        double seedlen_fract = log((double)num_residues / SEED_EVALUE + INFO_PER_LETTER) / log(INFO_PER_LETTER) * seedlen_multi; 
+        // double seedlen_multi = (double)(50 + MAX(SIM_PERC, 100 / SHANNON_INFO_PER_LETTER)) / (double)(50 + 100 / SHANNON_INFO_PER_LETTER);
+        double seedlen_fract = log((double)num_residues / SEED_EVALUE + INFO_PER_LETTER) / log(INFO_PER_LETTER); // * seedlen_multi; 
         int    seedlen_floor = (int)floor(seedlen_fract);
         // double seedlen_diff1 = seedlen_fract - seedlen_floor;
         SEED_LENGTH = MIN(MAX(seedlen_floor, 3), 30);
@@ -1033,8 +1042,8 @@ int main(const int argc, const char *const *const argv) {
         //              * ((1 != SEQTYPE) ? 2 : 1));
         
         std::cerr << "Command-line parameter values after adjustment with SEED_EVALUE = " << SEED_EVALUE << ":" << std::endl;
-        std::cerr << "\tadjusted SEED_LENGTH = " << SEED_LENGTH << " from " << seedlen_fract << std::endl;
-        std::cerr << "\tadjusted SEED_MINCNT = " << SEED_MINCNT << std::endl;
+        std::cerr << "\tadjusted SEED_LENGTH = " << SEED_LENGTH << " from " << seedlen_fract << " with SEED_HIGH_LEN_PERC = " << SEED_HIGH_LEN_PERC <<  std::endl;
+        // std::cerr << "\tadjusted SEED_MINCNT = " << SEED_MINCNT << std::endl;
     } else {
         std::cerr << "No adjustment made because SEED_EVALUE = " << SEED_EVALUE << std::endl;
     }
