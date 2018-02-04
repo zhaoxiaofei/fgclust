@@ -723,9 +723,9 @@ void PARAMS_init(const int argc, const char *const *const argv) {
     }
 
     // ATTEMPT_BASE = 10 + SEED_EVALUE * 5;
-    COV_SRC_MAX = (120 - SIM_PERC) / 10;
-    SEED_EVALUE = 1e6 / pow(10, 0.1 * SIM_PERC);
-    // SEED_MINCNT = 20 + SQUARE((100 - SIM_PERC) / 10);
+    COV_SRC_MAX = 1 + (100 - SIM_PERC) / 10;
+    SEED_EVALUE = 10; // 1e6 / pow(10, 0.1 * SIM_PERC);
+    SEED_MINCNT = 1 + floor(sqrt((100 - SIM_PERC) * 40)); //  20 + SQUARE((100 - SIM_PERC) / 10);
 
     for (int i = 1; i+1 < argc; i += 2) {
         int is_arg_parsed = 1;
@@ -1030,11 +1030,13 @@ int main(const int argc, const char *const *const argv) {
     std::cerr << "Recommended similarity-threshold for detecting homology = " << 1 / SHANNON_INFO_PER_LETTER << " , actual similarity-threshold = " << SIM_PERC << std::endl;
 
     if (SEED_EVALUE > 0) {
-        // double seedlen_multi = (double)(50 + MAX(SIM_PERC, 100 / SHANNON_INFO_PER_LETTER)) / (double)(50 + 100 / SHANNON_INFO_PER_LETTER);
-        double seedlen_fract = log((double)num_residues / SEED_EVALUE + INFO_PER_LETTER) / log(INFO_PER_LETTER); // * seedlen_multi; 
+        double seedlen_multi = (double)(MAX(SIM_PERC, 100 / SHANNON_INFO_PER_LETTER)) / (double)(100 / SHANNON_INFO_PER_LETTER);
+        double seedlen_fract = log((double)num_residues / SEED_EVALUE + INFO_PER_LETTER) / log(INFO_PER_LETTER);
+        seedlen_fract = MAX(seedlen_fract, seedlen_fract * seedlen_multi - 3);
+        seedlen_fract = MIN(MAX(seedlen_fract, 3), 30);
         int    seedlen_floor = (int)floor(seedlen_fract);
         // double seedlen_diff1 = seedlen_fract - seedlen_floor;
-        SEED_LENGTH = MIN(MAX(seedlen_floor, 3), 30);
+        SEED_LENGTH = seedlen_floor;
         SEED_HIGH_LEN_PERC = floor(100 * (seedlen_fract - seedlen_floor));
         //SEED_MINCNT = (int)floor((120 - SIM_PERC) 
                       // / pow(SHANNON_INFO_PER_LETTER, seedlen_diff1 / seedlen_multi) 
