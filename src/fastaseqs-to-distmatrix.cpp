@@ -724,8 +724,8 @@ void PARAMS_init(const int argc, const char *const *const argv) {
 
     // ATTEMPT_BASE = 10 + SEED_EVALUE * 5;
     COV_SRC_MAX = 1 + (100 - SIM_PERC) / 10;
-    SEED_EVALUE = pow(0.1, 0.05 * SIM_PERC - 3.5); // 10; // 1e6 / pow(10, 0.1 * SIM_PERC);
-    SEED_MINCNT = 1 + (100 - SIM_PERC); // floor(sqrt((100 - SIM_PERC) * 40)); //  20 + SQUARE((100 - SIM_PERC) / 10);
+    SEED_EVALUE = pow(10, 6 - 0.1 * SIM_PERC); // 10; // 1e6 / pow(10, 0.1 * SIM_PERC);
+    SEED_MINCNT = 1 + floor(sqrt((100 - SIM_PERC) * 40)); //  20 + SQUARE((100 - SIM_PERC) / 10);
 
     for (int i = 1; i+1 < argc; i += 2) {
         int is_arg_parsed = 1;
