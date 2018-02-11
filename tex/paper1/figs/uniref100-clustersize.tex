@@ -1,0 +1,142 @@
+\nextgroupplot[very thick,grid=both,
+width=0.5\textwidth,height=0.35\textwidth,
+mark options={solid},
+ytick={1,2,3,4,5,6,7,8,9},log y ticks with fixed point,
+ylabel={Average cluster size (i.e., sensitivity)},
+legend columns=4,transpose legend,legend pos=north west,
+%legend style={fill=none},
+xmode=log,ymode=log,
+legend entries={
+	FgClust,FgClust\textsuperscript{G},
+	Linclust,MMSeqs2,CD-HIT,kClust,
+	%cutoff=50\%,cutoff=70\%,cutoff=90\%
+},
+]
+\addlegendimage{,color=Red}
+\addlegendimage{loosely dotted,color=Turquoise}
+\addlegendimage{dashed,color=Orange}
+\addlegendimage{dotted,color=Green}
+\addlegendimage{dash dot,color=Blue}
+\addlegendimage{dash dot dot,color=Magenta}
+
+\addplot[color=Red,mark=square] coordinates {
+(1306318,       1306318/422186)
+(4910948,       4910948/1320766)
+(11659891,      11659891/2872344)
+(33613081,      33613081/6588205)
+(94756963,      94756963/14317115)
+}; %FgClust 50
+\addplot[color=Red,mark=o] coordinates {
+(1306318,       1306318/616047)
+(4910948,       4910948/2100471)
+(11659891,      11659891/4633711)
+(33613081,      33613081/10996570)
+(94756963,      94756963/24074495)
+}; %FgClust 70
+\addplot[color=Red,mark=x] coordinates {
+(1306318,       1306318/853689)
+(4910948,       4910948/3177750)
+(11659891,      11659891/7244693)
+(33613081,      33613081/18878368)
+(94756963,      94756963/44982646)
+}; %FgClust 90
+
+\addplot[loosely dotted,color=Turquoise,mark=square] coordinates {
+(1306318,       1306318/440536)
+(4910948,       4910948/1397457)
+(11659891,      11659891/3045461)
+(33613081,      33613081/7030002)
+(94756963,      94756963/15345559)
+}; %FgClustG 50
+\addplot[loosely dotted,color=Turquoise,mark=o] coordinates {
+(1306318,       1306318/624838)
+(4910948,       4910948/2145454)
+(11659891,      11659891/4747777)
+(33613081,      33613081/11334184)
+(94756963,      94756963/24951918)
+}; %FgClustG 70
+\addplot[loosely dotted,color=Turquoise,mark=x] coordinates {
+(1306318,       1306318/852268)
+(4910948,       4910948/3178739)
+(11659891,      11659891/7251378)
+(33613081,      33613081/18927370)
+(94756963,      94756963/45187681)
+}; %FgClustG 90
+
+\addplot[dashed,color=Orange,mark=square] coordinates {
+	( 1306318,       1306318/       725566   )
+	( 4910948,       4910948/       2562086  )
+	(11659891,      11659891/       5847706  )
+	(33613081,      33613081/       14766033 )
+	(94756963,      94756963/       35983786 )
+}; %Linclust 50
+\addplot[dashed,color=Orange,mark=o] coordinates {
+	( 1306318,       1306318/       819293    )
+	( 4910948,       4910948/       3000298   )
+	(11659891,      11659891/       6889416   )
+	(33613081,      33613081/       17768118  )
+	(94756963,      94756963/       43908412  )
+}; %Linclust 70
+\addplot[dashed,color=Orange,mark=x] coordinates {
+	( 1306318,       1306318/       962908    )
+	( 4910948,       4910948/       3625681   )
+	(11659891,      11659891/       8306445   )
+	(33613081,      33613081/       21974288  )
+	(94756963,      94756963/       54672623  )
+};
+
+\addplot[dotted,color=Green,mark=square] coordinates {
+	( 1306318,       1306318/       516052    )
+	( 4910948,       4910948/       1670691   )
+	(11659891,      11659891/       3611539   )
+	(33613081,      33613081/       8247496 )
+	(94756963,      94756963/       17763784        )
+}; % mmseqs2 50
+\addplot[dotted,color=Green,mark=o] coordinates {
+	( 1306318,       1306318/       666575    )
+	( 4910948,       4910948/       2358569   )
+	(11659891,      11659891/       5244463   )
+	(33613081,      33613081/       12622515        )
+	(94756963,      94756963/       27872093        )
+};
+\addplot[dotted,color=Green,mark=x] coordinates {
+	( 1306318,       1306318/       906871    )
+	( 4910948,       4910948/       3415601   )
+	(11659891,      11659891/       7874593   )
+	(33613081,      33613081/       21060831        )
+	%(94756963,      94756963/       77117011       ) % timeout
+};
+
+\addplot[dash dot,color=Blue,mark=square] coordinates {
+	( 1303982 , 1303982 / 547396 )
+	( 4908596 , 4908596 / 1818516 )
+};
+\addplot[dash dot,color=Blue,mark=o] coordinates {
+	( 1303982 , 1303982 / 698797 )
+	( 4908596 , 4908596 / 2532809 )
+	( 11656604 , 11656604 / 5671408 )
+	( 33606888 , 33606888 / 13921644 )
+	( 94744006 , 94744006 / 31180026 )
+};
+\addplot[dash dot,color=Blue,mark=x] coordinates {
+	( 1303982 , 1303982 / 878273 )
+	( 4908596 , 4908596 / 3329592 )
+	( 11656604 , 11656604 / 7627716 )
+	( 33606888 , 33606888 / 20175146 )
+	( 94744006 , 94744006 / 49205865 )	
+};
+
+\addplot[dash dot dot,color=Magenta,mark=square] coordinates {
+	( 1303982 , 1303982 / 572347 )
+	( 4908596 , 4908596 / 1924257 )
+};
+\addplot[dash dot dot,color=Magenta,mark=o] coordinates {
+	( 1303982 , 1303982 / 705456 )
+	( 4908596 , 4908596 / 2552951 )
+	( 11656604 , 11656604 / 5713855 )
+};
+\addplot[dash dot dot,color=Magenta,mark=x] coordinates {
+	( 1303982 , 1303982 / 930527 )
+	( 4908596 , 4908596 / 3556609 )
+	( 11656604 , 11656604 / 8250898 )
+};
