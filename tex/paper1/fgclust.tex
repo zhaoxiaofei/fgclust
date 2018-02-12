@@ -140,7 +140,7 @@ Another popular program, UCLUST, assumes that the remaining targets cannot be cl
 This skipping also significantly improves runtime without significantly sacrificing sensitivity.
 Two different short words having a high alignment score can still be considered as matching to each other.
 The sequence profile of a cluster is more sensitive than the centroid of the cluster for integrating sequences into the cluster.
-kClust uses similarity-based short-word match and sequence profile to improve sensitivity without significant sacrificing specificity and runtime \citep{hauser2013kclust}.
+kClust uses similarity-based short-word match and sequence profile to improve sensitivity without significantly sacrificing specificity and runtime \citep{hauser2013kclust}.
 kClust, MMSeqs, and MMSeqs2 all use similar ideas \citep{hauser2013kclust,hauser2016mmseqs,steinegger2017mmseqs2}.
 
 Functionally important sequences (or substrings thereof) tend to be evolutionarily conserved.
@@ -283,8 +283,8 @@ More specifically, FgClust indexes input sequences by their long words or k-mers
 %
 Given a query sequence, FgClust searches only each input sequence that shares at least one long word with the query sequence. 
 %To achieve linear worst-case runtime without significantly sacrificing sensitivity, 
-FgClust uses longer long words for larger input size (i.e, the number of input sequences), and allows only a limited number \(W\) of sequences indexed with each long word as centroids (\cref{alg:fgclust}).
-Linclust allows only the first sequence indexed with each long word as centroid.
+FgClust uses longer long words for larger input size (i.e, the number of input sequences), and allows only a limited number \(W\) of sequences indexed with each long word to be centroids (\cref{alg:fgclust}).
+Linclust allows only the first sequence indexed with each long word to be centroid.
 Hence, Linclust is in the special case where \(W=1\).
 
 %TODO: insert figure as supplement
